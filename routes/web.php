@@ -1,7 +1,8 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
-use App\Http\Controllers\Admin\ZoneController; // Imported for cleaner code
+use App\Http\Controllers\Admin\ZoneController;
+use App\Http\Controllers\Admin\DriverController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -41,6 +42,11 @@ Route::resource('admin/zones', ZoneController::class)
     Route::post('/admin/barangays', [\App\Http\Controllers\Admin\BarangayController::class, 'store'])->name('admin.barangays.store');
     Route::put('/admin/barangays/{barangay}', [\App\Http\Controllers\Admin\BarangayController::class, 'update'])->name('admin.barangays.update');
     Route::delete('/admin/barangays/{barangay}', [\App\Http\Controllers\Admin\BarangayController::class, 'destroy'])->name('admin.barangays.destroy');
+
+    // 5. Driver Management
+    Route::get('/admin/drivers', [DriverController::class, 'index'])->name('admin.drivers.index');
+    Route::post('/admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
+    Route::post('/admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update'); // Using POST for file uploads with method spoofing
 });
 
 // --- FRANCHISE OWNER ROUTES ---

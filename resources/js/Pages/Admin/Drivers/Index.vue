@@ -6,13 +6,13 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
     drivers: Object,         // Paginated drivers
-    franchiseOwners: Array,  // List of franchise owners
-    barangays: Array,        // List of barangays
+    franchiseOwners: Array,  // List of franchise owners for dropdown
+    barangays: Array,        // List of barangays for dropdown
     filters: Object          // Search and filter state
 });
 
@@ -22,7 +22,7 @@ const showEditModal = ref(false);
 const showFilterModal = ref(false);
 const search = ref(props.filters.search || '');
 
-// Photo Previews
+// Photo Previews (Driver + License)
 const addPhotos = ref({ user: null, front: null, back: null });
 const editPhotos = ref({ user: null, front: null, back: null });
 
@@ -31,52 +31,6 @@ const addPhotoInput = ref(null);
 const addFrontInput = ref(null);
 const addBackInput = ref(null);
 const editPhotoInput = ref(null);
-
-// --- DROPDOWN SEARCH STATE ---
-// Add Modal
-const addOwnerSearch = ref('');
-const showAddOwnerDropdown = ref(false);
-const showAddBarangayDropdown = ref(false);
-
-// Edit Modal
-const editOwnerSearch = ref('');
-const showEditOwnerDropdown = ref(false);
-const showEditBarangayDropdown = ref(false);
-
-// --- COMPUTED PROPERTIES FOR FILTERING ---
-
-// ADD MODAL FILTERS
-const filteredAddOwners = computed(() => {
-    if (!addOwnerSearch.value) return props.franchiseOwners;
-    const lower = addOwnerSearch.value.toLowerCase();
-    return props.franchiseOwners.filter(owner => 
-        owner.first_name.toLowerCase().includes(lower) || 
-        owner.last_name.toLowerCase().includes(lower)
-    );
-});
-
-const filteredAddBarangays = computed(() => {
-    if (!addForm.barangay) return props.barangays; // Search bound directly to form for Barangay
-    const lower = addForm.barangay.toLowerCase();
-    return props.barangays.filter(b => b.name.toLowerCase().includes(lower));
-});
-
-// EDIT MODAL FILTERS
-const filteredEditOwners = computed(() => {
-    if (!editOwnerSearch.value) return props.franchiseOwners;
-    const lower = editOwnerSearch.value.toLowerCase();
-    return props.franchiseOwners.filter(owner => 
-        owner.first_name.toLowerCase().includes(lower) || 
-        owner.last_name.toLowerCase().includes(lower)
-    );
-});
-
-const filteredEditBarangays = computed(() => {
-    if (!editForm.barangay) return props.barangays;
-    const lower = editForm.barangay.toLowerCase();
-    return props.barangays.filter(b => b.name.toLowerCase().includes(lower));
-});
-
 
 // --- FORMS ---
 
@@ -121,7 +75,8 @@ const filterForm = ref({
     status: props.filters.status || '',
 });
 
-// --- ACTIONS: SHARED HELPER ---
+// --- ACTIONS: HELPER FUNCTIONS ---
+
 const handleFileChange = (event, formKey, previewRefKey, isEdit = false) => {
     const file = event.target.files[0];
     if (file) {
@@ -136,58 +91,36 @@ const handleFileChange = (event, formKey, previewRefKey, isEdit = false) => {
 };
 
 /**
- * AUTO-FILL HELPER
+ * Automatically fill driver details when a Franchise Owner is selected.
+ * Maps User attributes to Driver form fields.
  */
-const fillDetailsFromOwner = (owner, formTarget) => {
-    if (!owner) return;
-    formTarget.first_name = owner.first_name || '';
-    formTarget.middle_name = owner.middle_name || '';
-    formTarget.last_name = owner.last_name || '';
-    formTarget.contact_number = owner.contact_number || '';
-    formTarget.street = owner.street_address || owner.street || '';
-    formTarget.barangay = owner.barangay || '';
-    formTarget.city = owner.city || 'Zamboanga City';
+const fillFranchiseOwnerDetails = () => {
+    const ownerId = addForm.user_id;
+    if (!ownerId) return;
+
+    const selectedOwner = props.franchiseOwners.find(owner => owner.id === ownerId);
+    
+    if (selectedOwner) {
+        // Copy Name
+        addForm.first_name = selectedOwner.first_name || '';
+        addForm.middle_name = selectedOwner.middle_name || '';
+        addForm.last_name = selectedOwner.last_name || '';
+        
+        // Copy Contact
+        addForm.contact_number = selectedOwner.contact_number || '';
+        
+        // Copy Address (Note: User model usually uses street_address, Driver uses street)
+        addForm.street = selectedOwner.street_address || selectedOwner.street || '';
+        addForm.barangay = selectedOwner.barangay || '';
+        addForm.city = selectedOwner.city || 'Zamboanga City';
+    }
 };
 
-// --- SELECTION HANDLERS (ADD) ---
-const selectAddOwner = (owner) => {
-    addForm.user_id = owner.id;
-    addOwnerSearch.value = `${owner.first_name} ${owner.last_name}`;
-    fillDetailsFromOwner(owner, addForm);
-    showAddOwnerDropdown.value = false;
-};
-
-const selectAddBarangay = (name) => {
-    addForm.barangay = name;
-    showAddBarangayDropdown.value = false;
-};
-
-// --- SELECTION HANDLERS (EDIT) ---
-const selectEditOwner = (owner) => {
-    editForm.user_id = owner.id;
-    editOwnerSearch.value = `${owner.first_name} ${owner.last_name}`;
-    // Note: Usually we don't auto-fill on Edit unless requested, 
-    // but to be consistent with "Copy attributes", we can do it here too if desired.
-    // Uncomment next line to auto-overwrite Edit fields when changing owner:
-    // fillDetailsFromOwner(owner, editForm);
-    showEditOwnerDropdown.value = false;
-};
-
-const selectEditBarangay = (name) => {
-    editForm.barangay = name;
-    showEditBarangayDropdown.value = false;
-};
-
-// --- ACTIONS: MODAL OPEN/CLOSE ---
-
-const openAddModal = () => {
-    showAddModal.value = true;
-};
-
+// --- ACTIONS: ADD DRIVER ---
+const openAddModal = () => showAddModal.value = true;
 const closeAddModal = () => {
     showAddModal.value = false;
     addForm.reset();
-    addOwnerSearch.value = '';
     addPhotos.value = { user: null, front: null, back: null };
 };
 
@@ -197,6 +130,7 @@ const submitAdd = () => {
     });
 };
 
+// --- ACTIONS: EDIT DRIVER ---
 const openEditModal = (driver) => {
     editForm.id = driver.id;
     editForm.first_name = driver.first_name;
@@ -211,13 +145,6 @@ const openEditModal = (driver) => {
     editForm.user_id = driver.user_id || '';
     editForm.status = driver.status;
 
-    // Pre-fill Search Inputs
-    if (driver.user) {
-        editOwnerSearch.value = `${driver.user.first_name} ${driver.user.last_name}`;
-    } else {
-        editOwnerSearch.value = '';
-    }
-
     // Previews
     editPhotos.value.user = driver.user_photo ? `/storage/${driver.user_photo}` : null;
     showEditModal.value = true;
@@ -226,7 +153,6 @@ const openEditModal = (driver) => {
 const closeEditModal = () => {
     showEditModal.value = false;
     editForm.reset();
-    editOwnerSearch.value = '';
     editPhotos.value = { user: null, front: null, back: null };
 };
 
@@ -236,7 +162,7 @@ const submitEdit = () => {
     });
 };
 
-// --- FILTERS ---
+// --- ACTIONS: FILTERS & SEARCH ---
 const openFilterModal = () => showFilterModal.value = true;
 const closeFilterModal = () => showFilterModal.value = false;
 
@@ -261,14 +187,6 @@ const resetFilters = () => {
     search.value = '';
     applyFilters();
 };
-
-// Watchers to clear ID if user clears search text manually
-watch(addOwnerSearch, (newVal) => {
-    if (newVal === '') addForm.user_id = '';
-});
-watch(editOwnerSearch, (newVal) => {
-    if (newVal === '') editForm.user_id = '';
-});
 </script>
 
 <template>
@@ -423,35 +341,19 @@ watch(editOwnerSearch, (newVal) => {
                         </div>
                         <input type="file" ref="addPhotoInput" class="hidden" accept="image/*" @change="(e) => handleFileChange(e, 'user_photo', 'user')" />
                         
-                        <div class="w-full md:w-2/3 relative">
-                            <InputLabel>Assign Franchise Owner <span class="text-red-500">*</span></InputLabel>
-                            <div class="relative mt-1">
-                                <TextInput 
-                                    type="text" 
-                                    class="w-full pr-10" 
-                                    v-model="addOwnerSearch" 
-                                    placeholder="Search owner..." 
-                                    @focus="showAddOwnerDropdown = true"
-                                    @blur="setTimeout(() => showAddOwnerDropdown = false, 200)"
-                                />
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                </div>
-                            </div>
-                            <div v-if="showAddOwnerDropdown && filteredAddOwners.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div 
-                                    v-for="owner in filteredAddOwners" 
-                                    :key="owner.id" 
-                                    @click="selectAddOwner(owner)"
-                                    class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
-                                >
+                        <div class="w-full md:w-2/3">
+                            <InputLabel>Assign Franchise Owner</InputLabel>
+                            <select 
+                                v-model="addForm.user_id" 
+                                @change="fillFranchiseOwnerDetails"
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                            >
+                                <option value="">None (Unassigned)</option>
+                                <option v-for="owner in franchiseOwners" :key="owner.id" :value="owner.id">
                                     {{ owner.first_name }} {{ owner.last_name }}
-                                </div>
-                            </div>
-                            <div v-if="showAddOwnerDropdown && filteredAddOwners.length === 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg p-2 text-sm text-gray-500 text-center">
-                                No results found
-                            </div>
-                            <p class="text-xs text-gray-500 mt-1 italic">Selecting an owner will auto-fill details.</p>
+                                </option>
+                            </select>
+                            <p class="text-xs text-gray-500 mt-1 italic">Selecting an owner will auto-fill name and address.</p>
                         </div>
                     </div>
 
@@ -472,42 +374,28 @@ watch(editOwnerSearch, (newVal) => {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" required />
+                            <InputLabel>Contact Number</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" />
                         </div>
                         <div>
-                            <InputLabel>Street Address <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street" required />
+                            <InputLabel>Street Address</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street" />
                         </div>
                     </div>
                     
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="relative">
-                            <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                            <TextInput 
-                                type="text" 
-                                class="mt-1 block w-full" 
-                                v-model="addForm.barangay" 
-                                placeholder="Select or type barangay"
-                                @focus="showAddBarangayDropdown = true"
-                                @blur="setTimeout(() => showAddBarangayDropdown = false, 200)"
-                                required 
-                            />
-                            <div v-if="showAddBarangayDropdown && filteredAddBarangays.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div 
-                                    v-for="brgy in filteredAddBarangays" 
-                                    :key="brgy.id" 
-                                    @click="selectAddBarangay(brgy.name)"
-                                    class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
-                                >
-                                    {{ brgy.name }}
-                                </div>
-                            </div>
-                        </div>
-
                         <div>
-                            <InputLabel>City <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" required />
+                            <InputLabel>Barangay</InputLabel>
+                            <select v-model="addForm.barangay" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select Barangay</option>
+                                <option v-for="brgy in barangays" :key="brgy.id" :value="brgy.name">
+                                    {{ brgy.name }}
+                                </option>
+                            </select>
+                        </div>
+                        <div>
+                            <InputLabel>City</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" />
                         </div>
                     </div>
 
@@ -583,31 +471,14 @@ watch(editOwnerSearch, (newVal) => {
                         </div>
                         <input type="file" ref="editPhotoInput" class="hidden" accept="image/*" @change="(e) => handleFileChange(e, 'user_photo', 'user', true)" />
 
-                        <div class="w-full md:w-2/3 relative">
-                            <InputLabel>Franchise Owner <span class="text-red-500">*</span></InputLabel>
-                            <div class="relative mt-1">
-                                <TextInput 
-                                    type="text" 
-                                    class="w-full pr-10" 
-                                    v-model="editOwnerSearch" 
-                                    placeholder="Search owner..." 
-                                    @focus="showEditOwnerDropdown = true"
-                                    @blur="setTimeout(() => showEditOwnerDropdown = false, 200)"
-                                />
-                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                    <svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                </div>
-                            </div>
-                            <div v-if="showEditOwnerDropdown && filteredEditOwners.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div 
-                                    v-for="owner in filteredEditOwners" 
-                                    :key="owner.id" 
-                                    @click="selectEditOwner(owner)"
-                                    class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
-                                >
+                        <div class="w-full md:w-2/3">
+                            <InputLabel>Franchise Owner</InputLabel>
+                            <select v-model="editForm.user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">None (Unassigned)</option>
+                                <option v-for="owner in franchiseOwners" :key="owner.id" :value="owner.id">
                                     {{ owner.first_name }} {{ owner.last_name }}
-                                </div>
-                            </div>
+                                </option>
+                            </select>
                         </div>
                     </div>
 
@@ -628,41 +499,28 @@ watch(editOwnerSearch, (newVal) => {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" required />
+                            <InputLabel>Contact Number</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" />
                         </div>
                         <div>
-                            <InputLabel>Street Address <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.street" required />
+                            <InputLabel>Street Address</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.street" />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div class="relative">
-                            <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                            <TextInput 
-                                type="text" 
-                                class="mt-1 block w-full" 
-                                v-model="editForm.barangay" 
-                                placeholder="Select or type barangay"
-                                @focus="showEditBarangayDropdown = true"
-                                @blur="setTimeout(() => showEditBarangayDropdown = false, 200)"
-                                required 
-                            />
-                            <div v-if="showEditBarangayDropdown && filteredEditBarangays.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div 
-                                    v-for="brgy in filteredEditBarangays" 
-                                    :key="brgy.id" 
-                                    @click="selectEditBarangay(brgy.name)"
-                                    class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
-                                >
+                        <div>
+                            <InputLabel>Barangay</InputLabel>
+                            <select v-model="editForm.barangay" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Select Barangay</option>
+                                <option v-for="brgy in barangays" :key="brgy.id" :value="brgy.name">
                                     {{ brgy.name }}
-                                </div>
-                            </div>
+                                </option>
+                            </select>
                         </div>
                         <div>
-                            <InputLabel>City <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.city" required />
+                            <InputLabel>City</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.city" />
                         </div>
                     </div>
 
