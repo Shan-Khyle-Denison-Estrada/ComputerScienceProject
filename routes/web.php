@@ -5,6 +5,8 @@ use App\Http\Controllers\Admin\ZoneController;
 use App\Http\Controllers\Admin\DriverController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\PaymentController;
+use App\Http\Controllers\Admin\AssessmentController;
+use App\Http\Controllers\Admin\ParticularController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -53,6 +55,15 @@ Route::resource('admin/zones', ZoneController::class)
     Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
     Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
     // Route::put('/payments/{payment}', [PaymentController::class, 'update'])->name('admin.payments.update');
+
+    // 7. Assessment Routes
+    Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
+    Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
+
+    // 8. Particulars (Fee Types) Routes
+    Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
+    Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
+    Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
