@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\FranchiseOwnerController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UnitMakeController;
 use App\Http\Controllers\Admin\FranchiseController;
+use App\Http\Controllers\Franchise\DashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -100,6 +101,8 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     Route::get('/franchise/dashboard', function () {
         return Inertia::render('Franchise/Dashboard');
     })->name('franchise.dashboard');
+
+    Route::get('/franchise/dashboard', [DashboardController::class, 'index'])->name('franchise.dashboard');
 });
 
 // --- PROFILE MANAGEMENT ---
