@@ -22,7 +22,7 @@ import { Link } from '@inertiajs/vue3';
                     <ul class="space-y-3">
                         <li><Link href="/" class="hover:text-blue-400 transition-colors text-sm">Home</Link></li>
                         <li><Link href="/login" class="hover:text-blue-400 transition-colors text-sm">Login Portal</Link></li>
-                        <li><Link href="/register" class="hover:text-blue-400 transition-colors text-sm">New Registration</Link></li>
+                        <li><Link href="/about" class="hover:text-blue-400 transition-colors text-sm">About Us</Link></li>
                         <li><Link href="/status" class="hover:text-blue-400 transition-colors text-sm">Check Status</Link></li>
                     </ul>
                 </div>

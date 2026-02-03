@@ -31,6 +31,7 @@ const toggleMobileMenu = () => {
                 <div class="hidden md:flex md:items-center md:space-x-8">
                     <Link href="/" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Home</Link>
                     <Link href="/about" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">About</Link>
+                    <Link href="/ordinances" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Ordinances</Link>
                     <Link href="/contact" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Contact</Link>
                     
                     <Link href="/login" class="bg-blue-600 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/50 transition-all transform hover:-translate-y-0.5">
@@ -56,6 +57,7 @@ const toggleMobileMenu = () => {
             <div class="px-2 pt-2 pb-3 space-y-1 sm:px-3 shadow-lg">
                 <Link href="/" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Home</Link>
                 <Link href="/about" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">About</Link>
+                <Link href="/ordinances" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Ordinances</Link>
                 <Link href="/contact" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Contact Us</Link>
                 <div class="pt-4 pb-2">
                     <Link href="/login" class="block w-full text-center px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">

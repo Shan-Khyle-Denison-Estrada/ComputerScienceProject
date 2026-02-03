@@ -11,6 +11,14 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/about', function () {
+    return Inertia::render('About');
+});
+
+Route::get('/ordinances', function () {
+    return Inertia::render('Ordinances');
+});
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
