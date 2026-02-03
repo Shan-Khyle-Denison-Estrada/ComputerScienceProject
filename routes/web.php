@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\Admin\ZoneController;
 use App\Http\Controllers\Admin\DriverController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\Admin\PaymentController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -47,6 +48,11 @@ Route::resource('admin/zones', ZoneController::class)
     Route::get('/admin/drivers', [DriverController::class, 'index'])->name('admin.drivers.index');
     Route::post('/admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
     Route::put('/admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update'); // Using POST for file uploads with method spoofing
+
+    // 6. Payment Routes
+    Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
+    Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
+    // Route::put('/payments/{payment}', [PaymentController::class, 'update'])->name('admin.payments.update');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
