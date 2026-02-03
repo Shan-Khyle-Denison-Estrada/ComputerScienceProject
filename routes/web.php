@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\ParticularController;
 use App\Http\Controllers\Admin\FranchiseOwnerController;
 use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UnitMakeController;
+use App\Http\Controllers\Admin\FranchiseController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -83,6 +84,15 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/unit-makes', [UnitMakeController::class, 'store'])->name('admin.unit-makes.store');
     Route::put('/admin/unit-makes/{unitMake}', [UnitMakeController::class, 'update'])->name('admin.unit-makes.update');
     Route::delete('/admin/unit-makes/{unitMake}', [UnitMakeController::class, 'destroy'])->name('admin.unit-makes.destroy');
+
+    // 11. Franchise Management Routes
+    Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
+    Route::post('/admin/franchises', [FranchiseController::class, 'store'])->name('admin.franchises.store');
+    Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
+
+    // 12. Franchise Actions (Transfer / Swap) Routes
+    Route::post('/admin/franchises/{franchise}/transfer', [FranchiseController::class, 'transferOwnership'])->name('admin.franchises.transfer');
+    Route::post('/admin/franchises/{franchise}/change-unit', [FranchiseController::class, 'changeUnit'])->name('admin.franchises.change-unit');
 });
 
 // --- FRANCHISE OWNER ROUTES ---

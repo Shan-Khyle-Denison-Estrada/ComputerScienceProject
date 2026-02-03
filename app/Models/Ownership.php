@@ -9,11 +9,9 @@ class Ownership extends Model
 {
     use HasFactory;
 
-    protected $fillable = [
-        'new_operator_id',
-        'previous_operator_id',
-        'date_transferred'
-    ];
+    protected $fillable = ['franchise_id', 'new_operator_id', 'previous_operator_id', 'date_transferred'];
+
+    public function franchise() { return $this->belongsTo(Franchise::class); }
 
     public function newOwner()
     {

@@ -43,8 +43,14 @@ const menuItems = computed(() => {
             { 
                 name: 'Tricycles', 
                 route: 'admin.units.index', 
-                // Icon: Just a Wheel
+                // Icon: Wheel
                 icon: 'M12 2a10 10 0 100 20 10 10 0 000-20zm0 18a8 8 0 110-16 8 8 0 010 16zm0-11a3 3 0 100 6 3 3 0 000-6z' 
+            },
+            { 
+                name: 'Franchises', 
+                route: 'admin.franchises.index', 
+                // Icon: Document / License
+                icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' 
             },
             { 
                 name: 'Zones', 
