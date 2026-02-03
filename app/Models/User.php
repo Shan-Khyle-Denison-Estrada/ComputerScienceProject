@@ -17,9 +17,12 @@ class User extends Authenticatable
         'last_name',
         'email',
         'password',
-        'role',
         'user_photo',
-        'status',
+        // New Fields
+        'contact_number',
+        'street_address',
+        'barangay',
+        'city',
     ];
 
     protected $hidden = [

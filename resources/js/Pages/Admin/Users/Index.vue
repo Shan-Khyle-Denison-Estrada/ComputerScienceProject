@@ -6,7 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { ref } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
@@ -34,7 +34,11 @@ const addForm = useForm({
     middle_name: '',
     last_name: '',
     email: '',
-    role: 'admin', // Default to admin based on requirements
+    contact_number: '',    // Added
+    street_address: '',    // Added
+    barangay: '',          // Added
+    city: '',              // Added
+    role: 'admin', 
     password: '',
     password_confirmation: '',
     photo: null,
@@ -47,6 +51,10 @@ const editForm = useForm({
     middle_name: '',
     last_name: '',
     email: '',
+    contact_number: '',    // Added
+    street_address: '',    // Added
+    barangay: '',          // Added
+    city: '',              // Added
     role: '',
     status: '',
     password: '', 
@@ -91,6 +99,13 @@ const openEditModal = (user) => {
     editForm.middle_name = user.middle_name;
     editForm.last_name = user.last_name;
     editForm.email = user.email;
+    
+    // Populate new fields
+    editForm.contact_number = user.contact_number;
+    editForm.street_address = user.street_address;
+    editForm.barangay = user.barangay;
+    editForm.city = user.city;
+
     editForm.role = user.role; 
     editForm.status = user.status;
     
@@ -199,7 +214,7 @@ const resetFilters = () => {
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
                             <th class="px-6 py-4">User</th>
-                            <th class="px-6 py-4">Role</th>
+                            <th class="px-6 py-4">Contact</th> <th class="px-6 py-4">Role</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -219,6 +234,9 @@ const resetFilters = () => {
                                         <div class="text-gray-500 text-xs">{{ user.email }}</div>
                                     </div>
                                 </div>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600">
+                                {{ user.contact_number || '-' }}
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 uppercase">
@@ -243,7 +261,7 @@ const resetFilters = () => {
                             </td>
                         </tr>
                         <tr v-if="users.data.length === 0">
-                            <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                            <td colspan="5" class="px-6 py-10 text-center text-gray-500">
                                 No admin users found.
                             </td>
                         </tr>
@@ -311,12 +329,35 @@ const resetFilters = () => {
                             <TextInput type="email" class="mt-1 block w-full" v-model="addForm.email" required />
                         </div>
                         <div>
-                            <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
-                            <select v-model="addForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="admin">Administrator</option>
-                                <option value="franchise_owner">Franchise Owner</option>
-                            </select>
+                            <InputLabel>Contact Number</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" />
                         </div>
+                    </div>
+
+                    <div class="border-t pt-2">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Address Info</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <InputLabel>Street</InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street_address" />
+                            </div>
+                            <div>
+                                <InputLabel>Barangay</InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.barangay" />
+                            </div>
+                            <div>
+                                <InputLabel>City</InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
+                        <select v-model="addForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="admin">Administrator</option>
+                            <option value="franchise_owner">Franchise Owner</option>
+                        </select>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -381,23 +422,47 @@ const resetFilters = () => {
                             <TextInput type="email" class="mt-1 block w-full" v-model="editForm.email" required />
                         </div>
                         <div>
+                            <InputLabel>Contact Number</InputLabel>
+                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" />
+                        </div>
+                    </div>
+
+                    <div class="border-t pt-2">
+                        <h3 class="text-sm font-medium text-gray-700 mb-2">Address Info</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            <div>
+                                <InputLabel>Street</InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.street_address" />
+                            </div>
+                            <div>
+                                <InputLabel>Barangay</InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.barangay" />
+                            </div>
+                            <div>
+                                <InputLabel>City</InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.city" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
                             <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
                             <select v-model="editForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="admin">Administrator</option>
                                 <option value="franchise_owner">Franchise Owner</option>
                             </select>
                         </div>
+                         <div>
+                             <InputLabel>Account Status <span class="text-red-500">*</span></InputLabel>
+                             <select v-model="editForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                 <option value="active">Active</option>
+                                 <option value="inactive">Inactive</option>
+                             </select>
+                        </div>
                     </div>
 
-                    <div>
-                         <InputLabel>Account Status <span class="text-red-500">*</span></InputLabel>
-                         <select v-model="editForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                             <option value="active">Active</option>
-                             <option value="inactive">Inactive</option>
-                         </select>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 border-t pt-4">
                         <div>
                             <InputLabel>New Password</InputLabel>
                             <TextInput type="password" class="mt-1 block w-full" v-model="editForm.password" placeholder="Leave blank to keep" />

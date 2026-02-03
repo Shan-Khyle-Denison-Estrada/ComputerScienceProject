@@ -18,17 +18,21 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->string('role');
+            $table->string('role')->default('user'); // Added default for safety
             
-            // NEW ATTRIBUTES
-            $table->string('user_photo')->nullable(); // Stores the file path
-            $table->string('status')->default('active'); // active or inactive
+            // PROFILE ATTRIBUTES
+            $table->string('user_photo')->nullable();
+            $table->string('contact_number')->nullable();
+            $table->string('street_address')->nullable();
+            $table->string('barangay')->nullable();
+            $table->string('city')->nullable();
+            
+            $table->string('status')->default('active');
             
             $table->rememberToken();
             $table->timestamps();
         });
 
-        // ... Keep password_reset_tokens and sessions schemas as they were
         Schema::create('password_reset_tokens', function (Blueprint $table) {
             $table->string('email')->primary();
             $table->string('token');
