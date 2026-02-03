@@ -23,6 +23,8 @@ class User extends Authenticatable
         'street_address',
         'barangay',
         'city',
+        'role',
+        'status'
     ];
 
     protected $hidden = [
