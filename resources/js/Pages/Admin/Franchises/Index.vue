@@ -93,7 +93,12 @@ const handleSearch = () => {
                             <td class="px-6 py-4">
                                 <div class="font-bold text-blue-600 text-base">#{{ franchise.id }}</div>
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase"
-                                    :class="franchise.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                    :class="{
+                                        'bg-green-100 text-green-800': franchise.status === 'renewed',
+                                        'bg-orange-100 text-orange-800': franchise.status === 'pending renewal',
+                                        'bg-red-100 text-red-800': franchise.status === 'terminated',
+                                        'bg-gray-100 text-gray-800': !['renewed', 'pending renewal', 'terminated'].includes(franchise.status)
+                                    }">
                                     {{ franchise.status }}
                                 </span>
                             </td>

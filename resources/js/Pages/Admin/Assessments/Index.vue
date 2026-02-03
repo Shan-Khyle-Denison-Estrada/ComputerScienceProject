@@ -12,7 +12,8 @@ import { ref, watch } from 'vue';
 const props = defineProps({
     assessments: Object,    
     filters: Object,
-    particulars: Array      
+    particulars: Array,
+    franchises: Array // Added franchises prop
 });
 
 // --- STATE ---
@@ -36,6 +37,18 @@ const getBalance = (assessment) => {
         : 0;
     const balance = assessment.total_amount_due - totalPaid;
     return balance > 0 ? balance : 0;
+};
+
+// Helper to display franchise name in dropdown
+const getFranchiseLabel = (f) => {
+    let label = `Franchise #${f.id}`;
+    if (f.current_ownership?.new_owner?.user) {
+        const user = f.current_ownership.new_owner.user;
+        label += ` - ${user.last_name}, ${user.first_name}`;
+    } else {
+        label += ' - (No Active Owner)';
+    }
+    return label;
 };
 
 // --- VIEW ACTION ---
@@ -490,8 +503,16 @@ const handleSearch = () => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div>
-                            <InputLabel>Franchise ID <span class="text-gray-400 text-xs">(Optional)</span></InputLabel>
-                            <TextInput type="number" class="mt-1 block w-full" v-model="addForm.franchise_id" placeholder="e.g. 101" />
+                            <InputLabel>Franchise <span class="text-gray-400 text-xs">(Optional)</span></InputLabel>
+                            <select 
+                                v-model="addForm.franchise_id" 
+                                class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                            >
+                                <option value="" disabled>Select Franchise</option>
+                                <option v-for="f in franchises" :key="f.id" :value="f.id">
+                                    {{ getFranchiseLabel(f) }}
+                                </option>
+                            </select>
                         </div>
                         <div>
                             <InputLabel>Date Issued <span class="text-red-500">*</span></InputLabel>

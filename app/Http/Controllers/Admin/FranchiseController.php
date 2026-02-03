@@ -17,15 +17,17 @@ use Illuminate\Support\Str;
 
 class FranchiseController extends Controller
 {
-public function index(Request $request)
+    public function index(Request $request)
     {
         $search = $request->input('search');
 
         $franchises = Franchise::with([
                 'currentOwnership.newOwner.user', 
                 'currentActiveUnit.newUnit.make', 
-                'driver.user', // Eager load driver user if exists
-                'zone'
+                'driver.user',
+                'zone',
+                // Eager load these to calculate status efficiently
+                'assessments.payments' 
             ])
             ->when($search, function ($query, $search) {
                 $query->where('id', 'like', "%{$search}%");
@@ -34,16 +36,9 @@ public function index(Request $request)
             ->paginate(10)
             ->withQueryString();
 
-        // Data for "Create" Modal
         $operators = Operator::with('user')->get(); 
-        
-        // Only get units that are available (optional logic, but good practice)
         $units = Unit::with('make')->orderBy('plate_number')->get();
-        
-        // Fetch Drivers - Handle potential User relation or direct names
         $drivers = Driver::with('user')->get(); 
-        
-        // Fetch Zones
         $zones = Zone::orderBy('description')->get();
 
         return Inertia::render('Admin/Franchises/Index', [
@@ -106,12 +101,13 @@ public function index(Request $request)
         $franchise->load([
             'currentOwnership.newOwner.user',
             'currentActiveUnit.newUnit.make',
-            'driver',
+            'driver.user',
             'zone',
             'ownershipHistory.newOwner.user',
             'ownershipHistory.previousOwner.user',
             'unitHistory.newUnit.make',
-            'unitHistory.previousUnit.make',
+            // Load for status calculation
+            'assessments.payments'
         ]);
 
         $operators = Operator::with('user')->get();

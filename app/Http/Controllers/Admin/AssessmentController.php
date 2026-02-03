@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\Particular;
+use App\Models\Franchise; // Import Franchise
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +15,6 @@ class AssessmentController extends Controller
     public function index(Request $request)
     {
         // --- AUTO-UPDATE OVERDUE STATUS ---
-        // Checks database for any 'pending' items past their due date and marks them 'overdue'
         Assessment::where('assessment_status', 'pending')
             ->whereDate('assessment_due', '<', now()->toDateString())
             ->update(['assessment_status' => 'overdue']);
@@ -28,15 +28,19 @@ class AssessmentController extends Controller
                 $query->where('id', 'like', "%{$search}%")
                       ->orWhere('franchise_id', 'like', "%{$search}%");
             })
-            ->latest() // Sort by newest
+            ->latest()
             ->paginate(10)
             ->withQueryString();
 
         $particulars = Particular::all();
+        
+        // Fetch all Franchises with their current owner for the dropdown
+        $franchises = Franchise::with(['currentOwnership.newOwner.user'])->get();
 
         return Inertia::render('Admin/Assessments/Index', [
             'assessments' => $assessments,
             'particulars' => $particulars,
+            'franchises' => $franchises, // Pass to frontend
             'filters' => $request->only(['search'])
         ]);
     }
@@ -44,9 +48,9 @@ class AssessmentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'franchise_id' => 'nullable|integer',
+            'franchise_id' => 'nullable|exists:franchises,id', // Update validation
             'assessment_date' => 'required|date',
-            'assessment_due' => 'required|date|after_or_equal:assessment_date', // Added validation
+            'assessment_due' => 'required|date|after_or_equal:assessment_date',
             'remarks' => 'nullable|string',
             'total_amount_due' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
@@ -63,7 +67,7 @@ class AssessmentController extends Controller
                 'assessment_due' => $validated['assessment_due'],
                 'total_amount_due' => $validated['total_amount_due'],
                 'remarks' => $validated['remarks'],
-                'assessment_status' => 'pending' // Default status
+                'assessment_status' => 'pending'
             ]);
 
             foreach ($validated['items'] as $item) {
