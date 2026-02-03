@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\Enums\UserRole; // Make sure this is imported
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -33,7 +34,15 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard', absolute: false));
+        // STRICT REDIRECT: No default '/' fallback for logged-in users.
+        $url = match($request->user()->role) {
+            \App\Enums\UserRole::ADMIN => route('admin.dashboard', absolute: false),
+            \App\Enums\UserRole::FRANCHISE_OWNER => route('franchise.dashboard', absolute: false),
+            // If somehow a user has no role, kick them out
+            default => route('login'), 
+        };
+
+        return redirect()->intended($url);
     }
 
     /**
