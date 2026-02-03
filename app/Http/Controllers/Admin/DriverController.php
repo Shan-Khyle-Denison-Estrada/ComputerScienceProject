@@ -80,7 +80,6 @@ class DriverController extends Controller
 
     public function update(Request $request, Driver $driver)
     {
-        // ... (Existing update logic remains the same)
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -92,16 +91,36 @@ class DriverController extends Controller
             'street' => 'nullable|string',
             'barangay' => 'nullable|string',
             'city' => 'nullable|string',
+            // Ensure these validations are present for security
+            'user_photo' => 'nullable|image|max:2048',
+            'license_front_photo' => 'nullable|image|max:2048',
+            'license_back_photo' => 'nullable|image|max:2048',
         ]);
         
+        // 1. Handle User Photo
         if ($request->hasFile('user_photo')) {
             if ($driver->user_photo) Storage::disk('public')->delete($driver->user_photo);
             $driver->user_photo = $request->file('user_photo')->store('driver_photos', 'public');
         }
-        // Add similar checks for license photos if needed for update
 
-        $driver->update($request->except(['user_photo', 'license_front_photo', 'license_back_photo']));
-        if($request->hasFile('user_photo')) $driver->save();
+        // 2. Handle License Front Photo (This was missing)
+        if ($request->hasFile('license_front_photo')) {
+            if ($driver->license_front_photo) Storage::disk('public')->delete($driver->license_front_photo);
+            $driver->license_front_photo = $request->file('license_front_photo')->store('license_photos', 'public');
+        }
+
+        // 3. Handle License Back Photo (This was missing)
+        if ($request->hasFile('license_back_photo')) {
+            if ($driver->license_back_photo) Storage::disk('public')->delete($driver->license_back_photo);
+            $driver->license_back_photo = $request->file('license_back_photo')->store('license_photos', 'public');
+        }
+
+        // 4. Update other fields
+        // We exclude the photo fields here because we manually handled them above
+        $driver->fill($request->except(['user_photo', 'license_front_photo', 'license_back_photo']));
+        
+        // 5. Save all changes
+        $driver->save();
 
         return redirect()->back();
     }

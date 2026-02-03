@@ -46,7 +46,7 @@ Route::resource('admin/zones', ZoneController::class)
     // 5. Driver Management
     Route::get('/admin/drivers', [DriverController::class, 'index'])->name('admin.drivers.index');
     Route::post('/admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
-    Route::post('/admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update'); // Using POST for file uploads with method spoofing
+    Route::put('/admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update'); // Using POST for file uploads with method spoofing
 });
 
 // --- FRANCHISE OWNER ROUTES ---
