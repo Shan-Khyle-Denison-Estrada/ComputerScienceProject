@@ -7,7 +7,9 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Admin\PaymentController;
 use App\Http\Controllers\Admin\AssessmentController;
 use App\Http\Controllers\Admin\ParticularController;
-use App\Http\Controllers\Admin\FranchiseOwnerController; // Import Controller
+use App\Http\Controllers\Admin\FranchiseOwnerController;
+use App\Http\Controllers\Admin\UnitController;
+use App\Http\Controllers\Admin\UnitMakeController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -71,6 +73,16 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
     Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
     Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
+
+    // 9. Units Routes
+    Route::get('/admin/units', [UnitController::class, 'index'])->name('admin.units.index');
+    Route::post('/admin/units', [UnitController::class, 'store'])->name('admin.units.store');
+    Route::put('/admin/units/{unit}', [UnitController::class, 'update'])->name('admin.units.update');
+
+    // 10. Unit Makes (Brands) Routes
+    Route::post('/admin/unit-makes', [UnitMakeController::class, 'store'])->name('admin.unit-makes.store');
+    Route::put('/admin/unit-makes/{unitMake}', [UnitMakeController::class, 'update'])->name('admin.unit-makes.update');
+    Route::delete('/admin/unit-makes/{unitMake}', [UnitMakeController::class, 'destroy'])->name('admin.unit-makes.destroy');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
