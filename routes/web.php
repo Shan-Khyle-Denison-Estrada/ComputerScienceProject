@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\UserController;
+use App\Http\Controllers\Admin\ZoneController; // Imported for cleaner code
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -18,10 +19,28 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         return Inertia::render('Admin/Dashboard');
     })->name('admin.dashboard');
 
-    // 2. Manage Users (Connected to Controller)
+    // 2. Zone Management
+    // This single line creates routes for: index, store, update, and destroy
+Route::resource('admin/zones', ZoneController::class)
+    ->names([
+        'index'   => 'admin.zones.index',
+        'store'   => 'admin.zones.store',
+        'create'  => 'admin.zones.create',
+        'show'    => 'admin.zones.show',
+        'update'  => 'admin.zones.update',
+        'destroy' => 'admin.zones.destroy',
+        'edit'    => 'admin.zones.edit',
+    ]);
+
+    // 3. User Management
     Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
     Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
     Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
+
+    // 4. Barangay Management
+    Route::post('/admin/barangays', [\App\Http\Controllers\Admin\BarangayController::class, 'store'])->name('admin.barangays.store');
+    Route::put('/admin/barangays/{barangay}', [\App\Http\Controllers\Admin\BarangayController::class, 'update'])->name('admin.barangays.update');
+    Route::delete('/admin/barangays/{barangay}', [\App\Http\Controllers\Admin\BarangayController::class, 'destroy'])->name('admin.barangays.destroy');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
@@ -33,8 +52,6 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
 
 // --- PROFILE MANAGEMENT ---
 Route::middleware('auth')->group(function () {
-    // We are pointing to the standard ProfileController here.
-    // Ensure you have a standard ProfileController or create one that returns Inertia::render('Profile/Edit');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
