@@ -25,4 +25,16 @@ class Assessment extends Model
                     ->withPivot('quantity', 'subtotal')
                     ->withTimestamps();
     }
+
+    // NEW: Relationship to Payments
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    // Helper to calculate balance
+    public function getBalanceAttribute()
+    {
+        return $this->total_amount_due - $this->payments->sum('amount_paid');
+    }
 }

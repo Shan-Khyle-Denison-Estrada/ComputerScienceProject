@@ -13,15 +13,22 @@ class AssessmentController extends Controller
 {
     public function index(Request $request)
     {
+        // --- AUTO-UPDATE OVERDUE STATUS ---
+        // Checks database for any 'pending' items past their due date and marks them 'overdue'
+        Assessment::where('assessment_status', 'pending')
+            ->whereDate('assessment_due', '<', now()->toDateString())
+            ->update(['assessment_status' => 'overdue']);
+        // ----------------------------------
+
         $search = $request->input('search');
 
         $assessments = Assessment::query()
-            ->with('particulars') // Eager load particulars for the View Modal
+            ->with(['particulars', 'payments'])
             ->when($search, function($query, $search) {
                 $query->where('id', 'like', "%{$search}%")
                       ->orWhere('franchise_id', 'like', "%{$search}%");
             })
-            ->latest()
+            ->latest() // Sort by newest
             ->paginate(10)
             ->withQueryString();
 
@@ -39,7 +46,7 @@ class AssessmentController extends Controller
         $validated = $request->validate([
             'franchise_id' => 'nullable|integer',
             'assessment_date' => 'required|date',
-            'assessment_due' => 'required|date',
+            'assessment_due' => 'required|date|after_or_equal:assessment_date', // Added validation
             'remarks' => 'nullable|string',
             'total_amount_due' => 'required|numeric|min:0',
             'items' => 'required|array|min:1',
@@ -56,7 +63,7 @@ class AssessmentController extends Controller
                 'assessment_due' => $validated['assessment_due'],
                 'total_amount_due' => $validated['total_amount_due'],
                 'remarks' => $validated['remarks'],
-                'assessment_status' => 'pending'
+                'assessment_status' => 'pending' // Default status
             ]);
 
             foreach ($validated['items'] as $item) {

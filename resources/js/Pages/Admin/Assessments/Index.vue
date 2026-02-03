@@ -10,17 +10,17 @@ import { ref, watch } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
-    assessments: Object,
+    assessments: Object,    
     filters: Object,
-    particulars: Array 
+    particulars: Array      
 });
 
 // --- STATE ---
 const showAddModal = ref(false);
 const showParticularsModal = ref(false);
-const showViewModal = ref(false); // New View State
+const showViewModal = ref(false);
 const search = ref(props.filters.search || '');
-const selectedAssessment = ref(null); // New Selected Item
+const selectedAssessment = ref(null);
 
 // --- HELPERS ---
 const formatCurrency = (value) => {
@@ -28,6 +28,14 @@ const formatCurrency = (value) => {
         style: 'currency',
         currency: 'PHP',
     }).format(value);
+};
+
+const getBalance = (assessment) => {
+    const totalPaid = assessment.payments 
+        ? assessment.payments.reduce((sum, p) => sum + parseFloat(p.amount_paid), 0) 
+        : 0;
+    const balance = assessment.total_amount_due - totalPaid;
+    return balance > 0 ? balance : 0;
 };
 
 // --- VIEW ACTION ---
@@ -54,7 +62,6 @@ const addForm = useForm({
     total_amount_due: 0
 });
 
-// Auto-calculate
 watch(() => addForm.items, (items) => {
     let total = 0;
     items.forEach(item => {
@@ -77,6 +84,19 @@ const addItemRow = () => addForm.items.push(createLineItem());
 const removeItemRow = (index) => {
     if (addForm.items.length > 1) addForm.items.splice(index, 1);
 };
+
+const submitAdd = () => {
+    addForm.post(route('admin.assessments.store'), {
+        onSuccess: () => closeAddModal(),
+    });
+};
+
+const closeAddModal = () => {
+    showAddModal.value = false;
+    addForm.reset();
+};
+
+const openAddModal = () => showAddModal.value = true;
 
 // --- FORM: PARTICULARS MANAGEMENT ---
 const particularForm = useForm({
@@ -104,7 +124,6 @@ const editParticular = (p) => {
 const submitParticular = () => {
     const routeName = isEditingParticular.value ? 'admin.particulars.update' : 'admin.particulars.store';
     const routeParams = isEditingParticular.value ? particularForm.id : undefined;
-
     const method = isEditingParticular.value ? 'put' : 'post';
 
     particularForm[method](route(routeName, routeParams), {
@@ -119,18 +138,7 @@ const deleteParticular = (id) => {
     }
 };
 
-// --- ACTIONS ---
-const openAddModal = () => showAddModal.value = true;
-const closeAddModal = () => {
-    showAddModal.value = false;
-    addForm.reset();
-};
-const submitAdd = () => {
-    addForm.post(route('admin.assessments.store'), {
-        onSuccess: () => closeAddModal(),
-    });
-};
-
+// --- SEARCH ---
 const handleSearch = () => {
     router.get(route('admin.assessments.index'), { search: search.value }, { preserveState: true, replace: true });
 };
@@ -189,7 +197,7 @@ const handleSearch = () => {
                             <th class="px-6 py-4">Franchise</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Dates</th>
-                            <th class="px-6 py-4 text-right">Total Due</th>
+                            <th class="px-6 py-4 text-right">Balance / Total</th>
                             <th class="px-6 py-4 text-right">Action</th>
                         </tr>
                     </thead>
@@ -216,10 +224,20 @@ const handleSearch = () => {
                             </td>
                             <td class="px-6 py-4">
                                 <div class="text-gray-900">Issued: {{ assessment.assessment_date }}</div>
-                                <div class="text-red-500 text-xs font-medium">Due: {{ assessment.assessment_due }}</div>
+                                <div 
+                                    class="text-xs font-medium"
+                                    :class="assessment.assessment_status === 'overdue' ? 'text-red-600 font-bold' : 'text-gray-500'"
+                                >
+                                    Due: {{ assessment.assessment_due }}
+                                </div>
                             </td>
-                            <td class="px-6 py-4 text-right font-mono font-medium text-lg text-gray-900">
-                                {{ formatCurrency(assessment.total_amount_due) }}
+                            <td class="px-6 py-4 text-right">
+                                <div class="font-bold text-gray-900 text-lg">
+                                    {{ formatCurrency(getBalance(assessment)) }}
+                                </div>
+                                <div class="text-xs text-gray-400">
+                                    of {{ formatCurrency(assessment.total_amount_due) }} Total
+                                </div>
                             </td>
                              <td class="px-6 py-4 text-right">
                                 <button 
@@ -334,6 +352,34 @@ const handleSearch = () => {
                                 </td>
                             </tr>
                         </tfoot>
+                    </table>
+                </div>
+
+                <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-2 border-b border-gray-200 pb-1 flex justify-between items-center">
+                    <span>Payment History</span>
+                    <span class="text-xs font-normal text-gray-500">
+                        Paid: {{ formatCurrency(selectedAssessment.total_amount_due - getBalance(selectedAssessment)) }}
+                    </span>
+                </h3>
+                <div class="bg-gray-50 border border-gray-200 rounded-lg overflow-hidden mb-6">
+                    <table class="min-w-full divide-y divide-gray-200 text-sm">
+                        <thead class="bg-gray-100">
+                            <tr>
+                                <th class="px-4 py-2 text-left font-medium text-gray-500">Date</th>
+                                <th class="px-4 py-2 text-left font-medium text-gray-500">Payee</th>
+                                <th class="px-4 py-2 text-right font-medium text-gray-500">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-100">
+                            <tr v-for="pay in selectedAssessment.payments" :key="pay.id">
+                                <td class="px-4 py-2 text-gray-600">{{ new Date(pay.created_at).toLocaleDateString() }}</td>
+                                <td class="px-4 py-2 text-gray-600">{{ pay.payee_last_name }}, {{ pay.payee_first_name }}</td>
+                                <td class="px-4 py-2 text-right text-gray-900 font-mono font-medium">{{ formatCurrency(pay.amount_paid) }}</td>
+                            </tr>
+                            <tr v-if="!selectedAssessment.payments || selectedAssessment.payments.length === 0">
+                                <td colspan="3" class="px-4 py-3 text-center text-gray-400 italic text-xs">No payments recorded yet.</td>
+                            </tr>
+                        </tbody>
                     </table>
                 </div>
 

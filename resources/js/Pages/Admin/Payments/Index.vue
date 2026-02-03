@@ -10,9 +10,10 @@ import { ref, computed } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
-    payments: Object,
-    filters: Object,
-    barangays: Array // [ {id: 1, name: 'Poblacion'}, ... ]
+    payments: Object,       // Paginated Payment Records
+    filters: Object,        // Search filters
+    barangays: Array,       // List of Barangays for Address
+    assessments: Array      // List of Pending/Overdue Assessments [ {id, label, balance, ...} ]
 });
 
 // --- STATE MANAGEMENT ---
@@ -20,10 +21,15 @@ const showAddModal = ref(false);
 const showFilterModal = ref(false);
 const search = ref(props.filters.search || '');
 
-// --- BARANGAY SEARCH LOGIC ---
+// --- DROPDOWN STATE ---
 const barangayQuery = ref('');
 const showBarangayDropdown = ref(false);
 
+const assessmentQuery = ref('');
+const showAssessmentDropdown = ref(false);
+
+// --- COMPUTED FILTERS ---
+// 1. Filter Barangays locally
 const filteredBarangays = computed(() => {
     if (!barangayQuery.value) return props.barangays;
     return props.barangays.filter(b => 
@@ -31,10 +37,30 @@ const filteredBarangays = computed(() => {
     );
 });
 
+// 2. Filter Assessments locally (Search by ID or Label)
+const filteredAssessments = computed(() => {
+    if (!assessmentQuery.value) return props.assessments;
+    return props.assessments.filter(a => 
+        a.label.toLowerCase().includes(assessmentQuery.value.toLowerCase())
+    );
+});
+
+// --- SELECTION ACTIONS ---
 const selectBarangay = (name) => {
     addForm.payee_barangay = name;
     barangayQuery.value = name;
     showBarangayDropdown.value = false;
+};
+
+const selectAssessment = (assessment) => {
+    addForm.assessment_id = assessment.id;
+    assessmentQuery.value = assessment.label;
+    
+    // Auto-fill the amount with the remaining balance
+    // Ensure we handle cases where balance might be weird, defaulting to 0 if negative
+    addForm.amount_paid = assessment.balance > 0 ? assessment.balance : 0; 
+    
+    showAssessmentDropdown.value = false;
 };
 
 // --- FORMS ---
@@ -65,16 +91,20 @@ const formatCurrency = (value) => {
 // --- ACTIONS ---
 const openAddModal = () => {
     showAddModal.value = true;
+    // Reset local dropdown states
     barangayQuery.value = '';
+    assessmentQuery.value = '';
 };
 
 const closeAddModal = () => {
     showAddModal.value = false;
     addForm.reset();
     showBarangayDropdown.value = false;
+    showAssessmentDropdown.value = false;
 };
 
 const submitAdd = () => {
+    // Sync barangay text if user typed manually instead of clicking dropdown
     if (!addForm.payee_barangay && barangayQuery.value) {
         addForm.payee_barangay = barangayQuery.value;
     }
@@ -83,10 +113,6 @@ const submitAdd = () => {
         onSuccess: () => closeAddModal(),
     });
 };
-
-// --- FILTERS ---
-const openFilterModal = () => showFilterModal.value = true;
-const closeFilterModal = () => showFilterModal.value = false;
 
 const handleSearch = () => {
     router.get(route('admin.payments.index'), { 
@@ -98,6 +124,9 @@ const handleSearch = () => {
         replace: true
     });
 };
+
+const openFilterModal = () => showFilterModal.value = true;
+const closeFilterModal = () => showFilterModal.value = false;
 
 const applyFilters = () => {
     handleSearch();
@@ -328,6 +357,35 @@ const resetFilters = () => {
                             Payment Details
                         </h4>
                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                            
+                            <div class="col-span-12 md:col-span-6 relative">
+                                <InputLabel>Assessment (Optional)</InputLabel>
+                                <TextInput 
+                                    type="text" 
+                                    class="mt-1 block w-full" 
+                                    v-model="assessmentQuery" 
+                                    @focus="showAssessmentDropdown = true"
+                                    @input="showAssessmentDropdown = true"
+                                    placeholder="Search Pending Assessment..." 
+                                    autocomplete="off"
+                                />
+                                <div v-if="showAssessmentDropdown && filteredAssessments.length > 0" class="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-48 overflow-y-auto">
+                                    <div 
+                                        v-for="assessment in filteredAssessments" 
+                                        :key="assessment.id"
+                                        @click="selectAssessment(assessment)"
+                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 border-b border-gray-100 last:border-0"
+                                    >
+                                        {{ assessment.label }}
+                                    </div>
+                                </div>
+                                <div v-else-if="showAssessmentDropdown && assessmentQuery && filteredAssessments.length === 0" class="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg p-2 text-sm text-gray-500">
+                                    No pending assessments found.
+                                </div>
+                                
+                                <div v-if="showAssessmentDropdown" @click="showAssessmentDropdown = false" class="fixed inset-0 z-0 bg-transparent cursor-default"></div>
+                            </div>
+
                             <div class="col-span-12 md:col-span-6">
                                 <InputLabel>Amount Paid (PHP) <span class="text-red-500">*</span></InputLabel>
                                 <div class="relative rounded-md shadow-sm mt-1">
@@ -343,10 +401,6 @@ const resetFilters = () => {
                                         required 
                                     />
                                 </div>
-                            </div>
-                            <div class="col-span-12 md:col-span-6">
-                                <InputLabel>Assessment ID <span class="text-gray-400 text-xs font-normal">(Optional)</span></InputLabel>
-                                <TextInput type="number" class="mt-1 block w-full" v-model="addForm.assessment_id" placeholder="#" />
                             </div>
                         </div>
                     </div>

@@ -38,4 +38,10 @@ class Payment extends Model
             $query->where('payee_city', 'like', '%'.$city.'%');
         });
     }
+
+    // NEW: Relationship to Assessment
+    public function assessment()
+    {
+        return $this->belongsTo(Assessment::class);
+    }
 }
