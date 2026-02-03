@@ -44,4 +44,10 @@ class User extends Authenticatable
     {
         return "{$this->first_name} " . ($this->middle_name ? "{$this->middle_name} " : "") . "{$this->last_name}";
     }
+
+    // Relationship to Operator profile (if role is franchise_owner)
+    public function operator()
+    {
+        return $this->hasOne(Operator::class);
+    }
 }

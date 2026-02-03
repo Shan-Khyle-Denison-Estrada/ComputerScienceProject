@@ -21,20 +21,27 @@ class DatabaseSeeder extends Seeder
             'email' => 'admin@tricycle.com',
             'password' => Hash::make('password'),
             'role' => UserRole::ADMIN,
-            'status' => 'active',
             'user_photo' => null,
+            'contact_number' => '09451830519',
+            'street_address' => 'Estrada Drive',
+            'barangay' => 'San Roque',
+            'city' => 'Zamboanga City',
+            'status' => 'active',
         ]);
 
         // 2. Franchise Owner
         User::create([
-            'first_name' => 'Juan',
-            'middle_name' => 'D.',
-            'last_name' => 'Dela Cruz',
-            'email' => 'juan@franchise.com',
+            'first_name' => 'Tricy',
+            'last_name' => 'Owner',
+            'email' => 'owner@tricycle.com',
             'password' => Hash::make('password'),
-            'role' => UserRole::FRANCHISE_OWNER,
-            'status' => 'active',
+            'role' => UserRole::ADMIN,
             'user_photo' => null,
+            'contact_number' => '09451830519',
+            'street_address' => 'Mormons Drive',
+            'barangay' => 'Tetuan',
+            'city' => 'Zamboanga City',
+            'status' => 'active',
         ]);
     }
 }
