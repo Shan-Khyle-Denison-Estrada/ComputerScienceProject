@@ -12,18 +12,18 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
-use App\Enums\UserRole;
 
 class FranchiseOwnerController extends Controller
 {
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $status = $request->input('status'); // Get status filter
 
-        // Fetch Users with 'franchise_owner' role AND their Operator details
-        // Strict filtering for 'franchise_owner' role
+        // Fetch Users with 'franchise_owner' role
         $users = User::with('operator')
-            ->where('role', 'franchise_owner') 
+            ->where('role', 'franchise_owner')
+            // 1. Handle Search
             ->when($search, function ($query, $search) {
                 $query->where(function ($q) use ($search) {
                     $q->where('first_name', 'like', "%{$search}%")
@@ -31,20 +31,24 @@ class FranchiseOwnerController extends Controller
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             })
+            // 2. Handle Status Filter
+            ->when($status, function ($query, $status) {
+                $query->where('status', $status);
+            })
             ->latest()
             ->paginate(10)
             ->withQueryString();
 
-        // Fetch Barangays for the dropdown
         $barangays = Barangay::select('id', 'name')->orderBy('name')->get();
 
         return Inertia::render('Admin/FranchiseOwners/Index', [
             'users' => $users,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'status']), // Pass status back to view
             'barangays' => $barangays, 
         ]);
     }
 
+    // ... store and update methods remain the same ...
     public function store(Request $request)
     {
         $request->validate([
@@ -61,24 +65,18 @@ class FranchiseOwnerController extends Controller
         ]);
 
         DB::transaction(function () use ($request) {
-            
-            // Handle Photo Upload
             $photoPath = null;
             if ($request->hasFile('user_photo')) {
                 $photoPath = $request->file('user_photo')->store('user-photos', 'public');
             }
 
-            // 1. Create User
             $user = User::create([
                 'first_name' => $request->first_name,
                 'middle_name' => $request->middle_name,
                 'last_name' => $request->last_name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
-                
-                // FORCE ROLE TO FRANCHISE OWNER
-                'role' => UserRole::FRANCHISE_OWNER, 
-                
+                'role' => 'franchise_owner', 
                 'contact_number' => $request->contact_number,
                 'street_address' => $request->street_address,
                 'barangay' => $request->barangay,
@@ -87,7 +85,6 @@ class FranchiseOwnerController extends Controller
                 'status' => 'active',
             ]);
 
-            // 2. Create Operator Profile
             Operator::create([
                 'user_id' => $user->id,
                 'tin_number' => $request->tin_number,
@@ -97,7 +94,7 @@ class FranchiseOwnerController extends Controller
         return redirect()->back()->with('success', 'Franchise owner registered successfully.');
     }
 
-public function update(Request $request, User $user)
+    public function update(Request $request, User $user)
     {
         $request->validate([
             'first_name' => 'required|string|max:255',
@@ -108,15 +105,12 @@ public function update(Request $request, User $user)
             'city' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
             'user_photo' => 'nullable|image|max:2048',
-            'status' => 'required|in:active,inactive', // Added validation
+            'status' => 'required|in:active,inactive',
         ]);
 
         DB::transaction(function () use ($request, $user) {
-            
-            // Exclude fields handled manually
             $data = $request->except(['tin_number', 'password', 'user_photo', 'role']);
 
-            // Handle Photo Replacement
             if ($request->hasFile('user_photo')) {
                 if ($user->user_photo) {
                     Storage::disk('public')->delete($user->user_photo);
@@ -124,15 +118,12 @@ public function update(Request $request, User $user)
                 $data['user_photo'] = $request->file('user_photo')->store('user-photos', 'public');
             }
 
-            // Update Password if provided
             if ($request->filled('password')) {
                 $data['password'] = Hash::make($request->password);
             }
 
-            // Update User (Includes Status)
             $user->update($data);
 
-            // Update Operator Details
             $user->operator()->updateOrCreate(
                 ['user_id' => $user->id],
                 ['tin_number' => $request->tin_number]

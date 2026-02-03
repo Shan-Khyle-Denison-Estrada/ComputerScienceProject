@@ -18,7 +18,13 @@ const props = defineProps({
 // --- STATE MANAGEMENT ---
 const showAddModal = ref(false);
 const showEditModal = ref(false);
+const showFilterModal = ref(false); // New
 const search = ref(props.filters.search || '');
+
+// --- FILTER STATE ---
+const filterForm = ref({
+    status: props.filters.status || '', // New
+});
 
 // --- PHOTO STATE ---
 const addPhotoPreview = ref(null);
@@ -87,7 +93,7 @@ const editForm = useForm({
     barangay: '',
     city: '',
     tin_number: '',
-    status: '', // Added Status field
+    status: '', 
     password: '',
     password_confirmation: '',
     user_photo: null, 
@@ -127,7 +133,7 @@ const openEditModal = (user) => {
     editForm.street_address = user.street_address;
     editForm.barangay = user.barangay;
     editForm.city = user.city;
-    editForm.status = user.status; // Populate status
+    editForm.status = user.status; 
     editForm.tin_number = user.operator ? user.operator.tin_number : '';
     
     // Set preview to existing photo if available
@@ -153,8 +159,30 @@ const submitEdit = () => {
     });
 };
 
+// --- SEARCH & FILTER ACTIONS ---
 const handleSearch = () => {
-    router.get(route('admin.franchise-owners.index'), { search: search.value }, { preserveState: true, replace: true });
+    router.get(route('admin.franchise-owners.index'), { 
+        search: search.value,
+        status: filterForm.value.status 
+    }, { 
+        preserveState: true, 
+        preserveScroll: true, 
+        replace: true 
+    });
+};
+
+const openFilterModal = () => showFilterModal.value = true;
+const closeFilterModal = () => showFilterModal.value = false;
+
+const applyFilters = () => {
+    handleSearch();
+    closeFilterModal();
+};
+
+const resetFilters = () => {
+    filterForm.value.status = '';
+    search.value = '';
+    applyFilters();
 };
 </script>
 
@@ -184,6 +212,17 @@ const handleSearch = () => {
                         placeholder="Search owners..." 
                     />
                 </div>
+
+                <button 
+                    @click="openFilterModal"
+                    class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative"
+                    title="Filter Owners"
+                >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
+                </button>
 
                 <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -523,6 +562,33 @@ const handleSearch = () => {
                         <PrimaryButton :disabled="editForm.processing">Update Owner</PrimaryButton>
                     </div>
                 </form>
+            </div>
+        </Modal>
+
+        <Modal :show="showFilterModal" @close="closeFilterModal" maxWidth="sm">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-lg font-bold text-gray-900">Filter Owners</h2>
+                    <button @click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <InputLabel>Account Status</InputLabel>
+                        <select v-model="filterForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="inactive">Inactive</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3 pt-2">
+                    <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
+                    <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
+                </div>
             </div>
         </Modal>
 
