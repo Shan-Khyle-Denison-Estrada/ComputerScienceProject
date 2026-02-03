@@ -17,12 +17,12 @@ const props = defineProps({
 // --- STATE ---
 const showAddModal = ref(false);
 const showEditModal = ref(false);
-const showBarangayModal = ref(false); 
+const showBarangayModal = ref(false);
+const showCoverageModal = ref(false); 
 
 // --- SEARCH ---
 const search = ref(''); 
 
-// Filter Zones by Search
 const visibleZones = computed(() => {
     if (!search.value) return props.zones;
     const q = search.value.toLowerCase();
@@ -34,8 +34,14 @@ const visibleZones = computed(() => {
 
 // --- BARANGAY MODAL STATE ---
 const barangaySearch = ref('');
-const selectedBarangayToAdd = ref('');
 const editingBarangayId = ref(null);
+
+// --- COVERAGE VIEW MODAL STATE ---
+const selectedZoneForView = ref(null);
+
+// --- DROPDOWN STATE ---
+const dropdownSearch = ref('');
+const isDropdownOpen = ref(false);
 
 // --- FORMS ---
 const addForm = useForm({ description: '', color: '', coverage: [] });
@@ -54,7 +60,6 @@ const applySentenceCase = (form, field) => {
 };
 
 // --- LOGIC: EXCLUSIVE COVERAGE ---
-// Get a Set of all barangays currently used by ANY zone
 const getGloballyUsedBarangays = (exceptZoneId = null) => {
     const used = new Set();
     props.zones.forEach(zone => {
@@ -66,7 +71,6 @@ const getGloballyUsedBarangays = (exceptZoneId = null) => {
     return used;
 };
 
-// Filter the Dropdown List (Hide used + already selected)
 const availableBarangays = (formType) => {
     const currentCoverage = formType === 'add' ? addForm.coverage : editForm.coverage;
     const currentZoneId = formType === 'edit' ? editForm.id : null;
@@ -77,12 +81,40 @@ const availableBarangays = (formType) => {
     });
 };
 
-const addCoverageItem = (formType) => {
-    if (!selectedBarangayToAdd.value) return;
-    const val = selectedBarangayToAdd.value;
-    if (formType === 'add') addForm.coverage.push(val);
-    else editForm.coverage.push(val);
-    selectedBarangayToAdd.value = ''; 
+// --- DROPDOWN LOGIC ---
+const filteredDropdownOptions = computed(() => {
+    const formType = showEditModal.value ? 'edit' : 'add';
+    const list = availableBarangays(formType);
+    
+    if (!dropdownSearch.value) return list;
+    
+    const q = dropdownSearch.value.toLowerCase();
+    return list.filter(b => b.name.toLowerCase().includes(q));
+});
+
+const selectDropdownItem = (name, formType) => {
+    if (formType === 'add') {
+        addForm.coverage.push(name);
+    } else {
+        editForm.coverage.push(name);
+    }
+    
+    dropdownSearch.value = '';
+    isDropdownOpen.value = false; 
+};
+
+const handleDropdownEnter = (formType) => {
+    const options = filteredDropdownOptions.value;
+    if (options.length > 0) {
+        selectDropdownItem(options[0].name, formType);
+    }
+};
+
+const closeDropdownDelayed = () => {
+    setTimeout(() => {
+        isDropdownOpen.value = false;
+        dropdownSearch.value = ''; 
+    }, 200);
 };
 
 const removeCoverageItem = (formType, index) => {
@@ -93,7 +125,7 @@ const removeCoverageItem = (formType, index) => {
 // --- ACTIONS ---
 const openAddModal = () => {
     addForm.reset();
-    selectedBarangayToAdd.value = '';
+    dropdownSearch.value = '';
     showAddModal.value = true;
 };
 
@@ -102,8 +134,13 @@ const openEditModal = (zone) => {
     editForm.description = zone.description;
     editForm.color = zone.color;
     editForm.coverage = Array.isArray(zone.coverage) ? [...zone.coverage] : [];
-    selectedBarangayToAdd.value = '';
+    dropdownSearch.value = '';
     showEditModal.value = true;
+};
+
+const openCoverageModal = (zone) => {
+    selectedZoneForView.value = zone;
+    showCoverageModal.value = true;
 };
 
 const submitAdd = () => {
@@ -214,7 +251,7 @@ const deleteBarangay = (id) => {
                         <tr>
                             <th class="px-6 py-4">Description</th>
                             <th class="px-6 py-4">Color</th>
-                            <th class="px-6 py-4">Coverage (Barangays)</th>
+                            <th class="px-6 py-4">Coverage</th> 
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -229,12 +266,17 @@ const deleteBarangay = (id) => {
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-gray-600">
-                                <div class="flex flex-wrap gap-1">
-                                    <span v-for="(place, idx) in zone.coverage" :key="idx" class="px-2 py-1 bg-blue-50 text-blue-700 text-xs rounded border border-blue-100">
-                                        {{ place }}
-                                    </span>
-                                    <span v-if="!zone.coverage || zone.coverage.length === 0" class="text-gray-400 italic">No coverage assigned</span>
-                                </div>
+                                <button 
+                                    v-if="zone.coverage && zone.coverage.length > 0"
+                                    @click="openCoverageModal(zone)"
+                                    class="inline-flex items-center px-4 py-2 border border-gray-300 shadow-sm text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+                                >
+                                    <svg class="mr-2 -ml-0.5 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    View Barangays ({{ zone.coverage.length }})
+                                </button>
+                                <span v-else class="text-gray-400 italic text-xs">No coverage assigned</span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <button @click="openEditModal(zone)" class="text-blue-600 hover:text-blue-800 font-medium transition-colors">
@@ -264,16 +306,46 @@ const deleteBarangay = (id) => {
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>
                         <TextInput type="text" class="mt-1 block w-full" v-model="addForm.color" @blur="applySentenceCase(addForm, 'color')" required placeholder="e.g., Red" />
                     </div>
-                    <div>
+                    
+                    <div class="relative">
                         <InputLabel>Add Coverage (Barangay) <span class="text-red-500">*</span></InputLabel>
-                        <div class="flex gap-2 mt-1">
-                            <select v-model="selectedBarangayToAdd" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="" disabled>Select a Barangay</option>
-                                <option v-for="brgy in availableBarangays('add')" :key="brgy.id" :value="brgy.name">{{ brgy.name }}</option>
-                            </select>
-                            <SecondaryButton type="button" @click="addCoverageItem('add')">Add</SecondaryButton>
+                        
+                        <div class="mt-1 relative w-full z-10">
+                            <input 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
+                                placeholder="Search or select a barangay..."
+                                v-model="dropdownSearch"
+                                @focus="isDropdownOpen = true"
+                                @click="isDropdownOpen = true" 
+                                @input="isDropdownOpen = true"
+                                @blur="closeDropdownDelayed"
+                                @keydown.enter.prevent="handleDropdownEnter('add')"
+                            />
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400 m-2 transition-transform duration-200" :class="{'rotate-180': isDropdownOpen}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+
+                            <div v-if="isDropdownOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <ul>
+                                    <li 
+                                        v-for="brgy in filteredDropdownOptions" 
+                                        :key="brgy.id"
+                                        @mousedown.prevent="selectDropdownItem(brgy.name, 'add')"
+                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 transition-colors"
+                                    >
+                                        {{ brgy.name }}
+                                    </li>
+                                    <li v-if="filteredDropdownOptions.length === 0" class="px-4 py-3 text-sm text-gray-500 italic text-center">
+                                        No available barangays match.
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                        <div class="mt-3 flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 min-h-[60px] items-center">
+                        
+                        <div class="mt-3 flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 min-h-[60px] max-h-32 overflow-y-auto items-center relative z-0">
                             <span v-if="addForm.coverage.length === 0" class="text-gray-400 text-sm italic w-full text-center">Add Barangay</span>
                             <span v-else v-for="(item, index) in addForm.coverage" :key="index" class="inline-flex items-center px-2 py-1 rounded bg-white border border-gray-300 text-sm shadow-sm">
                                 {{ item }}
@@ -281,6 +353,7 @@ const deleteBarangay = (id) => {
                             </span>
                         </div>
                     </div>
+
                     <div class="mt-6 flex justify-end gap-3 border-t pt-4">
                         <SecondaryButton @click="showAddModal = false">Cancel</SecondaryButton>
                         <PrimaryButton :disabled="addForm.processing">Create Zone</PrimaryButton>
@@ -301,16 +374,46 @@ const deleteBarangay = (id) => {
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>
                         <TextInput type="text" class="mt-1 block w-full" v-model="editForm.color" @blur="applySentenceCase(editForm, 'color')" required />
                     </div>
-                    <div>
+                    
+                    <div class="relative">
                         <InputLabel>Add Coverage (Barangay) <span class="text-red-500">*</span></InputLabel>
-                        <div class="flex gap-2 mt-1">
-                             <select v-model="selectedBarangayToAdd" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="" disabled>Select a Barangay</option>
-                                <option v-for="brgy in availableBarangays('edit')" :key="brgy.id" :value="brgy.name">{{ brgy.name }}</option>
-                            </select>
-                            <SecondaryButton type="button" @click="addCoverageItem('edit')">Add</SecondaryButton>
+                        
+                        <div class="mt-1 relative w-full z-10">
+                            <input 
+                                type="text" 
+                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
+                                placeholder="Search or select a barangay..."
+                                v-model="dropdownSearch"
+                                @focus="isDropdownOpen = true"
+                                @click="isDropdownOpen = true"
+                                @input="isDropdownOpen = true"
+                                @blur="closeDropdownDelayed"
+                                @keydown.enter.prevent="handleDropdownEnter('edit')"
+                            />
+                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400 m-2 transition-transform duration-200" :class="{'rotate-180': isDropdownOpen}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                </svg>
+                            </div>
+
+                            <div v-if="isDropdownOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                <ul>
+                                    <li 
+                                        v-for="brgy in filteredDropdownOptions" 
+                                        :key="brgy.id"
+                                        @mousedown.prevent="selectDropdownItem(brgy.name, 'edit')"
+                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 transition-colors"
+                                    >
+                                        {{ brgy.name }}
+                                    </li>
+                                    <li v-if="filteredDropdownOptions.length === 0" class="px-4 py-3 text-sm text-gray-500 italic text-center">
+                                        No available barangays match.
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
-                        <div class="mt-3 flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 min-h-[60px] items-center">
+
+                        <div class="mt-3 flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 min-h-[60px] max-h-32 overflow-y-auto items-center relative z-0">
                             <span v-if="editForm.coverage.length === 0" class="text-gray-400 text-sm italic w-full text-center">Add Barangay</span>
                             <span v-else v-for="(item, index) in editForm.coverage" :key="index" class="inline-flex items-center px-2 py-1 rounded bg-white border border-gray-300 text-sm shadow-sm">
                                 {{ item }}
@@ -318,6 +421,7 @@ const deleteBarangay = (id) => {
                             </span>
                         </div>
                     </div>
+
                     <div class="mt-6 flex justify-between items-center border-t pt-4">
                         <button type="button" @click="deleteZone(editForm.id)" class="text-red-600 hover:text-red-800 text-sm font-medium underline">Delete Zone</button>
                         <div class="flex gap-3">
@@ -329,10 +433,47 @@ const deleteBarangay = (id) => {
             </div>
         </Modal>
 
-        <Modal :show="showBarangayModal" @close="showBarangayModal = false">
-            <div class="p-6 h-[70vh] flex flex-col">
+        <Modal :show="showCoverageModal" @close="showCoverageModal = false">
+            <div class="p-6 h-[70vh] grid grid-rows-[auto_1fr_auto] gap-4">
                 
-                <div class="shrink-0 space-y-4 mb-2">
+                <div class="flex justify-between items-start border-b pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Coverage Area</h2>
+                        <p class="text-sm text-gray-500" v-if="selectedZoneForView">
+                            Locations covered by <span class="font-semibold text-gray-800">{{ selectedZoneForView.description }}</span>
+                        </p>
+                    </div>
+                    <button @click="showCoverageModal = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 overflow-y-auto min-h-0 h-full">
+                    <div v-if="selectedZoneForView && selectedZoneForView.coverage.length > 0" class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div v-for="(item, idx) in selectedZoneForView.coverage" :key="idx" class="flex items-center p-2 bg-white rounded border border-gray-200 shadow-sm">
+                            <svg class="h-4 w-4 text-blue-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0zM15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                            </svg>
+                            <span class="text-sm text-gray-700 font-medium">{{ item }}</span>
+                        </div>
+                    </div>
+                    <div v-else class="text-center py-8 text-gray-500 italic">
+                        No specific barangays assigned to this zone.
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t flex justify-end">
+                    <SecondaryButton @click="showCoverageModal = false">Close</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showBarangayModal" @close="showBarangayModal = false">
+            <div class="p-6 h-[85vh] grid grid-rows-[auto_1fr_auto] gap-4">
+                
+                <div class="space-y-4">
                     <div class="border-b pb-4 flex justify-between items-center">
                         <div>
                             <h2 class="text-xl font-bold text-gray-900">Manage Barangays</h2>
@@ -379,9 +520,9 @@ const deleteBarangay = (id) => {
                     </div>
                 </div>
 
-                <div class="flex-1 overflow-y-auto border rounded-lg bg-white shadow-inner min-h-0 relative">
+                <div class="overflow-y-auto border rounded-lg bg-white shadow-inner relative">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-100 text-gray-600 font-semibold sticky top-0 z-10 shadow-sm">
+                        <thead class="bg-gray-100 text-gray-600 font-semibold sticky top-0 z-20 shadow-sm">
                             <tr>
                                 <th class="px-4 py-3 bg-gray-100">Barangay Name</th>
                                 <th class="px-4 py-3 text-right w-24 bg-gray-100">Actions</th>
@@ -424,11 +565,10 @@ const deleteBarangay = (id) => {
                     </table>
                 </div>
 
-                <div class="mt-4 pt-4 border-t flex justify-end shrink-0">
+                <div class="pt-4 border-t flex justify-end">
                     <SecondaryButton @click="showBarangayModal = false">Close</SecondaryButton>
                 </div>
             </div>
         </Modal>
-
     </AuthenticatedLayout>
 </template>
