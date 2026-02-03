@@ -4,14 +4,14 @@ import { Link, usePage } from '@inertiajs/vue3';
 
 // --- LOGIC ---
 const page = usePage();
-// Ensure we are accessing the user correctly
 const user = computed(() => page.props.auth.user);
 
-// State for the drawer
-// Default to true (open) on desktop
+// State for the sidebar
 const isSidebarOpen = ref(true); 
 
-// Toggle function handles both Mobile (slide-over) and Desktop (collapse)
+// State for the User Dropdown
+const isUserDropdownOpen = ref(false);
+
 const toggleSidebar = () => {
     isSidebarOpen.value = !isSidebarOpen.value;
 };
@@ -45,10 +45,8 @@ const menuItems = computed(() => {
         <aside 
             class="fixed lg:relative z-50 inset-y-0 left-0 bg-gray-900 text-white transition-all duration-300 ease-in-out flex flex-col overflow-hidden"
             :class="[
-                // Mobile behavior: Slide in/out
                 'transform lg:transform-none',
                 isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-                // Desktop behavior: Width toggle (Open = 64, Closed = 0)
                 isSidebarOpen ? 'lg:w-64' : 'lg:w-0'
             ]"
         >
@@ -108,21 +106,60 @@ const menuItems = computed(() => {
                     </button>
                 </div>
 
-                <div class="flex items-center">
-                    <div class="flex flex-col items-end mr-3">
-                        <span class="text-sm font-bold text-gray-900 leading-tight">
-                            {{ user.first_name }} {{ user.last_name }}
-                        </span>
-                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide mt-0.5">
-                            {{ user.role.replace('_', ' ') }}
-                        </span>
-                    </div>
-                    
-                    <div class="h-10 w-10 rounded-full bg-gray-800 text-white flex items-center justify-center border-2 border-gray-100 shadow-sm overflow-hidden">
-                        <img v-if="user.user_photo" :src="'/storage/' + user.user_photo" class="h-full w-full object-cover" />
-                        <span v-else class="text-lg font-bold">
-                             {{ user.first_name ? user.first_name.charAt(0) : 'U' }}
-                        </span>
+                <div class="relative">
+                    <button 
+                        @click="isUserDropdownOpen = !isUserDropdownOpen"
+                        class="flex items-center focus:outline-none p-1 rounded-lg hover:bg-gray-50 transition-colors"
+                    >
+                        <div class="flex flex-col items-end mr-3">
+                            <span class="text-sm font-bold text-gray-900 leading-tight">
+                                {{ user.first_name }} {{ user.last_name }}
+                            </span>
+                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide mt-0.5">
+                                {{ user.role.replace('_', ' ') }}
+                            </span>
+                        </div>
+                        
+                        <div class="h-10 w-10 rounded-full bg-gray-800 text-white flex items-center justify-center border-2 border-gray-100 shadow-sm overflow-hidden">
+                            <img v-if="user.user_photo" :src="'/storage/' + user.user_photo" class="h-full w-full object-cover" />
+                            <span v-else class="text-lg font-bold">
+                                {{ user.first_name ? user.first_name.charAt(0) : 'U' }}
+                            </span>
+                        </div>
+                        
+                        <svg class="ml-2 h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <div 
+                        v-if="isUserDropdownOpen" 
+                        @click="isUserDropdownOpen = false" 
+                        class="fixed inset-0 z-10 cursor-default"
+                    ></div>
+
+                    <div 
+                        v-show="isUserDropdownOpen"
+                        class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 ring-1 ring-black ring-opacity-5"
+                    >
+                        <Link 
+                            :href="route('profile.edit')" 
+                            class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                            @click="isUserDropdownOpen = false"
+                        >
+                            Profile
+                        </Link>
+                        
+                        <div class="border-t border-gray-100"></div>
+
+                        <Link 
+                            :href="route('logout')" 
+                            method="post" 
+                            as="button" 
+                            class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
+                        >
+                            Sign Out
+                        </Link>
                     </div>
                 </div>
             </header>

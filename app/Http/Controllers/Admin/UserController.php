@@ -9,9 +9,44 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rules;
+use Inertia\Inertia;
 
 class UserController extends Controller
 {
+    /**
+     * Display a listing of the resource.
+     */
+    public function index(Request $request)
+    {
+        $query = User::query();
+
+        // 1. Strict Requirement: Only display users with admin role
+        $query->where('role', 'admin'); 
+        // If using Enums: $query->where('role', UserRole::ADMIN);
+
+        // 2. Handle Search
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            });
+        }
+
+        // 3. Handle Filtering (Optional: Role filter removed since we force Admin, keeping Status)
+        if ($request->filled('status')) {
+            $query->where('status', $request->status);
+        }
+
+        $users = $query->latest()->paginate(10)->withQueryString();
+
+        return Inertia::render('Admin/Users/Index', [
+            'users' => $users,
+            'filters' => $request->only(['search', 'status']),
+        ]);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -36,9 +71,9 @@ class UserController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
-            'role' => UserRole::from($request->role),
+            'role' => $request->role, // Assuming string or cast: UserRole::from($request->role)
             'user_photo' => $photoPath,
-            'status' => 'active', // Default for new users
+            'status' => 'active',
         ]);
 
         return back()->with('success', 'User account created successfully.');
@@ -63,7 +98,7 @@ class UserController extends Controller
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
-            'role' => UserRole::from($request->role),
+            'role' => $request->role, // UserRole::from($request->role)
             'status' => $request->status,
         ];
 
@@ -77,7 +112,6 @@ class UserController extends Controller
 
         // Handle Photo Replacement
         if ($request->hasFile('photo')) {
-            // Delete old photo if exists
             if ($user->user_photo) {
                 Storage::disk('public')->delete($user->user_photo);
             }

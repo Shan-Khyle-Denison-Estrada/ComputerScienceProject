@@ -1,19 +1,24 @@
 <script setup>
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
-import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm, router } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Head, useForm, router, Link } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+
+// --- PROPS ---
+const props = defineProps({
+    users: Object, // The paginated users object
+    filters: Object // Search and filter state
+});
 
 // --- STATE MANAGEMENT ---
 const showAddModal = ref(false);
 const showEditModal = ref(false);
 const showFilterModal = ref(false);
-const search = ref('');
+const search = ref(props.filters.search || '');
 
 // Photo Previews
 const addPhotoPreview = ref(null);
@@ -29,7 +34,7 @@ const addForm = useForm({
     middle_name: '',
     last_name: '',
     email: '',
-    role: 'franchise_owner',
+    role: 'admin', // Default to admin based on requirements
     password: '',
     password_confirmation: '',
     photo: null,
@@ -52,12 +57,8 @@ const editForm = useForm({
 
 // 3. FILTER FORM
 const filterForm = ref({
-    role: '',
-    status: '',
+    status: props.filters.status || '',
 });
-
-// --- HELPER FOR ASTERISKS ---
-// We will manually add <span class="text-red-500">*</span> in the template
 
 // --- ACTIONS: ADD USER ---
 const openAddModal = () => showAddModal.value = true;
@@ -93,9 +94,7 @@ const openEditModal = (user) => {
     editForm.role = user.role; 
     editForm.status = user.status;
     
-    // Set preview if user has a photo
     editPhotoPreview.value = user.user_photo ? `/storage/${user.user_photo}` : null;
-    
     showEditModal.value = true;
 };
 
@@ -115,27 +114,36 @@ const handleEditPhotoChange = (event) => {
 };
 
 const submitEdit = () => {
-    // Note: You must add a route for update: Route::put('/admin/users/{id}', ...)
     editForm.post(route('admin.users.update', editForm.id), { 
         onSuccess: () => closeEditModal(),
     });
 };
 
-// --- ACTIONS: FILTERS ---
+// --- ACTIONS: FILTERS & SEARCH ---
 const openFilterModal = () => showFilterModal.value = true;
 const closeFilterModal = () => showFilterModal.value = false;
-const applyFilters = () => {
-    router.get(route('admin.users.index'), { ...filterForm.value, search: search.value }, { preserveState: true });
-    closeFilterModal();
-};
-const resetFilters = () => {
-    filterForm.value.role = '';
-    filterForm.value.status = '';
-    applyFilters();
+
+// Debounced search or Enter key search
+const handleSearch = () => {
+    router.get(route('admin.users.index'), { 
+        search: search.value, 
+        status: filterForm.value.status 
+    }, { 
+        preserveState: true, 
+        preserveScroll: true,
+        replace: true
+    });
 };
 
-const handleSearch = () => {
-    router.get(route('admin.users.index'), { search: search.value }, { preserveState: true });
+const applyFilters = () => {
+    handleSearch();
+    closeFilterModal();
+};
+
+const resetFilters = () => {
+    filterForm.value.status = '';
+    search.value = '';
+    applyFilters();
 };
 </script>
 
@@ -147,7 +155,7 @@ const handleSearch = () => {
         <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
-                <p class="text-gray-600 text-sm">Manage system access and franchise accounts.</p>
+                <p class="text-gray-600 text-sm">Manage administrator accounts.</p>
             </div>
 
             <div class="flex items-center gap-3">
@@ -162,7 +170,7 @@ const handleSearch = () => {
                         @keyup.enter="handleSearch"
                         type="text" 
                         class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" 
-                        placeholder="Search users..." 
+                        placeholder="Search admins..." 
                     />
                 </div>
 
@@ -173,14 +181,14 @@ const handleSearch = () => {
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
-                    <span v-if="filterForm.role || filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
+                    <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
 
                 <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
-                    Add User
+                    Add Admin
                 </PrimaryButton>
             </div>
         </div>
@@ -197,46 +205,68 @@ const handleSearch = () => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        <tr class="hover:bg-gray-50 transition-colors group">
+                        <tr v-for="user in users.data" :key="user.id" class="hover:bg-gray-50 transition-colors group">
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
-                                    <div class="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden">
-                                        <img v-if="false" src="" class="h-full w-full object-cover" /> <span v-else class="text-blue-600 font-bold text-lg">J</span>
+                                    <div class="h-10 w-10 flex-shrink-0 rounded-full bg-blue-100 flex items-center justify-center overflow-hidden border border-gray-200">
+                                        <img v-if="user.user_photo" :src="`/storage/${user.user_photo}`" class="h-full w-full object-cover" /> 
+                                        <span v-else class="text-blue-600 font-bold text-lg">
+                                            {{ user.first_name.charAt(0) }}
+                                        </span>
                                     </div>
                                     <div class="ml-4">
-                                        <div class="font-medium text-gray-900">Juan Dela Cruz</div>
-                                        <div class="text-gray-500 text-xs">juan@franchise.com</div>
+                                        <div class="font-medium text-gray-900">{{ user.first_name }} {{ user.last_name }}</div>
+                                        <div class="text-gray-500 text-xs">{{ user.email }}</div>
                                     </div>
                                 </div>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    Franchise Owner
+                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 uppercase">
+                                    {{ user.role }}
                                 </span>
                             </td>
                             <td class="px-6 py-4">
-                                <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                    Active
+                                <span 
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+                                    :class="user.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'"
+                                >
+                                    {{ user.status }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <button 
-                                    @click="openEditModal({ id: 1, first_name: 'Juan', middle_name: 'D', last_name: 'Dela Cruz', email: 'juan@franchise.com', role: 'franchise_owner', status: 'active', user_photo: null })" 
+                                    @click="openEditModal(user)" 
                                     class="text-gray-400 hover:text-blue-600 font-medium transition-colors"
                                 >
                                     Edit
                                 </button>
                             </td>
                         </tr>
+                        <tr v-if="users.data.length === 0">
+                            <td colspan="4" class="px-6 py-10 text-center text-gray-500">
+                                No admin users found.
+                            </td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50">
-                <div class="text-xs text-gray-500">Showing 1 to 1 of 1 results</div>
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="users.links && users.meta">
+                <div class="text-xs text-gray-500">
+                    Showing {{ users.meta.from }} to {{ users.meta.to }} of {{ users.meta.total }} results
+                </div>
                 <div class="flex gap-2">
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-gray-500 bg-white text-xs disabled:opacity-50" disabled>Previous</button>
-                    <button class="px-3 py-1 border border-gray-300 rounded-md text-gray-500 bg-white text-xs disabled:opacity-50" disabled>Next</button>
+                    <Link 
+                        v-for="(link, key) in users.meta.links" 
+                        :key="key"
+                        :href="link.url || '#'"
+                        v-html="link.label"
+                        class="px-3 py-1 border rounded-md text-xs transition-colors"
+                        :class="[
+                            link.active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50',
+                            !link.url ? 'opacity-50 cursor-not-allowed' : ''
+                        ]"
+                    />
                 </div>
             </div>
         </div>
@@ -244,8 +274,8 @@ const handleSearch = () => {
         <Modal :show="showAddModal" @close="closeAddModal">
             <div class="p-6">
                 <div class="text-center mb-6 border-b pb-4">
-                    <h2 class="text-xl font-bold text-gray-900">Create New User</h2>
-                    <p class="text-sm text-gray-500">Register a new account.</p>
+                    <h2 class="text-xl font-bold text-gray-900">Create New Admin</h2>
+                    <p class="text-sm text-gray-500">Register a new administrator.</p>
                 </div>
 
                 <form @submit.prevent="submitAdd" class="space-y-5">
@@ -283,8 +313,8 @@ const handleSearch = () => {
                         <div>
                             <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
                             <select v-model="addForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="franchise_owner">Franchise Owner</option>
                                 <option value="admin">Administrator</option>
+                                <option value="franchise_owner">Franchise Owner</option>
                             </select>
                         </div>
                     </div>
@@ -311,7 +341,7 @@ const handleSearch = () => {
         <Modal :show="showEditModal" @close="closeEditModal">
             <div class="p-6">
                 <div class="text-center mb-6 border-b pb-4">
-                    <h2 class="text-xl font-bold text-gray-900">Edit User</h2>
+                    <h2 class="text-xl font-bold text-gray-900">Edit Admin</h2>
                     <p class="text-sm text-gray-500">Update account details.</p>
                 </div>
 
@@ -353,8 +383,8 @@ const handleSearch = () => {
                         <div>
                             <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
                             <select v-model="editForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                <option value="franchise_owner">Franchise Owner</option>
                                 <option value="admin">Administrator</option>
+                                <option value="franchise_owner">Franchise Owner</option>
                             </select>
                         </div>
                     </div>
@@ -389,22 +419,13 @@ const handleSearch = () => {
         <Modal :show="showFilterModal" @close="closeFilterModal" maxWidth="sm">
             <div class="p-6">
                 <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 class="text-lg font-bold text-gray-900">Filter Users</h2>
+                    <h2 class="text-lg font-bold text-gray-900">Filter Admins</h2>
                     <button @click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
                 <div class="space-y-4">
-                    <div>
-                        <InputLabel>User Role</InputLabel>
-                        <select v-model="filterForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Roles</option>
-                            <option value="franchise_owner">Franchise Owner</option>
-                            <option value="admin">Administrator</option>
-                        </select>
-                    </div>
-
                     <div>
                         <InputLabel>Account Status</InputLabel>
                         <select v-model="filterForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">

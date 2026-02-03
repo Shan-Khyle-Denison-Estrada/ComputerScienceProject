@@ -13,22 +13,15 @@ Route::get('/', function () {
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
     
-    // 1. Dashboard (Redesigned)
+    // 1. Dashboard
     Route::get('/admin/dashboard', function () {
         return Inertia::render('Admin/Dashboard');
     })->name('admin.dashboard');
 
-    // 2. Manage Users (New Page)
-    Route::get('/admin/users', function () {
-        // In a real app, you would pass a list of users here: 'users' => User::all()
-        return Inertia::render('Admin/Users/Index'); 
-    })->name('admin.users.index');
-
-    // Inside Admin Routes group...
-    Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
-
-    // Store New User Logic
+    // 2. Manage Users (Connected to Controller)
+    Route::get('/admin/users', [UserController::class, 'index'])->name('admin.users.index');
     Route::post('/admin/users', [UserController::class, 'store'])->name('admin.users.store');
+    Route::put('/admin/users/{id}', [UserController::class, 'update'])->name('admin.users.update');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
@@ -38,8 +31,10 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     })->name('franchise.dashboard');
 });
 
-// Profile Management
+// --- PROFILE MANAGEMENT ---
 Route::middleware('auth')->group(function () {
+    // We are pointing to the standard ProfileController here.
+    // Ensure you have a standard ProfileController or create one that returns Inertia::render('Profile/Edit');
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
