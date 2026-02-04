@@ -2,8 +2,6 @@
 import { Head, router, usePage, Link } from '@inertiajs/vue3';
 import { onMounted, onUnmounted, ref } from 'vue';
 import { Html5Qrcode } from 'html5-qrcode';
-import NavBar from "@/Components/NavBar.vue";
-import Footer from "@/Components/Footer.vue";
 
 // --- State ---
 const html5QrCode = ref(null);
@@ -144,17 +142,23 @@ onUnmounted(() => {
 
 <template>
     <Head title="Verify Franchise" />
-    <NavBar />
 
-    <div class="min-h-screen bg-slate-50 relative">
-        <div class="pt-24 pb-12 max-w-md mx-auto px-4">
+    <div class="h-screen w-full bg-slate-50 flex items-center justify-center relative overflow-hidden p-4">
+        
+        <Link href="/" class="absolute top-6 left-6 z-50 group flex items-center justify-center w-12 h-12 rounded-full bg-white shadow-lg border border-slate-100 text-slate-500 hover:text-blue-600 hover:border-blue-100 transition-all duration-300">
+            <svg class="w-6 h-6 transform group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+            </svg>
+        </Link>
+
+        <div class="w-full max-w-md">
             
-            <div class="text-center mb-6">
+            <div class="text-center mb-8">
                 <h1 class="text-2xl font-bold text-slate-900">Scan QR Code</h1>
                 <p class="text-slate-500 text-sm">Point camera or upload screenshot</p>
             </div>
 
-            <div class="bg-white rounded-3xl shadow-xl overflow-hidden border border-slate-200 relative">
+            <div class="bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-200 relative">
                 
                 <div v-if="serverError || clientError" class="absolute top-4 left-4 right-4 z-20 animate-fade-in-down">
                     <div class="bg-red-50 border border-red-100 text-red-600 px-4 py-3 rounded-xl text-sm font-medium shadow-sm flex items-start gap-2">
@@ -225,15 +229,8 @@ onUnmounted(() => {
                 </div>
             </div>
 
-            <div class="mt-8 text-center">
-                <Link href="/" class="text-slate-400 hover:text-slate-600 text-sm font-medium transition-colors">
-                    &larr; Back to Home
-                </Link>
-            </div>
         </div>
     </div>
-    
-    <Footer />
 </template>
 
 <style>
