@@ -20,6 +20,13 @@ Route::get('/', function () {
     return Inertia::render('Index');
 })->name('home');
 
+// The Verification Page (Scanner)
+Route::get('/verify', [FranchiseController::class, 'verify'])->name('verify');
+Route::post('/verify/lookup', [FranchiseController::class, 'lookup'])->name('verify.lookup');
+
+// NEW: Public Franchise Detail View
+Route::get('/franchise-check/{id}', [FranchiseController::class, 'publicShow'])->name('franchises.public_show');
+
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
     

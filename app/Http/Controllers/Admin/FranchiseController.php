@@ -14,6 +14,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Storage;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class FranchiseController extends Controller
 {
@@ -62,23 +64,41 @@ class FranchiseController extends Controller
         ]);
 
         DB::transaction(function () use ($request) {
-            // 1. Create the Franchise Skeleton
+            // 1. Generate QR Code Data and File
+            // Unique identifier for the QR content (e.g., FR-TIMESTAMP-RANDOM)
+            $qrData = 'FR-' . now()->format('Ymd') . '-' . strtoupper(Str::random(6));
+            $qrFilename = 'qr-' . $qrData . '.svg';
+
+            // Ensure the directory exists
+            if (!Storage::disk('public')->exists('qrcodes')) {
+                Storage::disk('public')->makeDirectory('qrcodes');
+            }
+
+            // Generate the SVG content and save it to storage/app/public/qrcodes
+            $qrContent = QrCode::format('svg')
+                            ->size(300)
+                            ->margin(2)
+                            ->generate($qrData);
+                            
+            Storage::disk('public')->put('qrcodes/' . $qrFilename, $qrContent);
+
+            // 2. Create the Franchise Skeleton
             $franchise = Franchise::create([
                 'driver_id' => $request->driver_id,
                 'zone_id' => $request->zone_id,
                 'date_issued' => $request->date_issued,
                 'status' => 'active',
-                'qr_code' => Str::random(10), // Placeholder logic
+                'qr_code' => $qrFilename, // Save filename instead of random string
             ]);
 
-            // 2. Create Initial Ownership Record
+            // 3. Create Initial Ownership Record
             $ownership = Ownership::create([
                 'franchise_id' => $franchise->id,
                 'new_operator_id' => $request->operator_id,
                 'date_transferred' => $request->date_issued,
             ]);
 
-            // 3. Create Initial Active Unit Record
+            // 4. Create Initial Active Unit Record
             $activeUnit = ActiveUnit::create([
                 'franchise_id' => $franchise->id,
                 'new_unit_id' => $request->unit_id,
@@ -86,14 +106,14 @@ class FranchiseController extends Controller
                 'remarks' => 'Initial Unit Registration'
             ]);
 
-            // 4. Update Franchise with pointers
+            // 5. Update Franchise with pointers
             $franchise->update([
                 'ownership_id' => $ownership->id,
                 'active_unit_id' => $activeUnit->id,
             ]);
         });
 
-        return redirect()->back()->with('success', 'Franchise created successfully.');
+        return redirect()->back()->with('success', 'Franchise created and QR code generated successfully.');
     }
 
     public function show(Franchise $franchise)
@@ -175,4 +195,46 @@ class FranchiseController extends Controller
 
         return redirect()->back()->with('success', 'Unit changed successfully.');
     }
+
+    public function verify()
+    {
+        return Inertia::render('Verify');
+    }
+
+public function publicShow($id)
+{
+    // Fetch franchise with relationships needed for display AND status calculation
+    $franchise = Franchise::with([
+        'currentOwnership.newOwner.user',
+        'currentActiveUnit.newUnit.make',
+        'driver.user',
+        'zone',
+        'assessments.payments' // Required for the getStatusAttribute to work
+    ])->findOrFail($id);
+
+    return Inertia::render('PublicShow', [
+        'franchise' => $franchise
+    ]);
+}
+
+// Update the lookup method to redirect to the PUBLIC route
+public function lookup(Request $request)
+{
+    $request->validate([
+        'qr_code' => 'required|string'
+    ]);
+
+    // Reconstruct filename
+    $scannedCode = $request->qr_code;
+    $filename = 'qr-' . $scannedCode . '.svg';
+
+    $franchise = Franchise::where('qr_code', $filename)->first();
+
+    if (!$franchise) {
+        return redirect()->back()->withErrors(['qr_code' => 'Franchise not found or invalid QR code.']);
+    }
+
+    // CHANGED: Redirect to the public show page
+    return redirect()->route('franchises.public_show', $franchise->id);
+}
 }

@@ -220,7 +220,7 @@ const driverName = computed(() => {
                 <div class="mt-6 pt-6 border-t border-gray-100 flex items-center justify-between">
                      <div class="text-xs text-gray-400">Scan for Verification</div>
                      <div class="bg-white p-1 rounded border shadow-sm">
-                        <img v-if="franchise.qr_code" :src="`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${franchise.qr_code}`" class="w-16 h-16" alt="QR Code" />
+                        <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="w-16 h-16" alt="QR Code" />
                         <div v-else class="w-16 h-16 bg-gray-100 flex items-center justify-center text-[8px] text-gray-400">NO QR</div>
                      </div>
                 </div>
