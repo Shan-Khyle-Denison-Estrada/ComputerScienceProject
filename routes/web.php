@@ -12,6 +12,7 @@ use App\Http\Controllers\Admin\UnitController;
 use App\Http\Controllers\Admin\UnitMakeController;
 use App\Http\Controllers\Admin\FranchiseController;
 use App\Http\Controllers\Franchise\DashboardController;
+use App\Http\Controllers\Admin\AdminDashboardController;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -31,9 +32,7 @@ Route::get('/franchise-check/{id}', [FranchiseController::class, 'publicShow'])-
 Route::middleware(['auth', 'role:admin'])->group(function () {
     
     // 1. Dashboard
-    Route::get('/admin/dashboard', function () {
-        return Inertia::render('Admin/Dashboard');
-    })->name('admin.dashboard');
+Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
     // 2. Zone Management
     Route::resource('admin/zones', ZoneController::class)

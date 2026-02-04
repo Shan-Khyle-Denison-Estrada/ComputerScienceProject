@@ -19,6 +19,11 @@ class Assessment extends Model
         'date_approved'
     ];
 
+    public function franchise()
+    {
+        return $this->belongsTo(Franchise::class);
+    }
+
     public function particulars()
     {
         return $this->belongsToMany(Particular::class, 'assessment_particulars')
