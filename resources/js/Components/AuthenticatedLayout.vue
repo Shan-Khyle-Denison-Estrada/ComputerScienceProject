@@ -7,7 +7,7 @@ const page = usePage();
 const user = computed(() => page.props.auth.user);
 
 // State for the sidebar
-const isSidebarOpen = ref(true); 
+const isSidebarOpen = ref(false); 
 
 // State for the User Dropdown
 const isUserDropdownOpen = ref(false);
