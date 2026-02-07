@@ -109,10 +109,10 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
-                            <span class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-600" 
+                            <!-- <span class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-600" 
                                   :class="props.stats.franchise_growth >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'">
                                 {{ props.stats.franchise_growth }}%
-                            </span>
+                            </span> -->
                         </div>
                         <div>
                             <span class="text-3xl font-black text-slate-800">{{ props.stats.total_franchises }}</span>
@@ -144,7 +144,7 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             </span>
                         </div>
                         <div>
-                            <span class="text-3xl font-black text-slate-800">{{ formatCurrency(props.stats.total_revenue) }}</span>
+                            <span class="text-3xl font-medium text-slate-800">{{ formatCurrency(props.stats.total_revenue) }}</span>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Collections</p>
                         </div>
                     </div>
@@ -169,7 +169,7 @@ watch(() => props.chart, () => initChart(), { deep: true });
                 <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-0 flex flex-col overflow-hidden">
                     <div class="p-6 border-b border-gray-50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-700">Recent Transactions</h3>
-                        <Link href="/admin/payments" class="text-xs font-bold text-indigo-500 hover:text-indigo-600">View All</Link>
+                        <Link href="/payments" class="text-xs font-bold text-indigo-500 hover:text-indigo-600">View All</Link>
                     </div>
                     
                     <div class="flex-1 overflow-y-auto custom-scrollbar">
