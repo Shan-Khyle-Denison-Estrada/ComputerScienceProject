@@ -498,26 +498,35 @@ const getDriverName = (driver) => {
 
 /* Print Specific Styles */
 @media print {
-    /* Hide everything in body... */
+    /* 1. Hide everything visually */
     body * {
         visibility: hidden;
     }
 
-    /* ...Except the print area and its children */
+    /* 2. Collapse the layout of the main screen content to prevent scroll/layout issues */
+    .screen-content, nav, header, footer {
+        display: none !important;
+    }
+
+    /* 3. Make print area visible and taking up layout */
     #print-area, #print-area * {
         visibility: visible;
     }
 
-    /* Position the print area absolutely to take up the page */
+    /* 4. Position fixed ensures it starts at 0,0 of the paper, regardless of screen scroll */
     #print-area {
-        display: block !important;
-        position: absolute;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        position: fixed;
         left: 0;
         top: 0;
-        width: 100%;
+        width: 100vw;
+        height: 100vh;
         margin: 0;
         padding: 0;
         background: white;
+        z-index: 9999;
     }
 
     /* FORCE background colors and images to print */
