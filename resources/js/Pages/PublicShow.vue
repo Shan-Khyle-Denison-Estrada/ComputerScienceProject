@@ -6,249 +6,170 @@ const props = defineProps({
     franchise: Object
 });
 
-// --- 1. AUTOMATIC COLOR CONVERSION ---
-
+// --- HELPER: Get Color ---
 function getHexFromColorString(colorString) {
-    if (!colorString) return '#475569'; 
+    if (!colorString) return '#3b82f6'; // Default Blue
     if (colorString.startsWith('#')) return colorString;
 
     try {
         const ctx = document.createElement("canvas").getContext("2d");
         ctx.fillStyle = colorString;
-        const computed = ctx.fillStyle; 
-        if (computed === '#000000' && colorString.toLowerCase() !== 'black') {
-            return '#475569'; 
-        }
-        return computed;
+        return ctx.fillStyle === '#000000' && colorString.toLowerCase() !== 'black' 
+            ? '#3b82f6' 
+            : ctx.fillStyle;
     } catch (e) {
-        return '#475569';
+        return '#3b82f6';
     }
 }
 
-const zoneHex = computed(() => {
-    return getHexFromColorString(props.franchise.zone?.color);
-});
+const zoneColor = computed(() => getHexFromColorString(props.franchise.zone?.color));
 
-
-// --- 2. GRADIENT MATH ---
-
-const lightenDarkenColor = (col, amt) => {
-    let usePound = false;
-    if (col[0] === "#") {
-        col = col.slice(1);
-        usePound = true;
-    }
-    
-    if (col.length !== 6) return col; 
-
-    let num = parseInt(col, 16);
-    let r = (num >> 16) + amt;
-    let g = ((num >> 8) & 0x00FF) + amt;
-    let b = (num & 0x0000FF) + amt;
-
-    r = Math.max(0, Math.min(255, r));
-    g = Math.max(0, Math.min(255, g));
-    b = Math.max(0, Math.min(255, b));
-
-    return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
+// Helper for Driver Name
+const getDriverName = (driver) => {
+    if (driver.user) return `${driver.user.last_name}, ${driver.user.first_name}`;
+    if (driver.first_name && driver.last_name) return `${driver.last_name}, ${driver.first_name}`;
+    return 'Unknown Name';
 };
 
-// --- 3. DYNAMIC STYLES ---
-
-const backgroundStyle = computed(() => {
-    const primary = zoneHex.value;
-    const lighter = lightenDarkenColor(primary, 40);
-    const darker = lightenDarkenColor(primary, -60);
-
-    return {
-        background: `linear-gradient(135deg, ${lighter} 0%, ${primary} 40%, ${darker} 100%)`
-    };
-});
-
-const zoneTextStyle = computed(() => ({
-    color: zoneHex.value
-}));
-
-// --- 4. UTILITIES ---
-
-const toSentenceCase = (str) => {
-    if (!str) return '';
-    return str.toLowerCase().replace(/(^\w{1})|(\s+\w{1})/g, letter => letter.toUpperCase());
-};
-
-const status = computed(() => {
-    const s = (props.franchise.status || '').toLowerCase();
-    switch (s) {
-        case 'renewed': 
-            return { bg: 'bg-emerald-100', text: 'text-emerald-800', border: 'border-emerald-200', dot: 'bg-emerald-500', label: 'Renewed' };
-        case 'pending renewal': 
-            return { bg: 'bg-amber-100', text: 'text-amber-800', border: 'border-amber-200', dot: 'bg-amber-500', label: 'Pending Renewal' };
-        case 'terminated': 
-            return { bg: 'bg-rose-100', text: 'text-rose-800', border: 'border-rose-200', dot: 'bg-rose-600', label: 'Terminated' };
-        default: 
-            return { bg: 'bg-slate-100', text: 'text-slate-800', border: 'border-slate-200', dot: 'bg-slate-500', label: s || 'Unknown' };
-    }
-});
-
-const currentTimestamp = new Date().toLocaleString('en-US', {
-    month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit'
-});
+const currentUnit = computed(() => props.franchise.current_active_unit?.new_unit);
+const currentOwner = computed(() => props.franchise.current_ownership?.new_owner);
 </script>
 
 <template>
-    <Head :title="`Franchise ${franchise.id}`" />
+    <Head :title="`Franchise ${franchise.id} - Public Record`" />
 
-    <div class="h-screen w-full bg-slate-900 font-sans text-slate-600 flex flex-col relative overflow-hidden transition-colors duration-700 ease-in-out" 
-         :style="backgroundStyle">
+    <div class="h-screen w-screen bg-gray-100 overflow-hidden relative font-sans text-gray-900 selection:bg-blue-100 selection:text-blue-900 flex flex-col items-center justify-center">
         
-        <div class="absolute inset-0 opacity-20 pointer-events-none mix-blend-overlay"
-             style="background-image: url('data:image/svg+xml,%3Csvg viewBox=%220 0 200 200%22 xmlns=%22http://www.w3.org/2000/svg%22%3E%3Cfilter id=%22noise%22%3E%3CfeTurbulence type=%22fractalNoise%22 baseFrequency=%220.65%22 numOctaves=%223%22 stitchTiles=%22stitch%22/%3E%3C/filter%3E%3Crect width=%22100%25%22 height=%22100%25%22 filter=%22url(%23noise)%22 opacity=%221%22/%3E%3C/svg%3E');">
-        </div>
-        <div class="absolute top-[-20%] left-[-10%] w-[50vh] h-[50vh] bg-white opacity-10 rounded-full blur-[120px] pointer-events-none"></div>
-        <div class="absolute bottom-[-20%] right-[-10%] w-[60vh] h-[60vh] bg-black opacity-20 rounded-full blur-[100px] pointer-events-none"></div>
-
-        <nav class="relative z-20 w-full px-6 py-6 flex justify-between items-center text-white flex-shrink-0">
-            <Link href="/" class="flex items-center gap-2 group">
-                <div class="bg-white/10 group-hover:bg-white/20 transition-colors p-2 rounded-full backdrop-blur-md border border-white/10">
-                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                </div>
-                <span class="text-sm font-bold tracking-wide shadow-sm">Home</span>
-            </Link>
-            <div class="flex items-center gap-2 opacity-90">
-                <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse shadow-[0_0_10px_rgba(74,222,128,0.8)]"></div>
-                <span class="text-[10px] font-bold uppercase tracking-widest text-white/90">Live Check</span>
+        <div class="absolute top-0 left-0 w-full h-[45%] overflow-hidden z-0">
+            <div class="absolute inset-0 transition-colors duration-700 ease-in-out" 
+                 :style="{ backgroundColor: zoneColor }">
             </div>
-        </nav>
+            <div class="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+            <div class="absolute inset-0 bg-gradient-to-b from-black/10 to-black/50"></div>
+        </div>
 
-        <main class="relative z-10 flex-grow overflow-y-auto px-4 w-full">
+        <div class="relative z-10 w-full max-w-md px-4 h-full max-h-screen flex flex-col justify-center">
             
-            <div class="min-h-full flex flex-col items-center justify-center py-8 pb-20">
+            <div class="text-center text-white mb-4 shrink-0">
+                <div class="uppercase tracking-widest text-[10px] font-bold opacity-80">Official Public Record</div>
+                <h1 class="text-3xl font-black tracking-tight drop-shadow-md">
+                    FRANCHISE #{{ franchise.id }}
+                </h1>
+                <div class="mt-1 inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full border border-white/30 text-[10px] font-bold uppercase tracking-wide shadow-sm">
+                    <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>
+                    {{ franchise.status }}
+                </div>
+            </div>
+
+            <div class="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col w-full max-h-[75vh]">
                 
-                <div class="text-center mb-6 md:mb-8 mt-2">
-                    <p class="text-xs font-bold uppercase tracking-[0.3em] text-white mb-3 shadow-sm drop-shadow-md">Official Franchise ID</p>
-                    
-                    <div class="inline-block px-6 py-2 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 shadow-2xl">
-                        <h1 class="text-5xl md:text-6xl font-black font-mono tracking-tighter text-white drop-shadow-lg">
-                            FR-{{ franchise.id.toString().padStart(4, '0') }}
-                        </h1>
-                    </div>
-                </div>
+                <div class="h-1.5 w-full shrink-0" :style="{ backgroundColor: zoneColor }"></div>
 
-                <div class="w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden animate-fade-in-up transform transition-all">
+                <div class="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin scrollbar-thumb-gray-200">
                     
-                    <div class="px-8 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/80">
-                        <span class="text-[10px] font-bold uppercase tracking-widest text-slate-400">Current Status</span>
-                        
-                        <div class="flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm" :class="[status.bg, status.border]">
-                            <span class="w-2 h-2 rounded-full" :class="status.dot"></span>
-                            <span class="text-xs font-extrabold uppercase tracking-wide" :class="status.text">
-                                {{ status.label }}
-                            </span>
+                    <div class="text-center">
+                        <div class="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-1">Zone Assignment</div>
+                        <h2 class="text-xl font-black uppercase mb-4 leading-tight" :style="{ color: zoneColor }">
+                            {{ franchise.zone?.description || 'No Zone Assigned' }}
+                        </h2>
+
+                        <div class="bg-gray-50 rounded-lg p-4 border border-gray-100 relative overflow-hidden group">
+                            <div class="absolute top-0 right-0 p-1 opacity-5">
+                                <!-- <svg class="w-16 h-16" fill="currentColor" viewBox="0 0 24 24"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg> -->
+                            </div>
+                            <div class="relative z-10">
+                                <div class="text-[10px] uppercase text-gray-500 mb-0.5">Plate Number</div>
+                                <div class="text-4xl font-mono font-bold text-gray-900 tracking-tighter">
+                                    {{ currentUnit ? currentUnit.plate_number : 'N/A' }}
+                                </div>
+                                <div class="text-xs text-gray-500 font-medium mt-1">
+                                    {{ currentUnit?.make?.name }} • {{ currentUnit?.model_year }}
+                                </div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="flex flex-col md:flex-row divide-y md:divide-y-0 md:divide-x divide-slate-100">
-                        
-                        <div class="flex-1 p-8 bg-white">
-                            
-                            <div class="mb-8">
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Plate Number</p>
-                                <h2 class="text-5xl font-bold text-slate-900 font-mono tracking-tighter leading-none">
-                                    {{ franchise.current_active_unit?.new_unit?.plate_number || 'NO PLATE' }}
-                                </h2>
-                                <div class="mt-2 inline-block px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 uppercase border border-slate-200">
-                                    {{ franchise.current_active_unit?.new_unit?.make?.name || 'Unknown Unit' }}
-                                </div>
-                            </div>
+                    <div>
+                        <div class="flex items-center gap-2 mb-3 sticky top-0 bg-white z-10 py-1">
+                            <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
+                            <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide">Authorized Drivers</h3>
+                        </div>
 
-                            <div>
-                                <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1">Zone Assignment</p>
-                                <h3 class="text-3xl font-black tracking-tight" :style="zoneTextStyle">
-                                    {{ toSentenceCase(franchise.zone?.description) || 'Unassigned' }}
-                                </h3>
+                        <div v-if="franchise.driver_assignments && franchise.driver_assignments.length > 0" class="space-y-2">
+                            <div v-for="assignment in franchise.driver_assignments" :key="assignment.id" 
+                                 class="flex items-center gap-3 bg-white border border-gray-100 rounded-lg p-2.5 shadow-sm">
                                 
-                                <div v-if="franchise.zone?.coverage?.length" class="mt-4">
-                                    <p class="text-[9px] font-bold uppercase tracking-wider text-slate-400 mb-2">Authorized Coverage</p>
-                                    <div class="grid grid-cols-2 gap-2">
-                                        <span v-for="(brgy, i) in (franchise.zone?.coverage || [])" :key="i"
-                                              class="text-[10px] font-semibold px-2 py-1 bg-slate-50 text-slate-600 rounded border border-slate-100 text-center truncate shadow-sm">
-                                            {{ brgy }}
-                                        </span>
+                                <div class="h-9 w-9 rounded-full bg-gray-100 flex-shrink-0 flex items-center justify-center border border-gray-200 overflow-hidden text-gray-500 font-bold text-sm">
+                                    <img v-if="assignment.driver.user_photo" :src="`/storage/${assignment.driver.user_photo}`" class="h-full w-full object-cover" />
+                                    <span v-else>{{ assignment.driver.first_name.charAt(0) }}</span>
+                                </div>
+                                
+                                <div class="min-w-0">
+                                    <div class="font-bold text-sm text-gray-900 truncate">
+                                        {{ getDriverName(assignment.driver) }}
+                                    </div>
+                                    <div class="text-[10px] text-gray-500 font-mono flex items-center gap-1">
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                                        LIC: {{ assignment.driver.license_number }}
                                     </div>
                                 </div>
                             </div>
                         </div>
-
-                        <div class="w-full md:w-80 bg-slate-50/50 flex flex-col">
-                            
-                            <div class="p-6 flex-1 hover:bg-white transition-colors duration-200 border-b md:border-b-0 border-slate-100 group">
-                                <div class="flex items-center gap-4 h-full">
-                                    <div class="w-12 h-12 rounded-full bg-white border border-slate-200 group-hover:border-slate-300 flex items-center justify-center text-sm font-bold text-slate-400 shadow-sm transition-colors flex-shrink-0">
-                                        {{ franchise.driver?.user?.first_name?.[0] || 'D' }}
-                                    </div>
-                                    <div>
-                                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-slate-500 mb-0.5">Driver</p>
-                                        <p class="text-base font-bold text-slate-900 leading-tight">
-                                            {{ franchise.driver?.user?.last_name }}, {{ franchise.driver?.user?.first_name }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div class="hidden md:block w-full h-px bg-slate-100"></div>
-
-                            <div class="p-6 flex-1 hover:bg-white transition-colors duration-200 group">
-                                <div class="flex items-center gap-4 h-full">
-                                    <div class="w-12 h-12 rounded-full bg-white border border-slate-200 group-hover:border-slate-300 flex items-center justify-center text-sm font-bold text-slate-400 shadow-sm transition-colors flex-shrink-0">
-                                        {{ franchise.current_ownership?.new_owner?.user?.first_name?.[0] || 'O' }}
-                                    </div>
-                                    <div>
-                                        <p class="text-[10px] font-bold uppercase tracking-widest text-slate-400 group-hover:text-slate-500 mb-0.5">Owner</p>
-                                        <p class="text-base font-bold text-slate-900 leading-tight">
-                                            {{ franchise.current_ownership?.new_owner?.user?.last_name }}, {{ franchise.current_ownership?.new_owner?.user?.first_name }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
+                        
+                        <div v-else class="bg-gray-50 rounded-lg p-3 text-center border border-dashed border-gray-200">
+                            <p class="text-xs text-gray-400 italic">No drivers assigned.</p>
                         </div>
                     </div>
 
-                    <div class="px-8 py-3 bg-slate-50 border-t border-slate-200 flex justify-between items-center">
-                        <p class="text-[10px] text-slate-400 font-medium font-mono">
-                            {{ currentTimestamp }}
-                        </p>
-                        <div class="flex items-center gap-1.5 opacity-75">
-                            <svg class="w-3 h-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
-                            <span class="text-[10px] font-bold uppercase text-slate-400">Secure</span>
-                        </div>
+                    <div class="pt-4 border-t border-gray-100">
+                         <div class="flex justify-between items-start">
+                            <div class="min-w-0 pr-2">
+                                <div class="text-[10px] uppercase text-gray-400 font-bold tracking-widest mb-0.5">Franchise Owner</div>
+                                <div class="text-sm font-bold text-gray-800 break-words">
+                                    {{ currentOwner ? `${currentOwner.user.last_name}, ${currentOwner.user.first_name}` : 'No Active Owner' }}
+                                </div>
+                                <div v-if="currentOwner?.user?.contact_number" class="text-xs text-gray-500 mt-1 flex items-center gap-1">
+                                    <svg class="w-3 h-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    <span class="truncate">{{ currentOwner.user.contact_number }}</span>
+                                </div>
+                            </div>
+                            <div class="text-right flex-shrink-0">
+                                <div class="text-[10px] font-mono text-gray-400">TIN: {{ currentOwner ? currentOwner.tin_number : '---' }}</div>
+                            </div>
+                         </div>
                     </div>
 
                 </div>
 
-                <div class="mt-8">
-                    <Link href="/verify" class="group flex items-center gap-3 px-6 py-3 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 backdrop-blur-md transition-all shadow-lg hover:shadow-xl">
-                        <svg class="w-5 h-5 text-white/80 group-hover:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4h-4v-4H8m1-4h4m-4 4h4m6-4h2v2h-2v-2z" class="hidden" />
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h6v6H3V3zm12 0h6v6h-6V3zm0 12h6v6h-6v-6zM3 15h6v6H3v-6z" />
-                        </svg>
-                        <span class="text-sm font-bold text-white group-hover:text-white tracking-wide">Scan Another ID</span>
+                <div class="bg-gray-50 p-3 border-t border-gray-100 text-center shrink-0">
+                    <Link href="/verify" class="inline-flex items-center justify-center gap-2 text-[10px] font-bold text-blue-600 hover:text-blue-800 uppercase tracking-wider transition">
+                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        Scan Another QR
                     </Link>
                 </div>
 
             </div>
-        </main>
+        </div>
+
+        <div class="absolute bottom-2 w-full text-center z-0">
+             <p class="text-[10px] text-gray-400/80">System-generated public record.</p>
+        </div>
+
     </div>
 </template>
 
-<style>
-@keyframes fadeInUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+<style scoped>
+/* Custom Scrollbar for the internal container */
+.scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
 }
-.animate-fade-in-up {
-    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+.scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+}
+.scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #e5e7eb;
+    border-radius: 20px;
 }
 </style>

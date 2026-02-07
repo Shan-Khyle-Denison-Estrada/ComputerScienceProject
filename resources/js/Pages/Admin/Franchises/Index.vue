@@ -17,9 +17,17 @@ const props = defineProps({
     filters: Object
 });
 
+// --- MODAL STATES ---
 const showAddModal = ref(false);
+const showDriversModal = ref(false);
+
+// --- SEARCH STATE ---
 const search = ref(props.filters.search || '');
 
+// --- SELECTED DATA FOR MODALS ---
+const selectedDrivers = ref([]);
+
+// --- FORM ---
 const form = useForm({
     operator_id: '',
     unit_id: '',
@@ -28,7 +36,7 @@ const form = useForm({
     date_issued: new Date().toISOString().split('T')[0],
 });
 
-// Helper to format Driver Name robustly
+// --- HELPERS ---
 const getDriverName = (driver) => {
     if (driver.user) {
         return `${driver.user.last_name}, ${driver.user.first_name}`;
@@ -39,6 +47,33 @@ const getDriverName = (driver) => {
     return driver.name || 'Unknown Driver';
 };
 
+// NEW: Helper to resolve image paths correctly
+const getDriverPhoto = (driver) => {
+    // 1. Check for specific driver photo uploaded manually
+    if (driver.user_photo) {
+        // If it's already a full URL (e.g. S3), return it
+        if (driver.user_photo.startsWith('http')) {
+            return driver.user_photo;
+        }
+        // Otherwise, assume local storage and prepend /storage/
+        return `/storage/${driver.user_photo}`;
+    }
+    
+    // 2. Fallback to the User model's profile photo (Jetstream/default)
+    if (driver.user?.profile_photo_url) {
+        return driver.user.profile_photo_url;
+    }
+
+    return null;
+};
+
+const openDriversModal = (assignments) => {
+    // Extract the driver object from the pivot/assignment relationship
+    selectedDrivers.value = assignments.map(a => a.driver);
+    showDriversModal.value = true;
+};
+
+// --- ACTIONS ---
 const submitForm = () => {
     form.post(route('admin.franchises.store'), {
         onSuccess: () => {
@@ -84,7 +119,7 @@ const handleSearch = () => {
                             <th class="px-6 py-4">Franchise ID</th>
                             <th class="px-6 py-4">Current Owner</th>
                             <th class="px-6 py-4">Assigned Unit</th>
-                            <th class="px-6 py-4">Details</th>
+                            <th class="px-6 py-4">Assigned Drivers</th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -120,14 +155,21 @@ const handleSearch = () => {
                                 </div>
                                 <div v-else class="text-gray-400 italic">No Unit</div>
                             </td>
+                            
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                <div v-if="franchise.driver_assignments && franchise.driver_assignments.length > 0" class="flex flex-col gap-1">
-                                    <span v-for="assignment in franchise.driver_assignments" :key="assignment.id" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
-                                        {{ assignment.driver.user ? assignment.driver.user.last_name : assignment.driver.last_name }}
-                                    </span>
-                                </div>
+                                <button 
+                                    v-if="franchise.driver_assignments && franchise.driver_assignments.length > 0"
+                                    @click="openDriversModal(franchise.driver_assignments)"
+                                    class="inline-flex items-center px-3 py-1.5 border border-gray-300 shadow-sm text-xs font-medium rounded text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition"
+                                >
+                                    <svg class="mr-2 -ml-0.5 h-4 w-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                                    </svg>
+                                    View Drivers ({{ franchise.driver_assignments.length }})
+                                </button>
                                 <span v-else class="text-gray-400 italic text-xs">Unassigned</span>
                             </td>
+
                             <td class="px-6 py-4 text-right">
                                 <Link :href="route('admin.franchises.show', franchise.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors">
                                     View Details &rarr;
@@ -221,6 +263,83 @@ const handleSearch = () => {
                         <PrimaryButton :disabled="form.processing">Issue Franchise</PrimaryButton>
                     </div>
                 </form>
+            </div>
+        </Modal>
+
+        <Modal :show="showDriversModal" @close="showDriversModal = false">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">Assigned Drivers</h2>
+                        <p class="text-sm text-gray-500">Currently assigned drivers for this franchise.</p>
+                    </div>
+                    <button @click="showDriversModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-h-[60vh] overflow-y-auto p-1">
+                    <div 
+                        v-for="driver in selectedDrivers" 
+                        :key="driver.id" 
+                        class="bg-white border rounded-lg shadow-sm hover:shadow-md transition-shadow p-4 flex flex-col gap-2"
+                    >
+                        <div class="flex items-start gap-3">
+                            <div class="flex-shrink-0 h-12 w-12 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-bold text-lg overflow-hidden border border-blue-200">
+                                <img 
+                                    v-if="getDriverPhoto(driver)" 
+                                    :src="getDriverPhoto(driver)" 
+                                    class="h-full w-full object-cover" 
+                                    alt="Driver Photo" 
+                                />
+                                <span v-else>
+                                    {{ getDriverName(driver).charAt(0) }}
+                                </span>
+                            </div>
+                            
+                            <div class="flex-1 min-w-0">
+                                <h3 class="text-sm font-bold text-gray-900 truncate">
+                                    {{ getDriverName(driver) }}
+                                </h3>
+                                <div class="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                    <svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                                    </svg>
+                                    {{ driver.contact_number || 'No contact info' }}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border-t pt-2 mt-1 space-y-1">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">License:</span>
+                                <span class="font-mono font-medium text-gray-700">{{ driver.license_number || 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-gray-500">Status:</span>
+                                <span class="uppercase font-bold text-[10px] px-1.5 py-0.5 rounded"
+                                    :class="{
+                                        'bg-green-100 text-green-700': driver.status === 'active',
+                                        'bg-gray-100 text-gray-600': driver.status !== 'active'
+                                    }">
+                                    {{ driver.status || 'Unknown' }}
+                                </span>
+                            </div>
+                             <div class="flex justify-between text-xs" v-if="driver.city || driver.barangay">
+                                <span class="text-gray-500">Location:</span>
+                                <span class="text-gray-700 truncate max-w-[120px] text-right" :title="`${driver.barangay || ''}, ${driver.city || ''}`">
+                                    {{ driver.barangay ? driver.barangay + ',' : '' }} {{ driver.city }}
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end border-t pt-4">
+                    <SecondaryButton @click="showDriversModal = false">Close</SecondaryButton>
+                </div>
             </div>
         </Modal>
 
