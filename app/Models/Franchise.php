@@ -38,6 +38,13 @@ class Franchise extends Model
         return $this->hasManyThrough(Driver::class, DriverAssignment::class, 'franchise_id', 'id', 'id', 'driver_id');
     }
 
+    // This fetches the single "current" driver (the latest one assigned)
+    public function driver()
+    {
+        return $this->hasOneThrough(Driver::class, DriverAssignment::class, 'franchise_id', 'id', 'id', 'driver_id')
+            ->latest('driver_assignments.created_at');
+    }
+
     // --- Dynamic Status Logic ---
     public function getStatusAttribute()
     {

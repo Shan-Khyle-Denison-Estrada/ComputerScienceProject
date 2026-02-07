@@ -18,15 +18,12 @@ class DashboardController extends Controller
         $operator = $user->operator; 
 
         if (!$operator) {
-            // Handle edge case where user has role but no operator record
             return Inertia::render('Franchise/Dashboard', [
                 'hasFranchise' => false
             ]);
         }
 
         // 2. Find the *Active* Franchise for this Operator
-        // We look for the latest ownership record where this operator is the 'new_owner'
-        // and link it to the franchise.
         $ownership = Ownership::where('new_operator_id', $operator->id)
             ->latest()
             ->with('franchise')
@@ -43,13 +40,14 @@ class DashboardController extends Controller
 
         // 3. Load all deep relationships needed for the dashboard
         $franchise->load([
-            'currentActiveUnit.newUnit.make', // Unit details
-            'driver.user',                         // Current driver
+            'currentActiveUnit.newUnit.make', // Current Unit
+            'unitHistory.newUnit.make',       // Unit History
+            'driver.user',                    // Current Driver
+            'driverAssignments.driver.user',  // Driver History
+            'ownershipHistory.newOwner.user', // OWNERSHIP HISTORY (Added)
+            'ownershipHistory.previousOwner.user', 
             'zone',                           // Zone
-            'assessments.payments',           // Payment History (via Assessments)
-            // Driver History isn't directly a table, usually inferred or logged. 
-            // For now, we will just show the current driver. 
-            // If you have a driver_history table, load it here.
+            'assessments.payments',           // Payment History
         ]);
 
         // Flatten payments for the table
