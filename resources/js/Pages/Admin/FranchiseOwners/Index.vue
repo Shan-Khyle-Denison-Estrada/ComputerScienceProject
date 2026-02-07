@@ -343,7 +343,7 @@ const resetFilters = () => {
                         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Personal Information</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div>
-                                <InputLabel>First Name</InputLabel>
+                                <InputLabel>First Name<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.first_name" required />
                             </div>
                             <div>
@@ -351,7 +351,7 @@ const resetFilters = () => {
                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.middle_name" />
                             </div>
                             <div>
-                                <InputLabel>Last Name</InputLabel>
+                                <InputLabel>Last Name<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.last_name" required />
                             </div>
                         </div>
@@ -359,15 +359,15 @@ const resetFilters = () => {
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <InputLabel>Email Address</InputLabel>
+                            <InputLabel>Email Address<span class="text-red-600"> *</span></InputLabel>
                             <TextInput type="email" class="mt-1 block w-full" v-model="addForm.email" required />
                         </div>
                         <div>
-                            <InputLabel>Contact Number</InputLabel>
+                            <InputLabel>Contact Number<span class="text-red-600"> *</span></InputLabel>
                             <TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" />
                         </div>
                         <div class="md:col-span-2">
-                             <InputLabel>TIN Number <span class="text-gray-400 text-xs">(Operator ID)</span></InputLabel>
+                             <InputLabel>TIN Number <span class="text-red-600"> *</span></InputLabel>
                              <TextInput type="text" class="mt-1 block w-full font-mono" v-model="addForm.tin_number" placeholder="000-000-000-000" />
                         </div>
                     </div>
@@ -376,12 +376,12 @@ const resetFilters = () => {
                         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3 mt-2">Address</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div class="md:col-span-3">
-                                <InputLabel>Street Address</InputLabel>
+                                <InputLabel>Street Address<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street_address" required />
                             </div>
                             
                             <div class="relative">
-                                <InputLabel>Barangay</InputLabel>
+                                <InputLabel>Barangay<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput 
                                     type="text" 
                                     class="mt-1 block w-full" 
@@ -406,7 +406,7 @@ const resetFilters = () => {
                             </div>
 
                             <div class="md:col-span-2">
-                                <InputLabel>City</InputLabel>
+                                <InputLabel>City<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" required />
                             </div>
                         </div>
@@ -415,11 +415,11 @@ const resetFilters = () => {
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                                <InputLabel>Password</InputLabel>
+                                <InputLabel>Password<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="password" class="mt-1 block w-full" v-model="addForm.password" required />
                             </div>
                             <div>
-                                <InputLabel>Confirm Password</InputLabel>
+                                <InputLabel>Confirm Password<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="password" class="mt-1 block w-full" v-model="addForm.password_confirmation" required />
                             </div>
                         </div>

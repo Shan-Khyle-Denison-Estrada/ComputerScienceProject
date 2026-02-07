@@ -591,7 +591,7 @@ const deleteParticular = (id) => {
                     
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div>
-                            <InputLabel>Franchise <span class="text-gray-400 text-xs">(Optional)</span></InputLabel>
+                            <InputLabel>Franchise <span class="text-red-600"> *</span></InputLabel>
                             <select 
                                 v-model="addForm.franchise_id" 
                                 class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"

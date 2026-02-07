@@ -350,7 +350,7 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                 <form @submit.prevent="submitForm" class="space-y-5">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="md:col-span-2">
-                            <InputLabel>Unit Make (Brand)</InputLabel>
+                            <InputLabel>Unit Make (Brand)<span class="text-red-600"> *</span></InputLabel>
                             <select v-model="form.make_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                                 <option value="" disabled>Select Make</option>
                                 <option v-for="make in unitMakes" :key="make.id" :value="make.id">
@@ -359,11 +359,11 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                             </select>
                         </div>
                         <div>
-                            <InputLabel>Model Year</InputLabel>
+                            <InputLabel>Model Year<span class="text-red-600"> *</span></InputLabel>
                             <TextInput type="number" class="mt-1 block w-full" v-model="form.model_year" placeholder="e.g. 2023" required />
                         </div>
                         <div>
-                            <InputLabel>CR Number</InputLabel>
+                            <InputLabel>CR Number<span class="text-red-600"> *</span></InputLabel>
                             <TextInput type="text" class="mt-1 block w-full" v-model="form.cr_number" placeholder="Certificate of Reg." />
                         </div>
                     </div>
@@ -372,22 +372,22 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                         <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Identification Numbers</h3>
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
                             <div>
-                                <InputLabel>Plate Number</InputLabel>
+                                <InputLabel>Plate Number<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full font-mono uppercase" v-model="form.plate_number" required />
                             </div>
                             <div>
-                                <InputLabel>Motor Number</InputLabel>
+                                <InputLabel>Motor Number<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full uppercase" v-model="form.motor_number" required />
                             </div>
                             <div>
-                                <InputLabel>Chassis Number</InputLabel>
+                                <InputLabel>Chassis Number<span class="text-red-600"> *</span></InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full uppercase" v-model="form.chassis_number" required />
                             </div>
                         </div>
                     </div>
 
                     <div>
-                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Unit Photos</h3>
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Unit Photos<span class="text-red-600"> *</span></h3>
                         <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                             <div v-for="side in ['front', 'back', 'left', 'right']" :key="side" class="text-center">
                                 <div class="relative w-full aspect-square bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg flex flex-col items-center justify-center overflow-hidden hover:border-blue-400 transition-colors">

@@ -213,7 +213,7 @@ const handleSearch = () => {
 
                 <form @submit.prevent="submitForm" class="space-y-4">
                     <div>
-                        <InputLabel>Franchise Owner (Operator)</InputLabel>
+                        <InputLabel>Franchise Owner (Operator)<span class="text-red-600"> *</span></InputLabel>
                         <select v-model="form.operator_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                             <option value="" disabled>Select Operator</option>
                             <option v-for="op in operators" :key="op.id" :value="op.id">
@@ -223,7 +223,7 @@ const handleSearch = () => {
                     </div>
 
                     <div>
-                        <InputLabel>Assign Unit</InputLabel>
+                        <InputLabel>Assign Unit<span class="text-red-600"> *</span></InputLabel>
                         <select v-model="form.unit_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                             <option value="" disabled>Select Unit</option>
                             <option v-for="u in units" :key="u.id" :value="u.id">
@@ -244,7 +244,7 @@ const handleSearch = () => {
                             <p v-if="drivers.length === 0" class="text-xs text-red-500 mt-1">No drivers available.</p>
                         </div>
                         <div>
-                            <InputLabel>Zone</InputLabel>
+                            <InputLabel>Zone<span class="text-red-600"> *</span></InputLabel>
                             <select v-model="form.zone_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                                 <option value="" disabled>Select Zone</option>
                                 <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.description }}</option>
@@ -254,7 +254,7 @@ const handleSearch = () => {
                     </div>
 
                     <div>
-                        <InputLabel>Date Issued</InputLabel>
+                        <InputLabel>Date Issued<span class="text-red-600"> *</span></InputLabel>
                         <TextInput type="date" v-model="form.date_issued" class="mt-1 block w-full" required />
                     </div>
 
