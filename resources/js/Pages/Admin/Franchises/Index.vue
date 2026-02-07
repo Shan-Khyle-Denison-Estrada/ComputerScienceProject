@@ -120,19 +120,13 @@ const handleSearch = () => {
                                 </div>
                                 <div v-else class="text-gray-400 italic">No Unit</div>
                             </td>
-                            <td class="px-6 py-4">
-                                <div class="text-xs space-y-1">
-                                    <div class="flex items-center gap-1">
-                                        <span class="text-gray-400 uppercase w-10">Driver:</span>
-                                        <span class="font-medium text-gray-700">
-                                            {{ franchise.driver ? getDriverName(franchise.driver) : 'None' }}
-                                        </span>
-                                    </div>
-                                    <div class="flex items-center gap-1">
-                                        <span class="text-gray-400 uppercase w-10">Zone:</span>
-                                        <span class="font-medium text-gray-700">{{ franchise.zone?.description }}</span>
-                                    </div>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                <div v-if="franchise.driver_assignments && franchise.driver_assignments.length > 0" class="flex flex-col gap-1">
+                                    <span v-for="assignment in franchise.driver_assignments" :key="assignment.id" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800">
+                                        {{ assignment.driver.user ? assignment.driver.user.last_name : assignment.driver.last_name }}
+                                    </span>
                                 </div>
+                                <span v-else class="text-gray-400 italic text-xs">Unassigned</span>
                             </td>
                             <td class="px-6 py-4 text-right">
                                 <Link :href="route('admin.franchises.show', franchise.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors">

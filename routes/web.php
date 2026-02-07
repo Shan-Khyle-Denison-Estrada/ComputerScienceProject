@@ -97,9 +97,13 @@ Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name
     Route::post('/admin/franchises', [FranchiseController::class, 'store'])->name('admin.franchises.store');
     Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
 
-    // 12. Franchise Actions (Transfer / Swap) Routes
+    // 12. Franchise Actions
     Route::post('/admin/franchises/{franchise}/transfer', [FranchiseController::class, 'transferOwnership'])->name('admin.franchises.transfer');
     Route::post('/admin/franchises/{franchise}/change-unit', [FranchiseController::class, 'changeUnit'])->name('admin.franchises.change-unit');
+
+    // NEW: Driver Assignment Routes
+    Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
+    Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
