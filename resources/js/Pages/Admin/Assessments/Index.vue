@@ -40,8 +40,15 @@ const getBalance = (assessment) => {
 };
 
 // Helper to display franchise name in dropdown
+// Helper to display franchise name in dropdown
 const getFranchiseLabel = (f) => {
     let label = `Franchise #${f.id}`;
+    
+    // Add Status Indicator
+    if (f.status) {
+        label += ` [${f.status.toUpperCase()}]`;
+    }
+
     if (f.current_ownership?.new_owner?.user) {
         const user = f.current_ownership.new_owner.user;
         label += ` - ${user.last_name}, ${user.first_name}`;

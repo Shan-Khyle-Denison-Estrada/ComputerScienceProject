@@ -13,7 +13,6 @@ class Franchise extends Model
     protected $fillable = [
         'ownership_id', 'active_unit_id', 'zone_id', 
         'date_issued', 'qr_code'
-        // 'driver_id' is no longer the source of truth, but kept if you haven't dropped the column yet
     ];
 
     protected $appends = ['status']; 
@@ -26,19 +25,17 @@ class Franchise extends Model
     public function unitHistory() { return $this->hasMany(ActiveUnit::class)->latest(); }
     public function assessments() { return $this->hasMany(Assessment::class); }
 
-    // NEW: Associative Entity Relationship
+    // Associative Entity Relationship
     public function driverAssignments() 
     { 
         return $this->hasMany(DriverAssignment::class); 
     }
 
-    // Helper to get actual Driver models directly
     public function drivers()
     {
         return $this->hasManyThrough(Driver::class, DriverAssignment::class, 'franchise_id', 'id', 'id', 'driver_id');
     }
 
-    // This fetches the single "current" driver (the latest one assigned)
     public function driver()
     {
         return $this->hasOneThrough(Driver::class, DriverAssignment::class, 'franchise_id', 'id', 'id', 'driver_id')
@@ -48,19 +45,31 @@ class Franchise extends Model
     // --- Dynamic Status Logic ---
     public function getStatusAttribute()
     {
-        // 1. Check for Termination (No payment in 3 years)
-        $lastPaymentDate = $this->assessments->flatMap(function ($assessment) {
-            return $assessment->payments;
-        })->sortByDesc('created_at')->first()?->created_at;
+        // Define the 3-year cutoff
+        $threeYearsAgo = Carbon::now()->subYears(3);
 
-        $referenceDate = $lastPaymentDate ? Carbon::parse($lastPaymentDate) : Carbon::parse($this->date_issued);
+        // 1. Check for Termination (Unpaid Assessment > 3 Years)
+        // We filter the assessments to find any that are NOT 'paid' 
+        // AND were issued more than 3 years ago.
+        $hasLongOverdueAssessment = $this->assessments->contains(function ($assessment) use ($threeYearsAgo) {
+            // Check if status is pending or overdue (not paid)
+            $isUnpaid = $assessment->assessment_status !== 'paid';
+            
+            // Check if the assessment date is older than 3 years
+            $isOld = Carbon::parse($assessment->assessment_date)->lte($threeYearsAgo);
 
-        if ($referenceDate->diffInYears(now()) >= 3) {
+            return $isUnpaid && $isOld;
+        });
+
+        if ($hasLongOverdueAssessment) {
             return 'terminated';
         }
 
         // 2. Check for Pending Renewal
-        $hasPendingAssessments = $this->assessments->whereIn('assessment_status', ['pending', 'overdue'])->isNotEmpty();
+        // Check if there are any current pending/overdue assessments (regardless of age)
+        $hasPendingAssessments = $this->assessments
+            ->whereIn('assessment_status', ['pending', 'overdue'])
+            ->isNotEmpty();
 
         if ($hasPendingAssessments) {
             return 'pending renewal';
