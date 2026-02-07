@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\Particular;
-use App\Models\Franchise; // Import Franchise
+use App\Models\Franchise;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -21,12 +21,22 @@ class AssessmentController extends Controller
         // ----------------------------------
 
         $search = $request->input('search');
+        $status = $request->input('status');
+        $franchiseId = $request->input('franchise_id');
 
         $assessments = Assessment::query()
             ->with(['particulars', 'payments'])
             ->when($search, function($query, $search) {
-                $query->where('id', 'like', "%{$search}%")
-                      ->orWhere('franchise_id', 'like', "%{$search}%");
+                $query->where(function($q) use ($search) {
+                    $q->where('id', 'like', "%{$search}%")
+                      ->orWhere('remarks', 'like', "%{$search}%");
+                });
+            })
+            ->when($status, function($query, $status) {
+                $query->where('assessment_status', $status);
+            })
+            ->when($franchiseId, function($query, $franchiseId) {
+                $query->where('franchise_id', $franchiseId);
             })
             ->latest()
             ->paginate(10)
@@ -40,15 +50,15 @@ class AssessmentController extends Controller
         return Inertia::render('Admin/Assessments/Index', [
             'assessments' => $assessments,
             'particulars' => $particulars,
-            'franchises' => $franchises, // Pass to frontend
-            'filters' => $request->only(['search'])
+            'franchises' => $franchises,
+            'filters' => $request->only(['search', 'status', 'franchise_id'])
         ]);
     }
 
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'franchise_id' => 'nullable|exists:franchises,id', // Update validation
+            'franchise_id' => 'nullable|exists:franchises,id',
             'assessment_date' => 'required|date',
             'assessment_due' => 'required|date|after_or_equal:assessment_date',
             'remarks' => 'nullable|string',

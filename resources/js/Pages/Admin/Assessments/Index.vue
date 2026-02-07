@@ -13,15 +13,22 @@ const props = defineProps({
     assessments: Object,    
     filters: Object,
     particulars: Array,
-    franchises: Array // Added franchises prop
+    franchises: Array
 });
 
 // --- STATE ---
 const showAddModal = ref(false);
 const showParticularsModal = ref(false);
 const showViewModal = ref(false);
-const search = ref(props.filters.search || '');
+const showFilterModal = ref(false);
 const selectedAssessment = ref(null);
+
+// --- FILTERS STATE ---
+const search = ref(props.filters.search || '');
+const filterForm = ref({
+    status: props.filters.status || '',
+    franchise_id: props.filters.franchise_id || ''
+});
 
 // --- HELPERS ---
 const formatCurrency = (value) => {
@@ -39,16 +46,11 @@ const getBalance = (assessment) => {
     return balance > 0 ? balance : 0;
 };
 
-// Helper to display franchise name in dropdown
-// Helper to display franchise name in dropdown
 const getFranchiseLabel = (f) => {
     let label = `Franchise #${f.id}`;
-    
-    // Add Status Indicator
     if (f.status) {
         label += ` [${f.status.toUpperCase()}]`;
     }
-
     if (f.current_ownership?.new_owner?.user) {
         const user = f.current_ownership.new_owner.user;
         label += ` - ${user.last_name}, ${user.first_name}`;
@@ -56,6 +58,34 @@ const getFranchiseLabel = (f) => {
         label += ' - (No Active Owner)';
     }
     return label;
+};
+
+// --- SEARCH & FILTER ACTIONS ---
+const handleSearch = () => {
+    router.get(route('admin.assessments.index'), { 
+        search: search.value,
+        status: filterForm.value.status,
+        franchise_id: filterForm.value.franchise_id
+    }, { 
+        preserveState: true, 
+        replace: true, 
+        preserveScroll: true 
+    });
+};
+
+const openFilterModal = () => showFilterModal.value = true;
+const closeFilterModal = () => showFilterModal.value = false;
+
+const applyFilters = () => {
+    handleSearch();
+    closeFilterModal();
+};
+
+const resetFilters = () => {
+    filterForm.value.status = '';
+    filterForm.value.franchise_id = '';
+    search.value = '';
+    applyFilters();
 };
 
 // --- VIEW ACTION ---
@@ -157,11 +187,6 @@ const deleteParticular = (id) => {
         router.delete(route('admin.particulars.destroy', id), { preserveScroll: true });
     }
 };
-
-// --- SEARCH ---
-const handleSearch = () => {
-    router.get(route('admin.assessments.index'), { search: search.value }, { preserveState: true, replace: true });
-};
 </script>
 
 <template>
@@ -175,7 +200,8 @@ const handleSearch = () => {
                 <p class="text-gray-600 text-sm">Create and manage fee assessments.</p>
             </div>
 
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
+                
                 <div class="relative">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -187,9 +213,20 @@ const handleSearch = () => {
                         @keyup.enter="handleSearch"
                         type="text" 
                         class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" 
-                        placeholder="Search ID..." 
+                        placeholder="Search ID or Remarks..." 
                     />
                 </div>
+
+                <button 
+                    @click="openFilterModal"
+                    class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative"
+                    title="Filter Assessments"
+                >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                    <span v-if="filterForm.status || filterForm.franchise_id" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
+                </button>
 
                 <SecondaryButton @click="showParticularsModal = true" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -270,7 +307,7 @@ const handleSearch = () => {
                         </tr>
                         <tr v-if="assessments.data.length === 0">
                             <td colspan="6" class="px-6 py-10 text-center text-gray-500">
-                                No assessments found.
+                                No assessments found matching your filters.
                             </td>
                         </tr>
                     </tbody>
@@ -490,6 +527,50 @@ const handleSearch = () => {
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showFilterModal" @close="closeFilterModal" maxWidth="sm">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-lg font-bold text-gray-900">Filter Assessments</h2>
+                    <button @click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <InputLabel>Status</InputLabel>
+                        <select 
+                            v-model="filterForm.status" 
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                        >
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="paid">Paid</option>
+                            <option value="overdue">Overdue</option>
+                        </select>
+                    </div>
+
+                    <!-- <div>
+                        <InputLabel>Franchise</InputLabel>
+                        <select 
+                            v-model="filterForm.franchise_id" 
+                            class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                        >
+                            <option value="">All Franchises</option>
+                            <option v-for="f in franchises" :key="f.id" :value="f.id">
+                                {{ getFranchiseLabel(f) }}
+                            </option>
+                        </select>
+                    </div> -->
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3 pt-2">
+                    <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
+                    <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
                 </div>
             </div>
         </Modal>
