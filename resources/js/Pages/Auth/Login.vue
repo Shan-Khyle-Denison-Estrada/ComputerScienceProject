@@ -49,7 +49,7 @@ const submit = () => {
                         City Transport <br>Management System
                     </h2>
                     <p class="text-gray-300 text-lg max-w-md">
-                        Secure access for Franchise Owners and City Administrators. Manage units, violations, and renewals in one place.
+                        Secure access for Franchise Owners and City Administrators. Manage units and renewals in one place.
                     </p>
                 </div>
             </div>
