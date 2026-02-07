@@ -257,11 +257,18 @@ const deleteBarangay = (id) => {
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="zone in visibleZones" :key="zone.id" class="hover:bg-gray-50 transition-colors">
-                            <td class="px-6 py-4 font-medium text-gray-900">
+                            <td class="px-6 py-4 font-medium text-gray-900 uppercase">
                                 {{ zone.description }}
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-2 py-1 rounded text-xs font-semibold bg-gray-100 text-gray-800 border border-gray-200">
+                                <span 
+                                    class="px-2 py-1 rounded text-xs font-semibold shadow-sm"
+                                    :style="{ 
+                                        backgroundColor: zone.color, 
+                                        color: '#ffffff',
+                                        textShadow: '0 0 3px rgba(0,0,0,0.8)' 
+                                    }"
+                                >
                                     {{ zone.color }}
                                 </span>
                             </td>
