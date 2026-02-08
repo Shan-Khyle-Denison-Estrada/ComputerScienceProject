@@ -104,7 +104,7 @@ const getTabLabel = (tabKey) => {
                             {{ fran.current_active_unit?.new_unit?.plate_number || 'NO UNIT' }}
                         </div>
                         <div class="text-xs text-gray-500 truncate mt-1 group-hover:text-blue-600 transition-colors">
-                            {{ fran.zone?.description || 'No Zone Assigned' }}
+                            {{ fran.zone?.description.toUpperCase() || 'No Zone Assigned' }}
                         </div>
                     </button>
                 </div>
@@ -175,7 +175,7 @@ const getTabLabel = (tabKey) => {
                                         </div>
                                         <div>
                                             <h4 class="text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Assigned Zone</h4>
-                                            <div class="font-bold text-gray-800 text-lg leading-tight">{{ zone?.description || 'N/A' }}</div>
+                                            <div class="font-bold text-gray-800 text-lg leading-tight">{{ zone?.description.toUpperCase() || 'N/A' }}</div>
                                             <div class="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
                                                 Color: <span class="font-bold text-gray-700">{{ zone?.color || 'N/A' }}</span>
                                             </div>
@@ -365,7 +365,7 @@ const getTabLabel = (tabKey) => {
                         <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
                             <div v-if="zone?.coverage && zone.coverage.length > 0">
                                 <p class="text-sm text-gray-500 mb-4">
-                                    The <span class="font-bold text-gray-700">{{ zone.description }}</span> covers the following {{ zone.coverage.length }} barangays:
+                                    The <span class="font-bold text-gray-700">{{ zone.description.toUpperCase() }}</span> covers the following {{ zone.coverage.length }} barangays:
                                 </p>
                                 <div class="flex flex-wrap gap-2">
                                     <span 
