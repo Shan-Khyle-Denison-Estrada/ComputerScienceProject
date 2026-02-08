@@ -253,17 +253,25 @@ class FranchiseController extends Controller
         ]);
     }
 
-    public function lookup(Request $request)
+public function lookup(Request $request)
     {
         $request->validate([
             'qr_code' => 'required|string'
         ]);
 
-        // Reconstruct filename
         $scannedCode = $request->qr_code;
-        $filename = 'qr-' . $scannedCode . '.svg';
 
-        $franchise = Franchise::where('qr_code', $filename)->first();
+        // FIX: The scanned code is a full URL (e.g., .../public-show/12).
+        // We need to extract the ID (12) from the end of the string.
+        
+        // Get the last segment of the URL/string
+        $extractedId = basename($scannedCode);
+        
+        // Ensure we strictly have an integer (handles query params or trailing slashes)
+        $id = (int) $extractedId;
+
+        // Find the franchise directly by ID
+        $franchise = Franchise::find($id);
 
         if (!$franchise) {
             return redirect()->back()->withErrors(['qr_code' => 'Franchise not found or invalid QR code.']);
