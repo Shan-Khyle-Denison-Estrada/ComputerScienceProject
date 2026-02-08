@@ -72,7 +72,7 @@ const getTabLabel = (tabKey) => {
     <AuthenticatedLayout>
         <div class="flex flex-1 h-full overflow-hidden relative">
             
-            <aside class="w-80 rounded-2xl bg-white flex flex-col z-10 shrink-0">
+            <aside class="w-80 rounded-2xl bg-white flex flex-col z-10 shrink-0 border border-gray-200">
                 <div class="p-5 border-b border-gray-100">
                     <h2 class="font-bold text-gray-800 text-lg">My Franchises</h2>
                     <p class="text-xs text-gray-500 mt-1">{{ franchises.length }} franchise/s registered</p>
@@ -126,7 +126,7 @@ const getTabLabel = (tabKey) => {
                 <div v-if="selectedFranchise" class="flex flex-col h-full max-w-6xl mx-auto w-full space-y-3">
                     
                     <div class="shrink-0 space-y-3">
-                        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border border-gray-100 p-4 bg-white rounded-2xl shadow-sm">
+                        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border border-gray-200 p-4 bg-white rounded-2xl shadow-sm">
                             <div>
                                 <div class="flex items-center gap-3 mb-2">
                                     <span class="px-3 py-1 rounded-full text-xs font-bold uppercase border tracking-wide" :class="getStatusClasses(selectedFranchise.status)">
@@ -152,7 +152,7 @@ const getTabLabel = (tabKey) => {
                             
                             <button 
                                 @click="showCoverageModal = true"
-                                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
+                                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
                             >
                                 <div class="relative z-10 transition-all duration-300 group-hover:blur-sm group-hover:opacity-50 h-full flex flex-col justify-center">
                                     <div 
@@ -194,7 +194,7 @@ const getTabLabel = (tabKey) => {
                                 </div>
                             </button>
 
-                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-4 hover:shadow-md transition-shadow">
                                 <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
@@ -207,7 +207,7 @@ const getTabLabel = (tabKey) => {
                                 </div>
                             </div>
 
-                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex items-start gap-4 hover:shadow-md transition-shadow">
+                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-4 hover:shadow-md transition-shadow">
                                 <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
