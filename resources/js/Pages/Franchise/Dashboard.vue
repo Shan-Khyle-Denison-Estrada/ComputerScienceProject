@@ -16,6 +16,7 @@ const props = defineProps({
 const selectedFranchiseId = ref(null);
 const activeTab = ref('payments'); 
 const showCoverageModal = ref(false);
+const showUnitModal = ref(false);
 
 // --- INIT ---
 onMounted(() => {
@@ -194,18 +195,41 @@ const getTabLabel = (tabKey) => {
                                 </div>
                             </button>
 
-                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-4 hover:shadow-md transition-shadow">
-                                <div class="p-3 bg-blue-50 text-blue-600 rounded-xl">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
-                                    </svg>
+                            <button 
+                                @click="showUnitModal = true"
+                                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
+                            >
+                                <div class="relative z-10 transition-all duration-300 group-hover:blur-sm group-hover:opacity-50 h-full flex flex-col justify-center">
+                                    <div 
+                                        class="absolute -top-5 -right-5 w-32 h-32 opacity-10 rounded-bl-full pointer-events-none bg-blue-500"
+                                    ></div>
+
+                                    <div class="flex items-start gap-4">
+                                        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <h4 class="text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Vehicle Make</h4>
+                                            <div class="font-bold text-gray-800 text-lg leading-tight">{{ unit?.make?.name || 'N/A' }}</div>
+                                            <div class="text-[11px] text-gray-500 mt-1">
+                                            Model: <span class="font-bold text-gray-700">{{ unit?.model_year || 'N/A' }}</span>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h4 class="text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Vehicle Make</h4>
-                                    <div class="font-bold text-gray-800">{{ unit?.make?.name || 'N/A' }}</div>
-                                    <div class="text-sm text-gray-500">{{ unit?.model_year || 'Year N/A' }}</div>
+
+                                <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
+                                    <div class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center gap-2">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                                        </svg>
+                                        View Unit Details
+                                    </div>
                                 </div>
-                            </div>
+                            </button>
 
                             <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-4 hover:shadow-md transition-shadow">
                                 <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
@@ -388,7 +412,81 @@ const getTabLabel = (tabKey) => {
                         </div>
                     </div>
                 </div>
+                <div 
+        v-if="showUnitModal" 
+        class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-all" 
+        @click.self="showUnitModal = false"
+    >
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-200 transform transition-all scale-100 flex flex-col max-h-[90vh]">
+            <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg leading-tight">{{ unit?.make?.name }} {{ unit?.model_year }}</h3>
+                        <p class="text-xs text-gray-500 font-mono">{{ unit?.plate_number }}</p>
+                    </div>
+                </div>
+                <button @click="showUnitModal = false" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto custom-scrollbar">
+                
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Motor Number</div>
+                        <div class="font-mono font-bold text-gray-800 text-sm break-all">{{ unit?.motor_number || 'N/A' }}</div>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Chassis Number</div>
+                        <div class="font-mono font-bold text-gray-800 text-sm break-all">{{ unit?.chassis_number || 'N/A' }}</div>
+                    </div>
+                    <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                        <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">CR Number</div>
+                        <div class="font-mono font-bold text-gray-800 text-sm break-all">{{ unit?.cr_number || 'N/A' }}</div>
+                    </div>
+                </div>
+
+                <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Unit Photos</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div v-for="(photo, label) in {
+                        'Front View': unit?.unit_front_photo, 
+                        'Back View': unit?.unit_back_photo, 
+                        'Left View': unit?.unit_left_photo, 
+                        'Right View': unit?.unit_right_photo
+                    }" :key="label" class="group relative aspect-video bg-gray-100 rounded-lg overflow-hidden border border-gray-200">
+                        
+                        <img v-if="photo" :src="`/storage/${photo}`" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" :alt="label">
+                        <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-300">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="text-[10px] font-bold uppercase">No Image</span>
+                        </div>
+                        
+                        <div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] font-bold uppercase py-1 px-2 text-center backdrop-blur-sm">
+                            {{ label }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 text-right shrink-0">
+                <button @click="showUnitModal = false" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
             </Teleport>
+            
         </div>
     </AuthenticatedLayout>
 </template>
