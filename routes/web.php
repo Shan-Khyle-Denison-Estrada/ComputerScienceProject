@@ -13,13 +13,24 @@ use App\Http\Controllers\Admin\UnitMakeController;
 use App\Http\Controllers\Admin\FranchiseController;
 use App\Http\Controllers\Franchise\DashboardController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-// Public Landing Page
 Route::get('/', function () {
-    return Inertia::render('Index');
+    // [!code ++] Fetch the count and pass it to the view
+    return Inertia::render('Index', [
+        'activeFranchisesCount' => Franchise::count()
+    ]);
 })->name('home');
+
+Route::get('/about', function () {
+    return Inertia::render('About');
+})->name('about');
+
+Route::get('/ordinances', function () {
+    return Inertia::render('Ordinances');
+})->name('ordinances');
 
 // The Verification Page (Scanner)
 Route::get('/verify', [FranchiseController::class, 'verify'])->name('verify');

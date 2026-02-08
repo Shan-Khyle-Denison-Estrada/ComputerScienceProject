@@ -31,9 +31,9 @@ import { Link } from '@inertiajs/vue3';
                     <h3 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Resources</h3>
                     <ul class="space-y-3">
                         <li><a href="#" class="hover:text-blue-400 transition-colors text-sm">City Ordinances</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors text-sm">Penalty Matrix</a></li>
+                        <!-- <li><a href="#" class="hover:text-blue-400 transition-colors text-sm">Penalty Matrix</a></li>
                         <li><a href="#" class="hover:text-blue-400 transition-colors text-sm">User Guide</a></li>
-                        <li><a href="#" class="hover:text-blue-400 transition-colors text-sm">Download Forms</a></li>
+                        <li><a href="#" class="hover:text-blue-400 transition-colors text-sm">Download Forms</a></li> -->
                     </ul>
                 </div>
 
@@ -53,7 +53,7 @@ import { Link } from '@inertiajs/vue3';
             </div>
             
             <div class="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center gap-4">
-                <p class="text-sm text-slate-500">&copy; 2024 City Government of Zamboanga. All rights reserved.</p>
+                <p class="text-sm text-slate-500">&copy; 2026 City Government of Zamboanga. All rights reserved.</p>
                 <div class="flex space-x-6">
                     <a href="#" class="text-slate-500 hover:text-white transition-colors text-sm">Privacy</a>
                     <a href="#" class="text-slate-500 hover:text-white transition-colors text-sm">Terms</a>

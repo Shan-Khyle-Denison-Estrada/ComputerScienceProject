@@ -50,18 +50,18 @@ const faqs = [
                           <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                           <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
                         </span>
-                        Official Renewal Portal
+                        Official Franchise Management System
                     </div>
 
                     <h1 class="text-4xl font-bold tracking-tight text-slate-900 sm:text-5xl md:text-6xl mb-6">
                         Tricycle Franchise <br>
                         <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-700 to-blue-500">
-                            Renewal & Verification
+                            Management System
                         </span>
                     </h1>
 
                     <p class="text-lg text-slate-600 mb-8 leading-relaxed">
-                        The official platform for maintaining franchise validity. existing owners can renew online, while the public can scan QR codes to ensure passenger safety.
+                        The official platform for maintaining franchise validity. Existing owners can monitor their own franchise, while the public can scan QR codes to ensure passenger safety.
                     </p>
 
                     <div class="flex flex-col sm:flex-row gap-4">
@@ -103,7 +103,7 @@ const faqs = [
                         <svg class="w-8 h-8 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
                     </div>
                     <div>
-                        <h2 class="text-xl font-bold text-white">Registered Units</h2>
+                        <h2 class="text-xl font-bold text-white">Active Permits</h2>
                         <p class="text-blue-200 text-sm">Valid franchises currently in circulation.</p>
                     </div>
                 </div>
@@ -130,8 +130,8 @@ const faqs = [
                     <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-6 text-blue-600">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
                     </div>
-                    <h3 class="text-xl font-bold text-slate-900 mb-3">Online Renewal</h3>
-                    <p class="text-slate-500 leading-relaxed">Existing franchise owners can renew their validity online. No need to queue for annual compliance checks if requirements are met.</p>
+                    <h3 class="text-xl font-bold text-slate-900 mb-3">Online Monitoring</h3>
+                    <p class="text-slate-500 leading-relaxed">Existing franchise owners can monitor their franchises online. No need to queue for basic checks.</p>
                 </div>
                 
                 <div class="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
