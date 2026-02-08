@@ -142,7 +142,7 @@ const menuItems = computed(() => {
             </div>
         </aside>
 
-        <div class="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300">
+        <div class="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 p-0">
             
             <header class="bg-white shadow-sm flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8 relative z-10">
                 
@@ -215,7 +215,7 @@ const menuItems = computed(() => {
                 </div>
             </header>
 
-            <main class="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative">
+            <main class="flex-1 overflow-y-auto relative p-4">
                 <slot />
             </main>
         </div>
