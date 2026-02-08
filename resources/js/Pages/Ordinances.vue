@@ -1,6 +1,6 @@
 <script setup>
 import { Head } from '@inertiajs/vue3';
-import { ref } from 'vue'; // Import ref for state management
+import { ref } from 'vue';
 import NavBar from "../Components/NavBar.vue";
 import Footer from "../Components/Footer.vue";
 
@@ -14,7 +14,6 @@ const openPdfViewer = (url, title) => {
     currentPdfUrl.value = url;
     currentPdfTitle.value = title;
     showModal.value = true;
-    // Prevent background scrolling when modal is open
     document.body.style.overflow = 'hidden';
 };
 
@@ -22,7 +21,6 @@ const openPdfViewer = (url, title) => {
 const closeModal = () => {
     showModal.value = false;
     currentPdfUrl.value = '';
-    // Re-enable scrolling
     document.body.style.overflow = 'auto';
 };
 </script>
@@ -31,7 +29,7 @@ const closeModal = () => {
     <Head title="City Ordinances" />
     <NavBar />
 
-    <div class="relative bg-slate-900 py-24 sm:py-32 overflow-hidden">
+    <div class="relative bg-slate-900 py-20 sm:py-28 overflow-hidden">
         <img 
             src="/non_index_bg.png" 
             alt="Background" 
@@ -44,113 +42,118 @@ const closeModal = () => {
             <img 
                 src="/tab_seal.png" 
                 alt="TAB Seal" 
-                class="h-24 w-auto mx-auto mb-8 drop-shadow-2xl"
+                class="h-20 w-auto mx-auto mb-6 drop-shadow-2xl"
             />
-            <h1 class="text-4xl font-black tracking-tight text-white sm:text-6xl mb-4">
+            <h1 class="text-4xl font-black tracking-tight text-white sm:text-5xl mb-4">
                 Legal Framework
             </h1>
             <p class="text-lg text-slate-300 max-w-2xl mx-auto">
-                The key city ordinances governing the operation, franchising, and modernization of tricycle transport in Zamboanga City.
+                Governing laws, franchises, and modernization mandates for Zamboanga City transport.
             </p>
         </div>
     </div>
 
-    <div class="bg-slate-50 py-20 relative">
-        <div class="absolute left-1/2 top-0 bottom-0 w-0.5 bg-slate-200 hidden lg:block transform -translate-x-1/2"></div>
-
-        <div class="mx-auto max-w-7xl px-6 lg:px-8 space-y-16">
+    <div class="bg-slate-50 py-16">
+        <div class="mx-auto max-w-7xl px-6 lg:px-8">
             
-            <div class="relative flex flex-col lg:flex-row items-center gap-12">
-                <div class="absolute left-1/2 w-4 h-4 bg-blue-600 rounded-full border-4 border-white shadow-sm hidden lg:block transform -translate-x-1/2"></div>
-                
-                <div class="w-full lg:w-1/2 lg:pr-16 lg:text-right order-2 lg:order-1">
-                    <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8 hover:shadow-xl transition-shadow relative overflow-hidden group">
-                        <div class="absolute top-0 left-0 w-2 h-full bg-blue-600 lg:left-auto lg:right-0"></div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+
+                <div class="flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group">
+                    <div class="h-2 w-full bg-blue-600"></div>
+                    <div class="p-8 flex flex-col h-full">
+                        <div class="flex items-center justify-between mb-6">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide">
+                                Foundational Law
+                            </span>
+                            <span class="text-slate-400 font-serif italic">1996</span>
+                        </div>
                         
-                        <span class="inline-block py-1 px-3 rounded-full bg-blue-50 text-blue-700 text-xs font-bold uppercase tracking-wide mb-4">
-                            Foundational Law
-                        </span>
-                        <h2 class="text-2xl font-bold text-slate-900 mb-4">City Ordinance No. 185</h2>
-                        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Series of 1996</h3>
+                        <h2 class="text-2xl font-bold text-slate-900 group-hover:text-blue-700 transition-colors">
+                            City Ordinance No. 185
+                        </h2>
+                        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 mt-1">
+                            The Tricycle Franchise Code
+                        </h3>
                         
-                        <p class="text-slate-600 leading-relaxed">
-                            Entitled “An Ordinance Prescribing the Operation of Tricycles and Granting Franchise for the Operation Thereof Within the Territorial Jurisdiction of the City of Zamboanga”.
-                        </p>
-                        <p class="mt-4 text-slate-600 text-sm">
-                            This ordinance established the Tricycle Adjudication Board (TAB) and defined the original rules for franchising and regulation.
+                        <p class="text-slate-600 leading-relaxed mb-6 flex-grow">
+                            This ordinance formally prescribed the operation of tricycles within the territorial jurisdiction of the City of Zamboanga. It established the <strong>Tricycle Adjudication Board (TAB)</strong> and defined the original regulatory framework for franchising.
                         </p>
 
-                        <div class="mt-6 flex lg:justify-end">
+                        <div class="pt-6 border-t border-slate-100 mt-auto">
                             <button 
                                 @click="openPdfViewer('/pdfs/ordinance_185.pdf', 'City Ordinance No. 185')"
-                                class="text-blue-600 font-semibold text-sm hover:underline flex items-center gap-2"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-50 hover:bg-blue-50 text-slate-700 hover:text-blue-700 font-semibold rounded-xl transition-colors text-sm"
                             >
-                                Read Full Text
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                View Full Document
                             </button>
                         </div>
                     </div>
                 </div>
-                <div class="w-full lg:w-1/2 order-1 lg:order-2"></div>
-            </div>
 
-            <div class="relative flex flex-col lg:flex-row items-center gap-12">
-                <div class="absolute left-1/2 w-4 h-4 bg-green-500 rounded-full border-4 border-white shadow-sm hidden lg:block transform -translate-x-1/2"></div>
+                <div class="flex flex-col bg-white rounded-2xl shadow-sm border border-slate-200 hover:shadow-xl hover:-translate-y-1 transition-all duration-300 overflow-hidden group">
+                    <div class="h-2 w-full bg-emerald-500"></div>
+                    <div class="p-8 flex flex-col h-full">
+                        <div class="flex items-center justify-between mb-6">
+                            <span class="inline-flex items-center px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wide">
+                                Modernization Amendment
+                            </span>
+                            <span class="text-slate-400 font-serif italic">Current</span>
+                        </div>
 
-                <div class="w-full lg:w-1/2 order-1"></div>
-
-                <div class="w-full lg:w-1/2 lg:pl-16 order-2">
-                     <div class="bg-white rounded-2xl shadow-lg border border-slate-100 p-8 hover:shadow-xl transition-shadow relative overflow-hidden">
-                        <div class="absolute top-0 left-0 w-2 h-full bg-green-500"></div>
-
-                        <span class="inline-block py-1 px-3 rounded-full bg-green-50 text-green-700 text-xs font-bold uppercase tracking-wide mb-4">
-                            Modernization Amendment
-                        </span>
-                        <h2 class="text-2xl font-bold text-slate-900 mb-4">City Ordinance No. 494</h2>
-                        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4">Major Amendment</h3>
+                        <h2 class="text-2xl font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">
+                            City Ordinance No. 494
+                        </h2>
+                        <h3 class="text-sm font-semibold text-slate-500 uppercase tracking-wider mb-4 mt-1">
+                            Mandatory Fleet Modernization
+                        </h3>
                         
-                        <div class="prose prose-sm prose-slate text-slate-600 leading-relaxed">
+                        <div class="text-slate-600 leading-relaxed mb-6 prose prose-sm prose-slate flex-grow">
                             <p>
-                                Amends Section 5, Article III of Ordinance No. 185. It mandates the modernization of the tricycle fleet to ensure environmental sustainability.
+                                A major amendment to Ordinance 185 focusing on environmental sustainability and fleet modernization.
                             </p>
-                            <ul class="list-disc pl-4 space-y-1 mt-2">
-                                <li><strong>Mandatory Replacement:</strong> Old units must be replaced with Euro 4-compliant or electric tricycles within 5 years.</li>
-                                <li><strong>Franchise Validity:</strong> Only franchises issued up to 2002 are renewable.</li>
-                                <li><strong>Cancellation:</strong> Franchises inactive for 3 years are automatically cancelled.</li>
-                                <li><strong>Moratorium:</strong> No new franchises will be granted in congested zones.</li>
+                            <ul class="list-disc pl-4 space-y-2 mt-2">
+                                <li><strong>Mandatory Replacement:</strong> Transition to Euro-4 compliant or E-Trikes.</li>
+                                <li><strong>Franchise Cap:</strong> Strict moratorium on new franchises in congested zones.</li>
+                                <li><strong>Validity:</strong> "Use it or lose it" policy for inactive franchises (3 years).</li>
                             </ul>
                         </div>
 
-                        <div class="mt-6">
+                        <div class="pt-6 border-t border-slate-100 mt-auto">
                             <button 
                                 @click="openPdfViewer('/pdfs/ordinance_494.pdf', 'City Ordinance No. 494')"
-                                class="text-green-600 font-semibold text-sm hover:underline flex items-center gap-2"
+                                class="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-3 bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-semibold rounded-xl transition-colors text-sm"
                             >
-                                Read Full Text
-                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                                View Full Document
                             </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
+            </div>
         </div>
     </div>
 
     <Footer />
 
     <div v-if="showModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
-        <div class="absolute inset-0 bg-slate-900/75 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
+        <div class="absolute inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" @click="closeModal"></div>
 
-        <div class="relative w-full max-w-5xl h-[85vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+        <div class="relative w-full max-w-6xl h-[90vh] bg-white rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200 ring-1 ring-white/10">
             
-            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50">
-                <h3 class="text-lg font-bold text-slate-900 truncate pr-4">
-                    {{ currentPdfTitle }}
-                </h3>
+            <div class="flex items-center justify-between px-6 py-4 border-b border-slate-200 bg-white">
+                <div class="flex items-center gap-3">
+                    <div class="p-2 bg-slate-100 rounded-lg">
+                        <svg class="w-6 h-6 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-slate-900 truncate">
+                        {{ currentPdfTitle }}
+                    </h3>
+                </div>
                 <button 
                     @click="closeModal"
-                    class="rounded-lg p-2 text-slate-400 hover:bg-slate-200 hover:text-slate-600 transition-colors"
+                    class="rounded-lg p-2 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-colors"
                 >
                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -166,22 +169,25 @@ const closeModal = () => {
                 ></iframe>
             </div>
 
-            <div class="bg-white px-6 py-3 border-t border-slate-100 flex justify-end">
-                <a 
-                    :href="currentPdfUrl" 
-                    download
-                    class="text-sm font-semibold text-blue-600 hover:text-blue-800 mr-4"
-                >
-                    Download PDF
-                </a>
-                <button 
-                    @click="closeModal" 
-                    class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-sm transition-colors"
-                >
-                    Close
-                </button>
+            <div class="bg-white px-6 py-4 border-t border-slate-200 flex justify-between items-center">
+                <span class="text-sm text-slate-500 hidden sm:block">Use the controls above to navigate the PDF.</span>
+                <div class="flex gap-4">
+                    <a 
+                        :href="currentPdfUrl" 
+                        download
+                        class="px-4 py-2 border border-slate-300 hover:bg-slate-50 text-slate-700 font-semibold rounded-lg text-sm transition-colors flex items-center gap-2"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
+                        Download
+                    </a>
+                    <button 
+                        @click="closeModal" 
+                        class="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-semibold rounded-lg text-sm transition-colors"
+                    >
+                        Close Viewer
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-
 </template>
