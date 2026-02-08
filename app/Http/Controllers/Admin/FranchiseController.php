@@ -13,6 +13,7 @@ use App\Models\ActiveUnit;
 use App\Models\DriverAssignment;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage; // Added for file storage
 use Inertia\Inertia;
 use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
@@ -53,27 +54,78 @@ class FranchiseController extends Controller
 
     public function store(Request $request)
     {
+        // 1. Validate all inputs from the form
         $validated = $request->validate([
             'date_issued' => 'required|date',
-            'zone_id' => 'required|exists:zones,id',
-            // Add other validations as needed
+            'zone_id'     => 'required|exists:zones,id',
+            'operator_id' => 'required|exists:operators,id',
+            'unit_id'     => 'required|exists:units,id',
+            'driver_id'   => 'nullable|exists:drivers,id',
         ]);
-        
-        // Basic creation logic - expand based on your specific requirements
-        $franchise = Franchise::create($validated);
 
-        return redirect()->route('admin.franchises.index')->with('success', 'Franchise created successfully.');
+        DB::transaction(function () use ($validated) {
+            // 2. Create the Franchise Base Record
+            $franchise = Franchise::create([
+                'date_issued' => $validated['date_issued'],
+                'zone_id'     => $validated['zone_id'],
+                // ownership_id and active_unit_id will be updated after creating the child records
+            ]);
+
+            // 3. Create Ownership Record
+            $ownership = Ownership::create([
+                'franchise_id'    => $franchise->id,
+                'new_operator_id' => $validated['operator_id'],
+                'date_transferred' => $validated['date_issued'], // Initial assignment
+            ]);
+
+            // 4. Create Active Unit Record
+            $activeUnit = ActiveUnit::create([
+                'franchise_id' => $franchise->id,
+                'new_unit_id'  => $validated['unit_id'],
+                'date_changed' => $validated['date_issued'], // Initial assignment
+            ]);
+
+            // 5. Assign Driver (if selected)
+            if (!empty($validated['driver_id'])) {
+                DriverAssignment::create([
+                    'franchise_id' => $franchise->id,
+                    'driver_id'    => $validated['driver_id'],
+                ]);
+            }
+
+            // 6. Generate QR Code
+            // We generate a URL pointing to the public show page for this franchise
+            $qrContent = route('franchises.public_show', $franchise->id);
+            
+            // Generate SVG. You can adjust size/format as needed.
+            $qrImage = QrCode::format('svg')->size(300)->generate($qrContent);
+            
+            // Define filename matching the lookup logic: 'qr-{code}.svg'
+            // We use the Franchise ID as the unique code.
+            $filename = 'qr-' . $franchise->id . '.svg';
+            
+            // Ensure the directory exists and save the file
+            // This saves to storage/app/public/qrcodes (requires `php artisan storage:link`)
+            Storage::disk('public')->put('qrcodes/' . $filename, $qrImage);
+
+            // 7. Update Franchise with references
+            $franchise->update([
+                'ownership_id'   => $ownership->id,
+                'active_unit_id' => $activeUnit->id,
+                'qr_code'        => $filename, 
+            ]);
+        });
+
+        return redirect()->route('admin.franchises.index')->with('success', 'Franchise created and QR code generated successfully.');
     }
 
     public function show(Franchise $franchise)
     {
-        // FIX #4: Added 'zone' to eager loading to prevent "Unassigned"
-        // Also added 'ownershipHistory.previousOwner.user' to ensure the table displays correctly
         $franchise->load([
             'currentOwnership.newOwner.user',
             'currentActiveUnit.newUnit.make',
             'ownershipHistory.newOwner.user',
-            'ownershipHistory.previousOwner.user', // Ensure previous owner data is loaded
+            'ownershipHistory.previousOwner.user',
             'unitHistory.newUnit.make',
             'driverAssignments.driver.user', 
             'assessments.payments',
@@ -135,13 +187,10 @@ class FranchiseController extends Controller
         return DB::transaction(function () use ($request, $franchise) {
             $currentOwnership = $franchise->currentOwnership;
 
-            // FIX #5: Check if transferring to the same owner
             if ($currentOwnership && $currentOwnership->new_operator_id == $request->new_operator_id) {
-                // We return with errors to the session
                 return redirect()->back()->withErrors(['new_operator_id' => 'Operator already owns this franchise.']);
             }
 
-            // FIX #2: Correctly capturing the previous owner ID
             $ownership = Ownership::create([
                 'franchise_id' => $franchise->id,
                 'new_operator_id' => $request->new_operator_id,
@@ -166,7 +215,6 @@ class FranchiseController extends Controller
         return DB::transaction(function () use ($request, $franchise) {
             $currentActiveUnit = $franchise->currentActiveUnit;
 
-            // FIX #6: Check if changing to the same unit
             if ($currentActiveUnit && $currentActiveUnit->new_unit_id == $request->new_unit_id) {
                 return redirect()->back()->withErrors(['new_unit_id' => 'Unit is already the active unit.']);
             }
@@ -195,7 +243,6 @@ class FranchiseController extends Controller
         $franchise = Franchise::with([
             'currentOwnership.newOwner.user',
             'currentActiveUnit.newUnit.make',
-            // CHANGED: 'driver.user' -> 'driverAssignments.driver.user'
             'driverAssignments.driver.user', 
             'zone',
             'assessments.payments'
@@ -206,7 +253,6 @@ class FranchiseController extends Controller
         ]);
     }
 
-    // Update the lookup method to redirect to the PUBLIC route
     public function lookup(Request $request)
     {
         $request->validate([
@@ -223,7 +269,6 @@ class FranchiseController extends Controller
             return redirect()->back()->withErrors(['qr_code' => 'Franchise not found or invalid QR code.']);
         }
 
-        // CHANGED: Redirect to the public show page
         return redirect()->route('franchises.public_show', $franchise->id);
     }
 }
