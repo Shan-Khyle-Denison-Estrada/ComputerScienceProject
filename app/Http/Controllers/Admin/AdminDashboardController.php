@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Franchise;
 use App\Models\Payment;
 use App\Models\Driver;
+use App\Models\Operator;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -22,7 +23,7 @@ class AdminDashboardController extends Controller
             ? (($totalFranchises - $franchisesLastMonth) / $franchisesLastMonth) * 100 
             : 0;
 
-        $totalDrivers = Driver::where('status', 'active')->count(); 
+        $totalOperators = Operator::count();
         
         $totalRevenue = Payment::sum('amount_paid');
         
@@ -65,7 +66,7 @@ class AdminDashboardController extends Controller
             'stats' => [
                 'total_franchises' => $totalFranchises,
                 'franchise_growth' => round($franchiseGrowth, 1),
-                'active_drivers' => $totalDrivers,
+                'total_operators' => $totalOperators,
                 'total_revenue' => $totalRevenue,
                 'revenue_growth' => round($revenueGrowth, 1),
             ],

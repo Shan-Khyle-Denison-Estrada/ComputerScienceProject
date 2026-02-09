@@ -128,8 +128,8 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <span class="text-xs font-bold px-2 py-1 rounded bg-emerald-50 text-emerald-600">Active</span>
                         </div>
                         <div>
-                            <span class="text-3xl font-black text-slate-800">{{ props.stats.active_drivers }}</span>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Registered Drivers</p>
+                            <span class="text-3xl font-black text-slate-800">{{ props.stats.total_operators }}</span>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Franchise Operators</p>
                         </div>
                     </div>
 

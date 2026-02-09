@@ -74,12 +74,19 @@ const triggerPrint = () => {
     window.print();
 };
 
+// --- IMAGE VIEWER LOGIC ---
 const openImage = (url) => {
+    // 1. Set the image
     selectedImage.value = url;
+    // 2. Hide the modal so they don't fight for z-index
+    showUnitDetailsModal.value = false;
 };
 
 const closeImage = () => {
+    // 1. Clear the image
     selectedImage.value = null;
+    // 2. Re-open the modal
+    showUnitDetailsModal.value = true;
 };
 
 // --- HELPERS ---
@@ -592,8 +599,7 @@ const getDriverName = (driver) => {
         
         <Teleport to="body">
             <div v-if="selectedImage" 
-                 style="z-index: 2147483647 !important;" 
-                 class="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+                 class="fixed inset-0 z-[2147483647] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
                  @click.self="closeImage">
                 
                 <button @click="closeImage" class="absolute top-6 right-6 text-white text-opacity-70 hover:text-white focus:outline-none transition-colors">
