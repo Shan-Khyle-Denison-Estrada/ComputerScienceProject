@@ -19,8 +19,12 @@ const props = defineProps({
 const showTransferModal = ref(false);
 const showChangeUnitModal = ref(false);
 const showAddDriverModal = ref(false);
-const showZoneModal = ref(false); // NEW: State for Zone Modal
+const showZoneModal = ref(false);
+const showUnitDetailsModal = ref(false);
 const activeTab = ref('ownership'); 
+
+// NEW: State for Full Screen Image Viewer
+const selectedImage = ref(null);
 
 // --- FORMS ---
 const transferForm = useForm({
@@ -70,6 +74,14 @@ const triggerPrint = () => {
     window.print();
 };
 
+const openImage = (url) => {
+    selectedImage.value = url;
+};
+
+const closeImage = () => {
+    selectedImage.value = null;
+};
+
 // --- HELPERS ---
 const statusColor = computed(() => {
     switch (props.franchise.status) {
@@ -82,7 +94,6 @@ const statusColor = computed(() => {
 
 const currentOwner = computed(() => props.franchise.current_ownership?.new_owner);
 const currentUnit = computed(() => props.franchise.current_active_unit?.new_unit);
-// Fallback color if zone has no color defined
 const zoneColor = computed(() => props.franchise.zone?.color || '#374151'); 
 
 const getDriverName = (driver) => {
@@ -128,221 +139,347 @@ const getDriverName = (driver) => {
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
                 
-                <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Operator</h3>
-                        <div class="p-2 bg-blue-50 text-blue-600 rounded-lg">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
-                        </div>
-                    </div>
+                <div class="lg:col-span-1 space-y-6">
                     
-                    <div v-if="currentOwner" class="relative z-10">
-                        <div class="flex items-center gap-4 mb-4">
-                            <div class="h-16 w-16 rounded-full bg-gray-200 flex-shrink-0 overflow-hidden border-2 border-white shadow-sm">
-                                <img v-if="currentOwner.user.user_photo" :src="`/storage/${currentOwner.user.user_photo}`" class="h-full w-full object-cover" />
-                                <div v-else class="h-full w-full flex items-center justify-center bg-blue-600 text-white text-xl font-bold">
-                                    {{ currentOwner.user.first_name.charAt(0) }}
-                                </div>
-                            </div>
-                            <div>
-                                <div class="text-xl font-bold text-gray-900 leading-tight">
-                                    {{ currentOwner.user.last_name }}
-                                </div>
-                                <div class="text-base text-gray-600">{{ currentOwner.user.first_name }}</div>
-                            </div>
-                        </div>
-                        <div class="space-y-2 text-sm border-t border-gray-100 pt-4">
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">TIN</span>
-                                <span class="font-mono font-medium text-gray-700">{{ currentOwner.tin_number }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Since</span>
-                                <span class="font-medium text-gray-700">{{ franchise.current_ownership?.date_transferred }}</span>
-                            </div>
-                            <div class="flex justify-between">
-                                <span class="text-gray-500">Contact</span>
-                                <span class="font-medium text-gray-700">{{ currentOwner.user.email }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div v-else class="text-gray-400 italic py-4">No Active Owner Assigned</div>
-                </div>
-
-                <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
-                    <div class="flex items-center justify-between mb-6">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Unit</h3>
-                        <div class="p-2 bg-emerald-50 text-emerald-600 rounded-lg">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17a2 2 0 11-4 0 2 2 0 014 0zM19 17a2 2 0 11-4 0 2 2 0 014 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16V6a1 1 0 00-1-1H4a1 1 0 00-1 1v10a1 1 0 001 1h1m8-1a1 1 0 01-1 1H9m4-1V8a1 1 0 011-1h2.586a1 1 0 01.707.293l3.414 3.414a1 1 0 01.293.707V16a1 1 0 01-1 1h-1m-6-1a1 1 0 001 1h1M5 17a2 2 0 012-2v0m12 0a2 2 0 012 2v0m-2-2h2" /></svg>
-                        </div>
-                    </div>
-
-                    <div v-if="currentUnit" class="relative z-10">
-                        <div class="text-center bg-gray-50 rounded-xl border border-gray-200 py-4 mb-4">
-                            <div class="text-[10px] uppercase text-gray-400 tracking-wider mb-1">Plate Number</div>
-                            <div class="text-3xl font-mono font-black text-gray-800 tracking-wider">
-                                {{ currentUnit.plate_number }}
+                    <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Operator</h3>
+                            <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                             </div>
                         </div>
                         
-                        <div class="space-y-3 text-sm">
-                            <div class="flex justify-between items-center border-b border-gray-50 pb-2">
-                                <span class="text-gray-500">Make</span>
-                                <span class="font-bold text-gray-800">{{ currentUnit.make.name }}</span>
-                            </div>
-                            <div class="flex justify-between items-center border-b border-gray-50 pb-2">
-                                <span class="text-gray-500">Model Year</span>
-                                <span class="text-gray-700">{{ currentUnit.model_year }}</span>
-                            </div>
-                            <div class="flex justify-between items-center">
-                                <span class="text-gray-500">Chassis</span>
-                                <span class="font-mono text-gray-600 text-xs">{{ currentUnit.chassis_number }}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <div v-else class="text-gray-400 italic py-4">No Unit Assigned</div>
-                </div>
-
-                <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow flex flex-col h-full">
-                    <div class="flex items-center justify-between mb-4">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Operations</h3>
-                        <div class="p-2 bg-indigo-50 text-indigo-600 rounded-lg">
-                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
-                        </div>
-                    </div>
-
-                    <div class="mb-5">
-                        <div class="flex justify-between items-end mb-1">
-                            <span class="text-xs text-gray-500 block">Assigned Zone</span>
-                            <button @click="showZoneModal = true" class="text-[10px] text-blue-600 hover:text-blue-800 font-bold uppercase tracking-wide cursor-pointer hover:underline">
-                                View Details
-                            </button>
-                        </div>
-                        <div class="font-medium text-gray-800 flex items-center gap-2">
-                            <span class="w-3 h-3 rounded-full flex-shrink-0" :style="{ backgroundColor: zoneColor }"></span>
-                            <span class="uppercase truncate">{{ franchise.zone ? franchise.zone.description : 'Unassigned' }}</span>
-                        </div>
-                    </div>
-
-                    <div class="flex-grow mb-5">
-                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-xs text-gray-500">Drivers</span>
-                            <button @click="showAddDriverModal = true" class="text-[10px] font-bold text-blue-600 hover:underline uppercase tracking-wide">
-                                + Assign
-                            </button>
-                        </div>
-                        <div class="bg-gray-50 rounded-lg border border-gray-100 overflow-hidden">
-                            <div v-if="franchise.driver_assignments && franchise.driver_assignments.length > 0" class="max-h-32 overflow-y-auto divide-y divide-gray-100">
-                                <div v-for="assignment in franchise.driver_assignments" :key="assignment.id" class="p-2 flex justify-between items-center group hover:bg-white transition-colors">
-                                    <div class="flex items-center gap-2">
-                                        <div class="h-6 w-6 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center text-[10px] font-bold">
-                                            {{ assignment.driver.first_name ? assignment.driver.first_name.charAt(0) : 'D' }}
-                                        </div>
-                                        <span class="text-sm text-gray-700 truncate max-w-[120px]" :title="getDriverName(assignment.driver)">
-                                            {{ getDriverName(assignment.driver) }}
-                                        </span>
+                        <div v-if="currentOwner" class="relative z-10">
+                            <div class="flex flex-col items-center mb-4 text-center">
+                                <div class="h-20 w-20 rounded-full bg-gray-200 mb-3 overflow-hidden border-4 border-white shadow-sm">
+                                    <img v-if="currentOwner.user.user_photo" :src="`/storage/${currentOwner.user.user_photo}`" class="h-full w-full object-cover" />
+                                    <div v-else class="h-full w-full flex items-center justify-center bg-blue-600 text-white text-2xl font-bold">
+                                        {{ currentOwner.user.first_name.charAt(0) }}
                                     </div>
-                                    <button @click="removeDriver(assignment.id)" class="text-gray-300 hover:text-red-500 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                                    </button>
+                                </div>
+                                <div>
+                                    <div class="text-lg font-bold text-gray-900 leading-tight">
+                                        {{ currentOwner.user.last_name }}
+                                    </div>
+                                    <div class="text-sm text-gray-600">{{ currentOwner.user.first_name }}</div>
                                 </div>
                             </div>
-                            <div v-else class="p-4 text-center text-xs text-gray-400 italic">No drivers assigned</div>
+                            <div class="space-y-3 text-sm border-t border-gray-100 pt-4">
+                                <div>
+                                    <span class="text-xs text-gray-400 block uppercase">TIN</span>
+                                    <span class="font-mono font-medium text-gray-700">{{ currentOwner.tin_number }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-400 block uppercase">Owned Since</span>
+                                    <span class="font-medium text-gray-700">{{ franchise.current_ownership?.date_transferred }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-400 block uppercase">Contact</span>
+                                    <span class="font-medium text-gray-700 truncate block" :title="currentOwner.user.email">{{ currentOwner.user.email }}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div v-else class="text-gray-400 italic py-4 text-center">No Active Owner</div>
+                    </div>
+
+                    <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
+                        <div class="flex items-center gap-4 mb-4">
+                             <div class="bg-gray-50 p-2 rounded border shadow-sm flex-shrink-0">
+                                <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="w-12 h-12" alt="QR Code" />
+                                <div v-else class="w-12 h-12 bg-gray-100 flex items-center justify-center text-[8px] text-gray-400">NO QR</div>
+                            </div>
+                            <div class="leading-tight">
+                                <h4 class="font-bold text-gray-900 text-sm">QR Identity</h4>
+                                <span class="text-xs text-gray-500">Scan for verification</span>
+                            </div>
+                        </div>
+                        <button @click="triggerPrint" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-sm font-bold py-3 rounded-lg transition shadow-sm">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                            Print QR Badge
+                        </button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 flex flex-col gap-6">
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        
+                        <div @click="showZoneModal = true" class="group cursor-pointer bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden">
+                            <div class="absolute right-0 top-0 w-16 h-16 rounded-bl-full opacity-10 transition-opacity group-hover:opacity-20" :style="{ backgroundColor: zoneColor }"></div>
+                            
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Zone</span>
+                                <svg class="w-4 h-4 text-gray-300 group-hover:text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            
+                            <div class="font-black text-lg text-gray-900 truncate mb-1">
+                                {{ franchise.zone ? franchise.zone.description : 'Unassigned' }}
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-gray-500">
+                                <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: zoneColor }"></span>
+                                View Coverage Area
+                            </div>
+                        </div>
+
+                        <div @click="showUnitDetailsModal = true" class="group cursor-pointer bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:border-emerald-400 hover:shadow-md transition-all">
+                             <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Unit</span>
+                                <svg class="w-4 h-4 text-gray-300 group-hover:text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            </div>
+
+                            <div v-if="currentUnit">
+                                <div class="font-mono font-black text-2xl text-gray-800 tracking-wider mb-1">
+                                    {{ currentUnit.plate_number }}
+                                </div>
+                                <div class="text-sm font-medium text-gray-600">
+                                    {{ currentUnit.make.name }} {{ currentUnit.model_year }}
+                                </div>
+                            </div>
+                            <div v-else class="text-gray-400 italic text-sm py-2">No Unit Assigned</div>
+                        </div>
+
+                        <div @click="activeTab = 'financials'" class="group cursor-pointer bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:border-amber-400 hover:shadow-md transition-all">
+                             <div class="flex justify-between items-start mb-2">
+                                <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Latest Payment</span>
+                                <svg class="w-4 h-4 text-gray-300 group-hover:text-amber-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </div>
+                            
+                            <div v-if="franchise.latest_payment">
+                                <div class="font-black text-lg text-gray-900 mb-1">
+                                    ₱ {{ Number(franchise.latest_payment.amount).toLocaleString() }}
+                                </div>
+                                <div class="text-xs text-gray-500">
+                                    OR# {{ franchise.latest_payment.or_number }} • {{ franchise.latest_payment.date }}
+                                </div>
+                            </div>
+                            <div v-else class="py-1">
+                                <div class="text-sm font-medium text-gray-500">No recent payments</div>
+                                <div class="text-xs text-blue-500 mt-1 font-bold group-hover:underline">View History &rarr;</div>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="mt-auto border-t border-gray-100 pt-4 flex items-center gap-4">
-                        <div class="bg-white p-1 rounded border shadow-sm flex-shrink-0">
-                            <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="w-14 h-14" alt="QR Code" />
-                            <div v-else class="w-14 h-14 bg-gray-50 flex items-center justify-center text-[8px] text-gray-400">NO QR</div>
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex-grow flex flex-col">
+                        <div class="border-b border-gray-200 bg-gray-50/50 px-6">
+                            <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                                <button 
+                                    @click="activeTab = 'ownership'"
+                                    :class="[
+                                        activeTab === 'ownership' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+                                    ]"
+                                >
+                                    Ownership History
+                                </button>
+                                <button 
+                                    @click="activeTab = 'drivers'"
+                                    :class="[
+                                        activeTab === 'drivers' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+                                    ]"
+                                >
+                                    Assigned Drivers
+                                </button>
+                                <button 
+                                    @click="activeTab = 'financials'"
+                                    :class="[
+                                        activeTab === 'financials' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+                                    ]"
+                                >
+                                    Assessments & Payments
+                                </button>
+                                <button 
+                                    @click="activeTab = 'unit'"
+                                    :class="[
+                                        activeTab === 'unit' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+                                    ]"
+                                >
+                                    Unit History
+                                </button>
+                            </nav>
                         </div>
-                        <div class="flex-grow">
-                            <div class="text-xs text-gray-400 mb-1">Identity Verification</div>
-                            <button @click="triggerPrint" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-xs font-bold py-2 rounded-lg transition shadow-sm">
-                                <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                                Print QR Badge
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
 
-            <div class="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <div class="border-b border-gray-200 bg-gray-50/50 px-6">
-                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
-                        <button 
-                            @click="activeTab = 'ownership'"
-                            :class="[
-                                activeTab === 'ownership' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
-                            ]"
-                        >
-                            Ownership History
-                        </button>
-                        <button 
-                            @click="activeTab = 'unit'"
-                            :class="[
-                                activeTab === 'unit' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
-                                'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
-                            ]"
-                        >
-                            Unit History
-                        </button>
-                    </nav>
-                </div>
+                        <div class="flex-grow bg-white min-h-[300px]">
+                            <div v-if="activeTab === 'ownership'" class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-6 py-3">Date</th>
+                                            <th class="px-6 py-3">New Owner</th>
+                                            <th class="px-6 py-3">Previous Owner</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr v-for="hist in franchise.ownership_history" :key="hist.id" class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 text-gray-600 font-mono">{{ hist.date_transferred }}</td>
+                                            <td class="px-6 py-4 font-medium text-gray-900">{{ hist.new_owner.user.last_name }}, {{ hist.new_owner.user.first_name }}</td>
+                                            <td class="px-6 py-4 text-gray-500">
+                                                {{ hist.previous_owner ? `${hist.previous_owner.user.last_name}, ${hist.previous_owner.user.first_name}` : 'Initial Issue' }}
+                                            </td>
+                                        </tr>
+                                        <tr v-if="franchise.ownership_history.length === 0"><td colspan="3" class="px-6 py-8 text-center text-gray-400">No history available</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
 
-                <div v-if="activeTab === 'ownership'" class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
-                            <tr>
-                                <th class="px-6 py-3">Date</th>
-                                <th class="px-6 py-3">New Owner</th>
-                                <th class="px-6 py-3">Previous Owner</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            <tr v-for="hist in franchise.ownership_history" :key="hist.id" class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-gray-600 font-mono">{{ hist.date_transferred }}</td>
-                                <td class="px-6 py-4 font-medium text-gray-900">{{ hist.new_owner.user.last_name }}, {{ hist.new_owner.user.first_name }}</td>
-                                <td class="px-6 py-4 text-gray-500">
-                                    {{ hist.previous_owner ? `${hist.previous_owner.user.last_name}, ${hist.previous_owner.user.first_name}` : 'Initial Issue' }}
-                                </td>
-                            </tr>
-                            <tr v-if="franchise.ownership_history.length === 0"><td colspan="3" class="px-6 py-8 text-center text-gray-400">No history available</td></tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <div v-if="activeTab === 'unit'" class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
-                            <tr>
-                                <th class="px-6 py-3">Date</th>
-                                <th class="px-6 py-3">Plate No.</th>
-                                <th class="px-6 py-3">Details</th>
-                                <th class="px-6 py-3">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-100">
-                            <tr v-for="uh in franchise.unit_history" :key="uh.id" class="hover:bg-gray-50">
-                                <td class="px-6 py-4 text-gray-600 font-mono">{{ uh.date_changed }}</td>
-                                <td class="px-6 py-4 font-bold text-gray-800">{{ uh.new_unit.plate_number }}</td>
-                                <td class="px-6 py-4">
-                                    <div class="font-medium text-gray-900">{{ uh.new_unit.make.name }} {{ uh.new_unit.model_year }}</div>
-                                    <div class="text-xs text-gray-500 font-mono">
-                                        C: {{ uh.new_unit.chassis_number }} | M: {{ uh.new_unit.motor_number }}
+                            <div v-if="activeTab === 'drivers'" class="p-6">
+                                <div class="flex justify-between items-center mb-4">
+                                    <h3 class="font-bold text-gray-700">Current Assignments</h3>
+                                    <button @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
+                                        + Assign Driver
+                                    </button>
+                                </div>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div v-for="assignment in franchise.driver_assignments" :key="assignment.id" class="flex items-center justify-between p-4 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
+                                        <div class="flex items-center gap-3">
+                                            <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                                                {{ assignment.driver.first_name ? assignment.driver.first_name.charAt(0) : 'D' }}
+                                            </div>
+                                            <div>
+                                                <div class="font-bold text-gray-900">{{ getDriverName(assignment.driver) }}</div>
+                                                <div class="text-xs text-gray-500">License: {{ assignment.driver.license_number || 'N/A' }}</div>
+                                            </div>
+                                        </div>
+                                        <button @click="removeDriver(assignment.id)" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition">
+                                            <span class="sr-only">Remove</span>
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        </button>
                                     </div>
-                                </td>
-                                <td class="px-6 py-4 text-gray-500 italic">{{ uh.remarks || '-' }}</td>
-                            </tr>
-                            <tr v-if="franchise.unit_history.length === 0"><td colspan="4" class="px-6 py-8 text-center text-gray-400">No history available</td></tr>
-                        </tbody>
-                    </table>
+                                    <div v-if="!franchise.driver_assignments || franchise.driver_assignments.length === 0" class="col-span-2 text-center py-8 text-gray-400 italic bg-gray-50 rounded-lg">
+                                        No drivers currently assigned.
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div v-if="activeTab === 'financials'" class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-6 py-3">Date</th>
+                                            <th class="px-6 py-3">Description</th>
+                                            <th class="px-6 py-3">OR Number</th>
+                                            <th class="px-6 py-3 text-right">Amount</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr>
+                                            <td colspan="4" class="px-6 py-12 text-center">
+                                                <div class="text-gray-400 italic mb-2">No payment records found.</div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div v-if="activeTab === 'unit'" class="overflow-x-auto">
+                                <table class="w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
+                                        <tr>
+                                            <th class="px-6 py-3">Date</th>
+                                            <th class="px-6 py-3">Plate No.</th>
+                                            <th class="px-6 py-3">Details</th>
+                                            <th class="px-6 py-3">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr v-for="uh in franchise.unit_history" :key="uh.id" class="hover:bg-gray-50">
+                                            <td class="px-6 py-4 text-gray-600 font-mono">{{ uh.date_changed }}</td>
+                                            <td class="px-6 py-4 font-bold text-gray-800">{{ uh.new_unit.plate_number }}</td>
+                                            <td class="px-6 py-4">
+                                                <div class="font-medium text-gray-900">{{ uh.new_unit.make.name }} {{ uh.new_unit.model_year }}</div>
+                                                <div class="text-xs text-gray-500 font-mono">
+                                                    C: {{ uh.new_unit.chassis_number }} | M: {{ uh.new_unit.motor_number }}
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 text-gray-500 italic">{{ uh.remarks || '-' }}</td>
+                                        </tr>
+                                        <tr v-if="franchise.unit_history.length === 0"><td colspan="4" class="px-6 py-8 text-center text-gray-400">No history available</td></tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
             
+            <Modal :show="showUnitDetailsModal" @close="showUnitDetailsModal = false" maxWidth="lg">
+                <div class="p-0 overflow-hidden" v-if="currentUnit">
+                    <div class="bg-gray-900 p-6 text-white flex justify-between items-start">
+                        <div>
+                            <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">Active Unit Details</div>
+                            <h2 class="text-3xl font-mono font-bold">{{ currentUnit.plate_number }}</h2>
+                            <p class="text-gray-300">{{ currentUnit.make.name }} {{ currentUnit.model_year }}</p>
+                        </div>
+                        <button @click="showUnitDetailsModal = false" class="text-gray-400 hover:text-white">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    
+                    <div class="p-6">
+                        <div class="grid grid-cols-1 gap-4 mb-8">
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                                <span class="text-xs text-gray-500 uppercase font-bold">Chassis Number</span>
+                                <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.chassis_number }}</span>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                                <span class="text-xs text-gray-500 uppercase font-bold">Motor Number</span>
+                                <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.motor_number }}</span>
+                            </div>
+                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                                <span class="text-xs text-gray-500 uppercase font-bold">CR Number</span>
+                                <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.cr_number || 'N/A' }}</span>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Vehicle Photos</h3>
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                
+                                <div @click="currentUnit.unit_front_photo ? openImage(`/storage/${currentUnit.unit_front_photo}`) : null"
+                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                    <img v-if="currentUnit.unit_front_photo" :src="`/storage/${currentUnit.unit_front_photo}`" class="w-full h-full object-cover" alt="Front View" />
+                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <span class="text-[10px] uppercase font-bold">Front</span>
+                                    </div>
+                                </div>
+
+                                <div @click="currentUnit.unit_back_photo ? openImage(`/storage/${currentUnit.unit_back_photo}`) : null"
+                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                    <img v-if="currentUnit.unit_back_photo" :src="`/storage/${currentUnit.unit_back_photo}`" class="w-full h-full object-cover" alt="Back View" />
+                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <span class="text-[10px] uppercase font-bold">Back</span>
+                                    </div>
+                                </div>
+
+                                <div @click="currentUnit.unit_left_photo ? openImage(`/storage/${currentUnit.unit_left_photo}`) : null"
+                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                    <img v-if="currentUnit.unit_left_photo" :src="`/storage/${currentUnit.unit_left_photo}`" class="w-full h-full object-cover" alt="Left View" />
+                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <span class="text-[10px] uppercase font-bold">Left</span>
+                                    </div>
+                                </div>
+
+                                <div @click="currentUnit.unit_right_photo ? openImage(`/storage/${currentUnit.unit_right_photo}`) : null"
+                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                    <img v-if="currentUnit.unit_right_photo" :src="`/storage/${currentUnit.unit_right_photo}`" class="w-full h-full object-cover" alt="Right View" />
+                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                        <span class="text-[10px] uppercase font-bold">Right</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Modal>
+
             <Modal :show="showTransferModal" @close="showTransferModal = false" maxWidth="md">
                 <div class="p-6">
                     <h2 class="text-lg font-bold text-gray-900 mb-1">Transfer Ownership</h2>
@@ -452,6 +589,22 @@ const getDriverName = (driver) => {
             </Modal>
 
         </div>
+        
+        <Teleport to="body">
+            <div v-if="selectedImage" 
+                 style="z-index: 2147483647 !important;" 
+                 class="fixed inset-0 bg-black bg-opacity-95 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
+                 @click.self="closeImage">
+                
+                <button @click="closeImage" class="absolute top-6 right-6 text-white text-opacity-70 hover:text-white focus:outline-none transition-colors">
+                    <svg class="w-12 h-12 drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+                
+                <img :src="selectedImage" class="max-h-[90vh] max-w-[90vw] object-contain rounded-sm shadow-2xl" />
+            </div>
+        </Teleport>
 
         <div id="print-area">
             <div class="relative bg-white rounded-xl overflow-hidden shadow-none max-w-[400px] mx-auto text-center border-4"
