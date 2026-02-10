@@ -15,7 +15,7 @@ return new class extends Migration
             $table->unsignedBigInteger('ownership_id')->nullable(); 
             $table->unsignedBigInteger('active_unit_id')->nullable();
             
-            $table->foreignId('driver_id')->nullable()->constrained()->nullOnDelete();
+            // $table->foreignId('driver_id')->nullable()->constrained()->nullOnDelete();
             $table->foreignId('zone_id')->constrained();
             
             $table->date('date_issued');
