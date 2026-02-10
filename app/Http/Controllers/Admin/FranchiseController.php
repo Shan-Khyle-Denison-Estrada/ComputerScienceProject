@@ -11,6 +11,7 @@ use App\Models\Zone;
 use App\Models\Ownership;
 use App\Models\ActiveUnit;
 use App\Models\DriverAssignment;
+use App\Models\Complaint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage; // Added for file storage
@@ -129,7 +130,11 @@ class FranchiseController extends Controller
             'unitHistory.newUnit.make',
             'driverAssignments.driver.user', 
             'assessments.payments',
-            'zone' 
+            'zone',
+            // Load Complaints
+            'complaints' => function($q) {
+                $q->latest();
+            }
         ]);
 
         $operators = Operator::with('user')->get();
@@ -278,5 +283,38 @@ public function lookup(Request $request)
         }
 
         return redirect()->route('franchises.public_show', $franchise->id);
+    }
+
+    // Store Complaint (Ensuring this exists based on your Vue usage)
+    public function storeComplaint(Request $request, $franchiseId)
+    {
+        $validated = $request->validate([
+            'nature_of_complaint' => 'required|string',
+            'incident_date' => 'required|date',
+            'incident_time' => 'required',
+            'complainant_contact' => 'required|string',
+            'remarks' => 'nullable|string',
+            'fare_collected' => 'nullable|numeric',
+            'pick_up_point' => 'nullable|string',
+            'drop_off_point' => 'nullable|string',
+        ]);
+
+        $franchise = Franchise::findOrFail($franchiseId);
+        
+        $franchise->complaints()->create($validated);
+
+        return redirect()->back()->with('success', 'Complaint logged successfully.');
+    }
+
+    // NEW: Resolve Complaint
+    public function resolveComplaint($id)
+    {
+        $complaint = Complaint::findOrFail($id);
+        
+        $complaint->update([
+            'status' => 'Resolved'
+        ]);
+
+        return redirect()->back()->with('success', 'Complaint marked as resolved.');
     }
 }

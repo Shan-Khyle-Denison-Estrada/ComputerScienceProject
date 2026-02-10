@@ -13,6 +13,7 @@ use App\Http\Controllers\Admin\UnitMakeController;
 use App\Http\Controllers\Admin\FranchiseController;
 use App\Http\Controllers\Franchise\DashboardController;
 use App\Http\Controllers\Admin\AdminDashboardController;
+use App\Http\Controllers\Admin\ComplaintController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -39,11 +40,13 @@ Route::post('/verify/lookup', [FranchiseController::class, 'lookup'])->name('ver
 // NEW: Public Franchise Detail View
 Route::get('/franchise-check/{id}', [FranchiseController::class, 'publicShow'])->name('franchises.public_show');
 
+Route::post('/complaints/report', [ComplaintController::class, 'store'])->name('complaints.store');
+
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
     
     // 1. Dashboard
-Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
+    Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
 
     // 2. Zone Management
     Route::resource('admin/zones', ZoneController::class)
@@ -107,14 +110,20 @@ Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name
     Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
     Route::post('/admin/franchises', [FranchiseController::class, 'store'])->name('admin.franchises.store');
     Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
+    Route::post('/admin/franchises/{franchise}/complaints', [ComplaintController::class, 'store'])->name('admin.franchises.complaints.store');
 
     // 12. Franchise Actions
     Route::post('/admin/franchises/{franchise}/transfer', [FranchiseController::class, 'transferOwnership'])->name('admin.franchises.transfer');
     Route::post('/admin/franchises/{franchise}/change-unit', [FranchiseController::class, 'changeUnit'])->name('admin.franchises.change-unit');
 
-    // NEW: Driver Assignment Routes
+    // 13. Driver Assignment Routes
     Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
     Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
+
+    // 14. Complaint Route
+    Route::get('/admin/complaints', [ComplaintController::class, 'index'])->name('admin.complaints.index');
+    Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
+    Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
 });
 
 // --- FRANCHISE OWNER ROUTES ---

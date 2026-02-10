@@ -5,7 +5,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { Head, useForm, Link, router } from '@inertiajs/vue3'; // Added router
 import { ref, computed } from 'vue';
 
 const props = defineProps({
@@ -19,11 +19,11 @@ const props = defineProps({
 const showTransferModal = ref(false);
 const showChangeUnitModal = ref(false);
 const showAddDriverModal = ref(false);
+const showComplaintModal = ref(false);
 const showZoneModal = ref(false);
 const showUnitDetailsModal = ref(false);
 const activeTab = ref('ownership'); 
 
-// NEW: State for Full Screen Image Viewer
 const selectedImage = ref(null);
 
 // --- FORMS ---
@@ -40,6 +40,28 @@ const unitForm = useForm({
 
 const driverForm = useForm({
     driver_id: '',
+});
+
+const complaintOptions = [
+    'Overcharging / Overpricing',
+    'Refusal to Convey Passenger',
+    'Reckless Driving',
+    'Arrogance / Discourtesy',
+    'Trip Cutting',
+    'Operating without License',
+    'Others'
+];
+
+const complaintForm = useForm({
+    franchise_id: props.franchise.id,
+    nature_of_complaint: '',
+    remarks: '',
+    fare_collected: '',
+    pick_up_point: '',
+    drop_off_point: '',
+    complainant_contact: '',
+    incident_date: new Date().toISOString().split('T')[0],
+    incident_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
 });
 
 // --- ACTIONS ---
@@ -63,6 +85,25 @@ const submitDriverAssignment = () => {
     });
 };
 
+const submitComplaint = () => {
+    complaintForm.post(route('admin.franchises.complaints.store', props.franchise.id), {
+        onSuccess: () => { showComplaintModal.value = false; complaintForm.reset(); activeTab.value = 'complaints'; },
+        onError: () => { showComplaintModal.value = true; }
+    });
+};
+
+// NEW: Resolve Complaint Action
+const resolveComplaint = (complaintId) => {
+    if (confirm('Are you sure you want to mark this complaint as resolved?')) {
+        router.patch(route('admin.complaints.resolve', complaintId), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                // Optional: Show toast notification
+            }
+        });
+    }
+};
+
 const removeDriver = (assignmentId) => {
     if (confirm('Are you sure you want to remove this driver?')) {
         const form = useForm({});
@@ -74,19 +115,9 @@ const triggerPrint = () => {
     window.print();
 };
 
-// --- IMAGE VIEWER LOGIC ---
 const openImage = (url) => {
-    // 1. Set the image
     selectedImage.value = url;
-    // 2. Hide the modal so they don't fight for z-index
     showUnitDetailsModal.value = false;
-};
-
-const closeImage = () => {
-    // 1. Clear the image
-    selectedImage.value = null;
-    // 2. Re-open the modal
-    showUnitDetailsModal.value = true;
 };
 
 // --- HELPERS ---
@@ -135,6 +166,10 @@ const getDriverName = (driver) => {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
+                    <SecondaryButton @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+                        Make Complaint
+                    </SecondaryButton>
                     <SecondaryButton @click="showChangeUnitModal = true">
                         <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         Change Unit
@@ -149,7 +184,6 @@ const getDriverName = (driver) => {
             <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
                 
                 <div class="lg:col-span-1 space-y-6">
-                    
                     <div class="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden">
                         <div class="flex items-center justify-between mb-6">
                             <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest">Operator</h3>
@@ -212,7 +246,6 @@ const getDriverName = (driver) => {
                 <div class="lg:col-span-3 flex flex-col gap-6">
 
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        
                         <div @click="showZoneModal = true" class="group cursor-pointer bg-white rounded-xl border border-gray-200 p-5 shadow-sm hover:border-blue-400 hover:shadow-md transition-all relative overflow-hidden">
                             <div class="absolute right-0 top-0 w-16 h-16 rounded-bl-full opacity-10 transition-opacity group-hover:opacity-20" :style="{ backgroundColor: zoneColor }"></div>
                             
@@ -287,364 +320,471 @@ const getDriverName = (driver) => {
                                         'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
                                     ]"
                                 >
-                                    Assigned Drivers
+                                    Authorized Drivers
                                 </button>
                                 <button 
                                     @click="activeTab = 'financials'"
                                     :class="[
-                                        activeTab === 'financials' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        activeTab === 'financials' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
                                         'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
                                     ]"
                                 >
                                     Assessments & Payments
                                 </button>
                                 <button 
-                                    @click="activeTab = 'unit'"
+                                    @click="activeTab = 'complaints'"
                                     :class="[
-                                        activeTab === 'unit' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        activeTab === 'complaints' ? 'border-rose-500 text-rose-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
                                         'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
                                     ]"
                                 >
-                                    Unit History
+                                    Complaints
+                                    <span v-if="franchise.complaints && franchise.complaints.length > 0" class="ml-2 bg-rose-100 text-rose-600 py-0.5 px-2 rounded-full text-xs font-bold">
+                                        {{ franchise.complaints.length }}
+                                    </span>
                                 </button>
                             </nav>
                         </div>
 
-                        <div class="flex-grow bg-white min-h-[300px]">
-                            <div v-if="activeTab === 'ownership'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
+                        <div v-if="activeTab === 'ownership'" class="p-6">
+                            <h3 class="font-bold text-gray-700 mb-4">Transfer Log</h3>
+                            <div class="overflow-x-auto border border-gray-100 rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
                                         <tr>
-                                            <th class="px-6 py-3">Date</th>
-                                            <th class="px-6 py-3">New Owner</th>
-                                            <th class="px-6 py-3">Previous Owner</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">New Operator</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Previous Operator</th>
                                         </tr>
                                     </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <tr v-for="hist in franchise.ownership_history" :key="hist.id" class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 text-gray-600 font-mono">{{ hist.date_transferred }}</td>
-                                            <td class="px-6 py-4 font-medium text-gray-900">{{ hist.new_owner.user.last_name }}, {{ hist.new_owner.user.first_name }}</td>
-                                            <td class="px-6 py-4 text-gray-500">
-                                                {{ hist.previous_owner ? `${hist.previous_owner.user.last_name}, ${hist.previous_owner.user.first_name}` : 'Initial Issue' }}
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="history in franchise.ownership_history" :key="history.id">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ history.date_transferred }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {{ history.new_owner.user.last_name }}, {{ history.new_owner.user.first_name }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span v-if="history.previous_owner">
+                                                    {{ history.previous_owner.user.last_name }}, {{ history.previous_owner.user.first_name }}
+                                                </span>
+                                                <span v-else class="text-gray-400 italic">-- Original --</span>
                                             </td>
                                         </tr>
-                                        <tr v-if="franchise.ownership_history.length === 0"><td colspan="3" class="px-6 py-8 text-center text-gray-400">No history available</td></tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div v-if="activeTab === 'drivers'" class="p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h3 class="font-bold text-gray-700">Current Assignments</h3>
-                                    <button @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
-                                        + Assign Driver
-                                    </button>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div v-for="assignment in franchise.driver_assignments" :key="assignment.id" class="flex items-center justify-between p-4 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
-                                        <div class="flex items-center gap-3">
-                                            <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
-                                                {{ assignment.driver.first_name ? assignment.driver.first_name.charAt(0) : 'D' }}
-                                            </div>
-                                            <div>
-                                                <div class="font-bold text-gray-900">{{ getDriverName(assignment.driver) }}</div>
-                                                <div class="text-xs text-gray-500">License: {{ assignment.driver.license_number || 'N/A' }}</div>
-                                            </div>
-                                        </div>
-                                        <button @click="removeDriver(assignment.id)" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition">
-                                            <span class="sr-only">Remove</span>
-                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                        </button>
-                                    </div>
-                                    <div v-if="!franchise.driver_assignments || franchise.driver_assignments.length === 0" class="col-span-2 text-center py-8 text-gray-400 italic bg-gray-50 rounded-lg">
-                                        No drivers currently assigned.
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div v-if="activeTab === 'financials'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
-                                        <tr>
-                                            <th class="px-6 py-3">Date</th>
-                                            <th class="px-6 py-3">Description</th>
-                                            <th class="px-6 py-3">OR Number</th>
-                                            <th class="px-6 py-3 text-right">Amount</th>
+                                        <tr v-if="!franchise.ownership_history || franchise.ownership_history.length === 0">
+                                            <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500 italic">No transfer history recorded.</td>
                                         </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <tr>
-                                            <td colspan="4" class="px-6 py-12 text-center">
-                                                <div class="text-gray-400 italic mb-2">No payment records found.</div>
-                                            </td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-
-                            <div v-if="activeTab === 'unit'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
-                                    <thead class="bg-gray-50 text-xs text-gray-500 uppercase font-semibold">
-                                        <tr>
-                                            <th class="px-6 py-3">Date</th>
-                                            <th class="px-6 py-3">Plate No.</th>
-                                            <th class="px-6 py-3">Details</th>
-                                            <th class="px-6 py-3">Remarks</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-100">
-                                        <tr v-for="uh in franchise.unit_history" :key="uh.id" class="hover:bg-gray-50">
-                                            <td class="px-6 py-4 text-gray-600 font-mono">{{ uh.date_changed }}</td>
-                                            <td class="px-6 py-4 font-bold text-gray-800">{{ uh.new_unit.plate_number }}</td>
-                                            <td class="px-6 py-4">
-                                                <div class="font-medium text-gray-900">{{ uh.new_unit.make.name }} {{ uh.new_unit.model_year }}</div>
-                                                <div class="text-xs text-gray-500 font-mono">
-                                                    C: {{ uh.new_unit.chassis_number }} | M: {{ uh.new_unit.motor_number }}
-                                                </div>
-                                            </td>
-                                            <td class="px-6 py-4 text-gray-500 italic">{{ uh.remarks || '-' }}</td>
-                                        </tr>
-                                        <tr v-if="franchise.unit_history.length === 0"><td colspan="4" class="px-6 py-8 text-center text-gray-400">No history available</td></tr>
                                     </tbody>
                                 </table>
                             </div>
                         </div>
+
+                        <div v-if="activeTab === 'drivers'" class="p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-gray-700">Current Assignments</h3>
+                                <button @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
+                                    + Assign Driver
+                                </button>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div v-for="assignment in franchise.driver_assignments" :key="assignment.id" class="flex items-center justify-between p-4 rounded-lg border border-gray-100 bg-gray-50 hover:bg-white hover:shadow-sm transition-all">
+                                    <div class="flex items-center gap-3">
+                                        <div class="h-10 w-10 rounded-full bg-indigo-100 text-indigo-700 flex items-center justify-center font-bold">
+                                            {{ assignment.driver.first_name ? assignment.driver.first_name.charAt(0) : 'D' }}
+                                        </div>
+                                        <div>
+                                            <div class="font-bold text-gray-900">{{ getDriverName(assignment.driver) }}</div>
+                                            <div class="text-xs text-gray-500">License: {{ assignment.driver.license_number || 'N/A' }}</div>
+                                        </div>
+                                    </div>
+                                    <button @click="removeDriver(assignment.id)" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition">
+                                        <span class="sr-only">Remove</span>
+                                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                    </button>
+                                </div>
+                                <div v-if="!franchise.driver_assignments || franchise.driver_assignments.length === 0" class="col-span-2 text-center py-8 text-gray-400 italic bg-gray-50 rounded-lg">
+                                    No drivers currently assigned.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'financials'" class="p-6">
+                            <h3 class="font-bold text-gray-700 mb-4">Assessments & Payments</h3>
+                            <div class="space-y-4">
+                                <div v-for="assessment in franchise.assessments" :key="assessment.id" class="border border-gray-200 rounded-lg overflow-hidden">
+                                    <div class="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-100">
+                                        <div>
+                                            <div class="text-sm font-bold text-gray-900">{{ assessment.description || 'Assessment' }}</div>
+                                            <div class="text-xs text-gray-500">Due: {{ assessment.due_date }}</div>
+                                        </div>
+                                        <div class="text-right">
+                                            <div class="text-sm font-black text-gray-800">₱ {{ Number(assessment.amount).toLocaleString() }}</div>
+                                            <span v-if="assessment.is_paid" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">Paid</span>
+                                            <span v-else class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase">Unpaid</span>
+                                        </div>
+                                    </div>
+                                    <div v-if="assessment.payments && assessment.payments.length > 0" class="bg-white">
+                                        <table class="min-w-full divide-y divide-gray-100">
+                                            <thead class="bg-white">
+                                                <tr>
+                                                    <th class="px-6 py-2 text-left text-[10px] uppercase font-bold text-gray-400">OR Number</th>
+                                                    <th class="px-6 py-2 text-left text-[10px] uppercase font-bold text-gray-400">Date Paid</th>
+                                                    <th class="px-6 py-2 text-right text-[10px] uppercase font-bold text-gray-400">Amount Paid</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-50">
+                                                <tr v-for="payment in assessment.payments" :key="payment.id">
+                                                    <td class="px-6 py-2 text-sm text-gray-600 font-mono">{{ payment.or_number }}</td>
+                                                    <td class="px-6 py-2 text-sm text-gray-600">{{ payment.date_paid }}</td>
+                                                    <td class="px-6 py-2 text-sm text-gray-800 text-right font-medium">₱ {{ Number(payment.amount).toLocaleString() }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div v-else class="p-4 text-xs text-gray-400 italic text-center">
+                                        No payments recorded for this assessment.
+                                    </div>
+                                </div>
+                                <div v-if="!franchise.assessments || franchise.assessments.length === 0" class="text-center py-8 text-gray-400 italic">
+                                    No financial records found.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'complaints'" class="p-6">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="font-bold text-gray-700">Reported Complaints</h3>
+                            </div>
+                            
+                            <div class="overflow-x-auto border border-gray-100 rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Time</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nature</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complainant</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
+                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="complaint in franchise.complaints" :key="complaint.id">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                                {{ complaint.incident_date }}
+                                                <div class="text-xs text-gray-400">{{ complaint.incident_time }}</div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 py-1 text-xs font-bold leading-5 rounded-full bg-rose-100 text-rose-800">
+                                                    {{ complaint.nature_of_complaint }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span :class="[
+                                                    'px-2 py-1 text-xs font-bold leading-5 rounded-full uppercase',
+                                                    complaint.status === 'Resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                                                ]">
+                                                    {{ complaint.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                                                {{ complaint.complainant_contact }}
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate" :title="complaint.remarks">
+                                                {{ complaint.remarks || 'No details provided.' }}
+                                                <div v-if="complaint.fare_collected" class="text-xs text-gray-400 mt-1">
+                                                    Fare: ₱{{ complaint.fare_collected }}
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button 
+                                                    v-if="complaint.status !== 'Resolved'"
+                                                    @click="resolveComplaint(complaint.id)" 
+                                                    class="text-blue-600 hover:text-blue-900 font-bold hover:underline"
+                                                >
+                                                    Mark Resolved
+                                                </button>
+                                                <div v-else class="text-green-600 font-bold flex items-center justify-end gap-1">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                    Done
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="!franchise.complaints || franchise.complaints.length === 0">
+                                            <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500 italic">
+                                                No complaints reported for this franchise.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
-            
-            <Modal :show="showUnitDetailsModal" @close="showUnitDetailsModal = false" maxWidth="lg">
-                <div class="p-0 overflow-hidden" v-if="currentUnit">
-                    <div class="bg-gray-900 p-6 text-white flex justify-between items-start">
-                        <div>
-                            <div class="text-xs uppercase tracking-widest text-gray-400 mb-1">Active Unit Details</div>
-                            <h2 class="text-3xl font-mono font-bold">{{ currentUnit.plate_number }}</h2>
-                            <p class="text-gray-300">{{ currentUnit.make.name }} {{ currentUnit.model_year }}</p>
-                        </div>
-                        <button @click="showUnitDetailsModal = false" class="text-gray-400 hover:text-white">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
+
+            <div id="print-area">
+                <div class="w-[300px] bg-white border border-gray-300 p-4 text-center font-sans">
+                    <h1 class="text-lg font-bold mb-1">Franchise QR</h1>
+                    <div class="mb-4">
+                        <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="w-48 h-48 mx-auto" />
                     </div>
+                    <div class="text-2xl font-black mb-1">FR #{{ franchise.id }}</div>
+                    <div class="text-sm uppercase mb-4">{{ franchise.zone?.description }}</div>
                     
-                    <div class="p-6">
-                        <div class="grid grid-cols-1 gap-4 mb-8">
-                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
-                                <span class="text-xs text-gray-500 uppercase font-bold">Chassis Number</span>
-                                <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.chassis_number }}</span>
-                            </div>
-                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
-                                <span class="text-xs text-gray-500 uppercase font-bold">Motor Number</span>
-                                <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.motor_number }}</span>
-                            </div>
-                            <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
-                                <span class="text-xs text-gray-500 uppercase font-bold">CR Number</span>
-                                <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.cr_number || 'N/A' }}</span>
-                            </div>
+                    <div class="border-t border-b border-gray-200 py-2 mb-2 text-left text-xs">
+                        <div class="flex justify-between mb-1">
+                            <span class="font-bold">Operator:</span>
+                            <span>{{ currentOwner ? `${currentOwner.user.last_name}, ${currentOwner.user.first_name}` : 'N/A' }}</span>
                         </div>
-
-                        <div>
-                            <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Vehicle Photos</h3>
-                            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                
-                                <div @click="currentUnit.unit_front_photo ? openImage(`/storage/${currentUnit.unit_front_photo}`) : null"
-                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img v-if="currentUnit.unit_front_photo" :src="`/storage/${currentUnit.unit_front_photo}`" class="w-full h-full object-cover" alt="Front View" />
-                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <span class="text-[10px] uppercase font-bold">Front</span>
-                                    </div>
-                                </div>
-
-                                <div @click="currentUnit.unit_back_photo ? openImage(`/storage/${currentUnit.unit_back_photo}`) : null"
-                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img v-if="currentUnit.unit_back_photo" :src="`/storage/${currentUnit.unit_back_photo}`" class="w-full h-full object-cover" alt="Back View" />
-                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <span class="text-[10px] uppercase font-bold">Back</span>
-                                    </div>
-                                </div>
-
-                                <div @click="currentUnit.unit_left_photo ? openImage(`/storage/${currentUnit.unit_left_photo}`) : null"
-                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img v-if="currentUnit.unit_left_photo" :src="`/storage/${currentUnit.unit_left_photo}`" class="w-full h-full object-cover" alt="Left View" />
-                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <span class="text-[10px] uppercase font-bold">Left</span>
-                                    </div>
-                                </div>
-
-                                <div @click="currentUnit.unit_right_photo ? openImage(`/storage/${currentUnit.unit_right_photo}`) : null"
-                                     class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
-                                    <img v-if="currentUnit.unit_right_photo" :src="`/storage/${currentUnit.unit_right_photo}`" class="w-full h-full object-cover" alt="Right View" />
-                                    <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
-                                        <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        <span class="text-[10px] uppercase font-bold">Right</span>
-                                    </div>
-                                </div>
-                            </div>
+                         <div class="flex justify-between">
+                            <span class="font-bold">Plate #:</span>
+                            <span>{{ currentUnit ? currentUnit.plate_number : 'N/A' }}</span>
                         </div>
                     </div>
+                    <div class="text-[10px] text-gray-400">Scan to Verify Validity</div>
                 </div>
-            </Modal>
-
-            <Modal :show="showTransferModal" @close="showTransferModal = false" maxWidth="md">
-                <div class="p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-1">Transfer Ownership</h2>
-                    <p class="text-sm text-gray-500 mb-6">Assign this franchise to a new operator.</p>
-                    <form @submit.prevent="submitTransfer" class="space-y-4">
-                        <div>
-                            <InputLabel>New Operator</InputLabel>
-                            <select v-model="transferForm.new_operator_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                <option value="" disabled>Search Operator...</option>
-                                <option v-for="op in operators" :key="op.id" :value="op.id">{{ op.user.last_name }}, {{ op.user.first_name }}</option>
-                            </select>
-                            <p v-if="transferForm.errors.new_operator_id" class="text-red-500 text-xs mt-1">{{ transferForm.errors.new_operator_id }}</p>
-                        </div>
-                        <div>
-                            <InputLabel>Date</InputLabel>
-                            <TextInput type="date" v-model="transferForm.date_transferred" class="mt-1 block w-full" required />
-                        </div>
-                        <div class="flex justify-end gap-3 pt-4">
-                            <SecondaryButton @click="showTransferModal = false">Cancel</SecondaryButton>
-                            <PrimaryButton :disabled="transferForm.processing">Confirm Transfer</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            <Modal :show="showChangeUnitModal" @close="showChangeUnitModal = false" maxWidth="md">
-                <div class="p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-1">Change Active Unit</h2>
-                    <p class="text-sm text-gray-500 mb-6">Update the vehicle associated with this franchise.</p>
-                    <form @submit.prevent="submitUnitChange" class="space-y-4">
-                        <div>
-                            <InputLabel>New Unit</InputLabel>
-                            <select v-model="unitForm.new_unit_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                <option value="" disabled>Choose Unit...</option>
-                                <option v-for="u in units" :key="u.id" :value="u.id">{{ u.plate_number }} — {{ u.make.name }}</option>
-                            </select>
-                            <p v-if="unitForm.errors.new_unit_id" class="text-red-500 text-xs mt-1">{{ unitForm.errors.new_unit_id }}</p>
-                        </div>
-                        <div>
-                            <InputLabel>Date</InputLabel>
-                            <TextInput type="date" v-model="unitForm.date_changed" class="mt-1 block w-full" required />
-                        </div>
-                        <div>
-                            <InputLabel>Remarks</InputLabel>
-                            <TextInput v-model="unitForm.remarks" class="mt-1 block w-full" placeholder="e.g. Upgrade" />
-                        </div>
-                        <div class="flex justify-end gap-3 pt-4">
-                            <SecondaryButton @click="showChangeUnitModal = false">Cancel</SecondaryButton>
-                            <PrimaryButton :disabled="unitForm.processing">Update</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            <Modal :show="showAddDriverModal" @close="showAddDriverModal = false" maxWidth="md">
-                <div class="p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-1">Assign Driver</h2>
-                    <p class="text-sm text-gray-500 mb-6">Select a driver for this franchise.</p>
-                    <form @submit.prevent="submitDriverAssignment" class="space-y-4">
-                        <div>
-                            <InputLabel>Select Driver</InputLabel>
-                            <select v-model="driverForm.driver_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                <option value="" disabled>Choose driver...</option>
-                                <option v-for="d in drivers" :key="d.id" :value="d.id">{{ getDriverName(d) }}</option>
-                            </select>
-                             <p v-if="driverForm.errors.driver_id" class="text-red-500 text-xs mt-1">{{ driverForm.errors.driver_id }}</p>
-                        </div>
-                        <div class="flex justify-end gap-3 pt-4">
-                            <SecondaryButton @click="showAddDriverModal = false">Cancel</SecondaryButton>
-                            <PrimaryButton :disabled="driverForm.processing">Assign</PrimaryButton>
-                        </div>
-                    </form>
-                </div>
-            </Modal>
-
-            <Modal :show="showZoneModal" @close="showZoneModal = false" maxWidth="md">
-                <div class="p-6">
-                    <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                        <div class="w-12 h-12 rounded-full shadow-sm border-2 border-white flex-shrink-0" :style="{ backgroundColor: zoneColor }"></div>
-                        <div>
-                            <h2 class="text-2xl font-black text-gray-900 uppercase leading-none mb-1">
-                                {{ franchise.zone?.description || 'No Zone' }}
-                            </h2>
-                            <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Zone Details</span>
-                        </div>
-                    </div>
-
-                    <div class="space-y-5">
-                        <div v-if="franchise.zone">
-                            <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Coverage Area</h4>
-                            <div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-700 border border-gray-100 max-h-60 overflow-y-auto">
-                                <ul v-if="Array.isArray(franchise.zone.coverage)" class="list-disc list-inside space-y-1">
-                                    <li v-for="(area, index) in franchise.zone.coverage" :key="index">{{ area }}</li>
-                                </ul>
-                                <p v-else>{{ franchise.zone.coverage || 'No specific coverage area defined.' }}</p>
-                            </div>
-                        </div>
-                        <div v-else class="text-gray-400 italic text-center py-4">
-                            This franchise is not currently assigned to a zone.
-                        </div>
-                    </div>
-
-                    <div class="mt-8 flex justify-end">
-                        <SecondaryButton @click="showZoneModal = false">Close</SecondaryButton>
-                    </div>
-                </div>
-            </Modal>
+            </div>
 
         </div>
         
-        <Teleport to="body">
-            <div v-if="selectedImage" 
-                 class="fixed inset-0 z-[2147483647] bg-black/95 flex items-center justify-center p-4 backdrop-blur-sm transition-all duration-300"
-                 @click.self="closeImage">
-                
-                <button @click="closeImage" class="absolute top-6 right-6 text-white text-opacity-70 hover:text-white focus:outline-none transition-colors">
-                    <svg class="w-12 h-12 drop-shadow-lg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
+        <Modal :show="showChangeUnitModal" @close="showChangeUnitModal = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Change Active Unit</h2>
+                <form @submit.prevent="submitUnitChange" class="space-y-4">
+                    <div>
+                        <InputLabel>Select Unit</InputLabel>
+                        <select v-model="unitForm.new_unit_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                             <option value="" disabled>Select a unit...</option>
+                             <option v-for="unit in units" :key="unit.id" :value="unit.id">
+                                {{ unit.plate_number }} - {{ unit.make.name }}
+                             </option>
+                        </select>
+                        <p v-if="unitForm.errors.new_unit_id" class="text-sm text-red-600 mt-1">{{ unitForm.errors.new_unit_id }}</p>
+                    </div>
+                     <div>
+                        <InputLabel>Date Changed</InputLabel>
+                        <TextInput v-model="unitForm.date_changed" type="date" class="mt-1 block w-full" required />
+                    </div>
+                     <div>
+                        <InputLabel>Remarks (Optional)</InputLabel>
+                        <TextInput v-model="unitForm.remarks" type="text" class="mt-1 block w-full" placeholder="Reason for change..." />
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                         <SecondaryButton @click="showChangeUnitModal = false">Cancel</SecondaryButton>
+                         <PrimaryButton :disabled="unitForm.processing">Save Changes</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        <Modal :show="showAddDriverModal" @close="showAddDriverModal = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Assign Driver</h2>
+                 <form @submit.prevent="submitDriverAssignment" class="space-y-4">
+                    <div>
+                        <InputLabel>Select Driver</InputLabel>
+                        <select v-model="driverForm.driver_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                             <option value="" disabled>Select driver...</option>
+                             <option v-for="d in drivers" :key="d.id" :value="d.id">
+                                {{ d.user.last_name }}, {{ d.user.first_name }} ({{ d.license_number }})
+                             </option>
+                        </select>
+                         <p v-if="driverForm.errors.driver_id" class="text-sm text-red-600 mt-1">{{ driverForm.errors.driver_id }}</p>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                         <SecondaryButton @click="showAddDriverModal = false">Cancel</SecondaryButton>
+                         <PrimaryButton :disabled="driverForm.processing">Assign Driver</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
+        <Modal :show="selectedImage !== null" @close="selectedImage = null" maxWidth="4xl">
+             <div class="p-1 bg-black rounded-lg overflow-hidden relative group">
+                <button @click="selectedImage = null" class="absolute top-4 right-4 bg-black/50 hover:bg-black text-white p-2 rounded-full z-50 transition">
+                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                 </button>
-                
-                <img :src="selectedImage" class="max-h-[90vh] max-w-[90vw] object-contain rounded-sm shadow-2xl" />
+                <img :src="selectedImage" class="w-full h-auto max-h-[90vh] object-contain mx-auto" />
+             </div>
+        </Modal>
+
+        <Modal :show="showUnitDetailsModal" @close="showUnitDetailsModal = false" maxWidth="lg">
+            <div class="bg-white">
+                <div class="flex justify-between items-center p-4 border-b border-gray-100">
+                    <h3 class="font-bold text-lg text-gray-900">Unit Details</h3>
+                    <button @click="showUnitDetailsModal = false" class="text-gray-400 hover:text-gray-600">
+                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <div class="grid grid-cols-1 gap-4 mb-8">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 uppercase font-bold">Chassis Number</span>
+                            <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.chassis_number }}</span>
+                        </div>
+                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 uppercase font-bold">Motor Number</span>
+                            <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.motor_number }}</span>
+                        </div>
+                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 uppercase font-bold">CR Number</span>
+                            <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.cr_number || 'N/A' }}</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <h3 class="text-sm font-bold text-gray-900 uppercase tracking-wide mb-3">Vehicle Photos</h3>
+                        <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                             <div @click="currentUnit.unit_front_photo ? openImage(`/storage/${currentUnit.unit_front_photo}`) : null" class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                <img v-if="currentUnit.unit_front_photo" :src="`/storage/${currentUnit.unit_front_photo}`" class="w-full h-full object-cover" alt="Front View" />
+                                <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                    <svg class="w-6 h-6 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <span class="text-[10px] uppercase font-bold">Front</span>
+                                </div>
+                            </div>
+                            <div @click="currentUnit.unit_back_photo ? openImage(`/storage/${currentUnit.unit_back_photo}`) : null" class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                <img v-if="currentUnit.unit_back_photo" :src="`/storage/${currentUnit.unit_back_photo}`" class="w-full h-full object-cover" alt="Back View" />
+                                <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                     <span class="text-[10px] uppercase font-bold">Back</span>
+                                </div>
+                            </div>
+                             <div @click="currentUnit.unit_left_photo ? openImage(`/storage/${currentUnit.unit_left_photo}`) : null" class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                <img v-if="currentUnit.unit_left_photo" :src="`/storage/${currentUnit.unit_left_photo}`" class="w-full h-full object-cover" alt="Side View" />
+                                <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                     <span class="text-[10px] uppercase font-bold">Side</span>
+                                </div>
+                            </div>
+                             <div @click="currentUnit.unit_right_photo ? openImage(`/storage/${currentUnit.unit_right_photo}`) : null" class="aspect-square bg-gray-100 rounded-lg overflow-hidden border border-gray-200 relative group cursor-pointer hover:opacity-90 transition-opacity">
+                                <img v-if="currentUnit.unit_right_photo" :src="`/storage/${currentUnit.unit_right_photo}`" class="w-full h-full object-cover" alt="Right View" />
+                                <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-400">
+                                     <span class="text-[10px] uppercase font-bold">Right</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </Teleport>
+        </Modal>
 
-        <div id="print-area">
-            <div class="relative bg-white rounded-xl overflow-hidden shadow-none max-w-[400px] mx-auto text-center border-4"
-                 :style="{ borderColor: zoneColor }">
+        <Modal :show="showTransferModal" @close="showTransferModal = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-1">Transfer Ownership</h2>
+                <p class="text-sm text-gray-500 mb-6">Assign this franchise to a new operator.</p>
+                <form @submit.prevent="submitTransfer" class="space-y-4">
+                    <div>
+                        <InputLabel>New Operator</InputLabel>
+                        <select v-model="transferForm.new_operator_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                            <option value="" disabled>Search Operator...</option>
+                            <option v-for="op in operators" :key="op.id" :value="op.id">{{ op.user.last_name }}, {{ op.user.first_name }}</option>
+                        </select>
+                        <p v-if="transferForm.errors.new_operator_id" class="text-sm text-red-600 mt-1">{{ transferForm.errors.new_operator_id }}</p>
+                    </div>
+                    <div>
+                        <InputLabel>Date Transferred</InputLabel>
+                        <TextInput v-model="transferForm.date_transferred" type="date" class="mt-1 block w-full" required />
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <SecondaryButton @click="showTransferModal = false">Cancel</SecondaryButton>
+                        <PrimaryButton :disabled="transferForm.processing">Confirm Transfer</PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
 
-                <div class="py-4 text-white font-bold tracking-widest uppercase"
-                     :style="{ backgroundColor: zoneColor }">
-                    Franchise Authority
+        <Modal :show="showZoneModal" @close="showZoneModal = false" maxWidth="md">
+            <div class="p-6">
+                <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
+                    <div class="w-12 h-12 rounded-full shadow-sm border-2 border-white flex-shrink-0" :style="{ backgroundColor: zoneColor }"></div>
+                    <div>
+                        <h2 class="text-2xl font-black text-gray-900 uppercase leading-none mb-1">
+                            {{ franchise.zone?.description || 'No Zone' }}
+                        </h2>
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Zone Details</span>
+                    </div>
                 </div>
-
-                <div class="p-8">
-                    <div class="text-xs font-bold uppercase tracking-widest mb-1 text-gray-400">Zone Assignment</div>
-                    <div class="text-lg font-black uppercase mb-6" :style="{ color: zoneColor }">
-                         {{ franchise.zone?.description || 'No Zone' }}
+                <div class="space-y-5">
+                    <div v-if="franchise.zone">
+                        <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Coverage Area</h4>
+                        <div class="bg-gray-50 p-4 rounded-xl text-sm text-gray-700 border border-gray-100 max-h-60 overflow-y-auto">
+                            <ul v-if="Array.isArray(franchise.zone.coverage)" class="list-disc list-inside space-y-1">
+                                <li v-for="(area, index) in franchise.zone.coverage" :key="index">{{ area }}</li>
+                            </ul>
+                            <p v-else>{{ franchise.zone.coverage || 'No specific coverage area defined.' }}</p>
+                        </div>
                     </div>
-
-                    <div class="text-6xl font-black text-gray-900 mb-6 leading-none">{{ franchise.id }}</div>
-                    
-                    <div class="mb-6 flex justify-center items-center h-48 w-48 mx-auto">
-                        <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="block max-w-full max-h-full" loading="eager" alt="Franchise QR Code" />
-                        <div v-else class="text-gray-400 text-sm">No QR Code Available</div>
-                    </div>
-                    
-                    <div class="border-t-2 border-dashed border-gray-200 pt-6">
-                        <div class="text-xs uppercase text-gray-400 mb-1">Plate Number</div>
-                        <div class="text-4xl font-mono font-bold text-gray-800">{{ currentUnit ? currentUnit.plate_number : 'N/A' }}</div>
-                    </div>
-                </div>
-
-                <div class="py-2 bg-gray-50 text-[10px] text-gray-400 border-t border-gray-100">
-                    Issued {{ franchise.date_issued }}
                 </div>
             </div>
-        </div>
+        </Modal>
+
+        <Modal :show="showComplaintModal" @close="showComplaintModal = false" maxWidth="lg">
+             <div class="p-6">
+                <div class="mb-4">
+                     <h2 class="text-lg font-bold text-red-600">File a Complaint</h2>
+                     <p class="text-sm text-gray-500">Report an incident involving this franchise.</p>
+                </div>
+
+                <form @submit.prevent="submitComplaint" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel>Date of Incident *</InputLabel>
+                            <TextInput v-model="complaintForm.incident_date" type="date" class="mt-1 block w-full" required />
+                        </div>
+                         <div>
+                            <InputLabel>Time *</InputLabel>
+                            <TextInput v-model="complaintForm.incident_time" type="time" class="mt-1 block w-full" required />
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nature of Complaint *</label>
+                        <select v-model="complaintForm.nature_of_complaint" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
+                            <option value="" disabled>Select nature of complaint...</option>
+                            <option v-for="option in complaintOptions" :key="option" :value="option">{{ option }}</option>
+                        </select>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <InputLabel>Pick-up Point</InputLabel>
+                            <TextInput v-model="complaintForm.pick_up_point" type="text" class="mt-1 block w-full" placeholder="e.g. City Hall" />
+                        </div>
+                         <div>
+                            <InputLabel>Drop-off Point</InputLabel>
+                            <TextInput v-model="complaintForm.drop_off_point" type="text" class="mt-1 block w-full" placeholder="e.g. Market" />
+                        </div>
+                    </div>
+
+                     <div class="grid grid-cols-2 gap-4">
+                        <div>
+                             <label class="block text-sm font-medium text-gray-700 mb-1">Fare Collected</label>
+                             <div class="relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                  <span class="text-gray-500 sm:text-sm">₱</span>
+                                </div>
+                                <input type="number" v-model="complaintForm.fare_collected" step="0.01" class="focus:ring-red-500 focus:border-red-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-md" placeholder="0.00">
+                              </div>
+                        </div>
+                         <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Complainant Contact *</label>
+                             <input type="text" v-model="complaintForm.complainant_contact" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" placeholder="09xxxxxxxxx" required>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Narrative / Remarks</label>
+                        <textarea v-model="complaintForm.remarks" rows="3" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" placeholder="Describe what happened..."></textarea>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                         <SecondaryButton @click="showComplaintModal = false">Cancel</SecondaryButton>
+                         <button type="submit" :disabled="complaintForm.processing" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-900 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-25 transition ease-in-out duration-150">
+                            Submit Report
+                        </button>
+                    </div>
+                </form>
+             </div>
+        </Modal>
 
     </AuthenticatedLayout>
 </template>
@@ -657,42 +797,36 @@ const getDriverName = (driver) => {
 
 /* Print Specific Styles */
 @media print {
-    /* 1. Hide everything visually */
-    body * {
+    /* 1. Hide everything visually at the root */
+    body > * {
         visibility: hidden;
     }
 
-    /* 2. Collapse the layout of the main screen content to prevent scroll/layout issues */
-    .screen-content, nav, header, footer {
-        display: none !important;
-    }
-
-    /* 3. Make print area visible and taking up layout */
+    /* 2. Make the print area visible and position it */
     #print-area, #print-area * {
         visibility: visible;
+        display: block;
     }
 
-    /* 4. Position fixed ensures it starts at 0,0 of the paper, regardless of screen scroll */
     #print-area {
-        display: flex !important;
-        align-items: center;
-        justify-content: center;
         position: fixed;
         left: 0;
         top: 0;
-        width: 100vw;
-        height: 100vh;
+        width: 100%;
+        height: 100%;
         margin: 0;
         padding: 0;
         background: white;
         z-index: 9999;
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
     }
 
-    /* FORCE background colors and images to print */
+    /* Force background colors/images */
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        color-adjust: exact !important;
     }
 }
 </style>

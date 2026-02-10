@@ -42,6 +42,11 @@ class Franchise extends Model
             ->latest('driver_assignments.created_at');
     }
 
+    public function complaints() 
+    { 
+        return $this->hasMany(Complaint::class)->latest(); 
+    }
+
     // --- Dynamic Status Logic ---
     public function getStatusAttribute()
     {
