@@ -12,7 +12,8 @@ const props = defineProps({
     franchise: Object,
     operators: Array,
     units: Array,
-    drivers: Array, 
+    drivers: Array,
+    redFlagNatures: Array,
 });
 
 // --- STATE ---
@@ -23,6 +24,34 @@ const showComplaintModal = ref(false);
 const showZoneModal = ref(false);
 const showUnitDetailsModal = ref(false);
 const activeTab = ref('ownership'); 
+
+// State
+const showRedFlagModal = ref(false);
+
+// Form
+const redFlagForm = useForm({
+    nature_id: '',
+    remarks: ''
+});
+
+// Action
+const submitRedFlag = () => {
+    redFlagForm.post(route('admin.franchises.red-flags.store', props.franchise.id), {
+        onSuccess: () => { showRedFlagModal.value = false; redFlagForm.reset(); },
+        onError: () => { showRedFlagModal.value = true; }
+    });
+};
+
+const resolveRedFlag = (id) => {
+    if (confirm('Are you sure you want to mark this red flag as resolved?')) {
+        router.patch(route('admin.red-flags.resolve', id), {}, {
+            preserveScroll: true,
+            onSuccess: () => {
+                // The page will refresh automatically
+            }
+        });
+    }
+};
 
 const selectedImage = ref(null);
 
@@ -166,6 +195,12 @@ const getDriverName = (driver) => {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
+                    <SecondaryButton @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
+                        </svg>
+                        Add Red Flag
+                    </SecondaryButton>
                     <SecondaryButton @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         Make Complaint
@@ -255,7 +290,7 @@ const getDriverName = (driver) => {
                             </div>
                             
                             <div class="font-black text-lg text-gray-900 truncate mb-1">
-                                {{ franchise.zone ? franchise.zone.description : 'Unassigned' }}
+                                {{ franchise.zone ? franchise.zone.description.toUpperCase() : 'Unassigned' }}
                             </div>
                             <div class="flex items-center gap-2 text-xs text-gray-500">
                                 <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: zoneColor }"></span>
@@ -341,6 +376,18 @@ const getDriverName = (driver) => {
                                     Complaints
                                     <span v-if="franchise.complaints && franchise.complaints.length > 0" class="ml-2 bg-rose-100 text-rose-600 py-0.5 px-2 rounded-full text-xs font-bold">
                                         {{ franchise.complaints.length }}
+                                    </span>
+                                </button>
+                                <button 
+                                    @click="activeTab = 'red_flags'"
+                                    :class="[
+                                        activeTab === 'red_flags' ? 'border-red-500 text-red-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+                                    ]"
+                                >
+                                    Red Flags
+                                    <span v-if="franchise.red_flags && franchise.red_flags.length > 0" class="ml-2 bg-red-100 text-red-600 py-0.5 px-2 rounded-full text-xs font-bold">
+                                        {{ franchise.red_flags.length }}
                                     </span>
                                 </button>
                             </nav>
@@ -512,6 +559,62 @@ const getDriverName = (driver) => {
                                         <tr v-if="!franchise.complaints || franchise.complaints.length === 0">
                                             <td colspan="6" class="px-6 py-8 text-center text-sm text-gray-500 italic">
                                                 No complaints reported for this franchise.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'red_flags'" class="p-6">
+                            <div class="mb-4">
+                                <h3 class="font-bold text-gray-700">Red Flags & Alerts</h3>
+                            </div>
+
+                            <div class="bg-white shadow-sm border border-gray-200 rounded-lg overflow-hidden">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nature</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Recorded</th>
+                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="flag in franchise.red_flags" :key="flag.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                                                {{ flag.nature?.name || 'Unknown' }}
+                                            </td>
+                                            <td class="px-6 py-4 text-sm text-gray-600 max-w-xs truncate">
+                                                {{ flag.remarks || '-' }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span :class="flag.status === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full uppercase">
+                                                    {{ flag.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ new Date(flag.created_at).toLocaleDateString() }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button 
+                                                    v-if="flag.status !== 'resolved'" 
+                                                    @click="resolveRedFlag(flag.id)" 
+                                                    class="text-blue-600 hover:text-blue-900 font-bold hover:underline focus:outline-none"
+                                                >
+                                                    Resolve
+                                                </button>
+                                                <div v-else class="text-green-600 font-bold flex items-center justify-end gap-1">
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                                    Done
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="!franchise.red_flags || franchise.red_flags.length === 0">
+                                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500 italic">
+                                                No red flags recorded for this franchise.
                                             </td>
                                         </tr>
                                     </tbody>
@@ -784,6 +887,38 @@ const getDriverName = (driver) => {
                     </div>
                 </form>
              </div>
+        </Modal>
+
+        <Modal :show="showRedFlagModal" @close="showRedFlagModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-medium text-gray-900">Add Red Flag</h2>
+                <p class="mt-1 text-sm text-gray-600">
+                    Flag this franchise for violations or specific alerts.
+                </p>
+
+                <form @submit.prevent="submitRedFlag" class="mt-6 space-y-4">
+                    <div>
+                        <InputLabel value="Nature of Red Flag" />
+                        <select v-model="redFlagForm.nature_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm">
+                            <option value="" disabled>Select Type</option>
+                            <option v-for="nature in redFlagNatures" :key="nature.id" :value="nature.id">
+                                {{ nature.name }}
+                            </option>
+                        </select>
+                        <div v-if="redFlagForm.errors.nature_id" class="text-red-500 text-xs mt-1">{{ redFlagForm.errors.nature_id }}</div>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Remarks" />
+                        <TextInput v-model="redFlagForm.remarks" type="text" class="mt-1 block w-full" placeholder="Additional details..." />
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3">
+                        <SecondaryButton @click="showRedFlagModal = false">Cancel</SecondaryButton>
+                        <PrimaryButton :disabled="redFlagForm.processing">Submit</PrimaryButton>
+                    </div>
+                </form>
+            </div>
         </Modal>
 
     </AuthenticatedLayout>

@@ -12,6 +12,7 @@ use App\Models\Ownership;
 use App\Models\ActiveUnit;
 use App\Models\DriverAssignment;
 use App\Models\Complaint;
+use App\Models\NatureOfRedFlag;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage; // Added for file storage
@@ -134,9 +135,11 @@ class FranchiseController extends Controller
             // Load Complaints
             'complaints' => function($q) {
                 $q->latest();
-            }
+            },
+            'redFlags.nature'
         ]);
 
+        $redFlagNatures = NatureOfRedFlag::all();
         $operators = Operator::with('user')->get();
         $units = Unit::with('make')->get();
         $allDrivers = Driver::with('user')->get();
@@ -145,7 +148,8 @@ class FranchiseController extends Controller
             'franchise' => $franchise,
             'operators' => $operators,
             'units' => $units,
-            'drivers' => $allDrivers, 
+            'drivers' => $allDrivers,
+            'redFlagNatures' => $redFlagNatures,
         ]);
     }
 

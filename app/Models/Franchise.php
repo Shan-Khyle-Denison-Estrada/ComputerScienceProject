@@ -46,6 +46,11 @@ class Franchise extends Model
     { 
         return $this->hasMany(Complaint::class)->latest(); 
     }
+    
+    public function redFlags() 
+    { 
+        return $this->hasMany(RedFlag::class)->latest(); 
+    }
 
     // --- Dynamic Status Logic ---
     public function getStatusAttribute()

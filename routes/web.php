@@ -14,6 +14,7 @@ use App\Http\Controllers\Admin\FranchiseController;
 use App\Http\Controllers\Franchise\DashboardController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController;
+use App\Http\Controllers\Admin\RedFlagController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -124,6 +125,17 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/complaints', [ComplaintController::class, 'index'])->name('admin.complaints.index');
     Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
     Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
+
+    // 15. Red Flags Routes
+    Route::get('/admin/red-flags', [RedFlagController::class, 'index'])->name('admin.red-flags.index');
+    Route::post('/admin/red-flags/nature', [RedFlagController::class, 'storeNature'])->name('admin.red-flags.nature.store'); // For Nature CRUD
+    Route::delete('/admin/red-flags/nature/{nature}', [RedFlagController::class, 'destroyNature'])->name('admin.red-flags.nature.destroy');
+    
+    // Storing a Red Flag (usually from Franchise Show page)
+    Route::post('/admin/franchises/{franchise}/red-flags', [RedFlagController::class, 'store'])->name('admin.franchises.red-flags.store');
+    
+    // resolving
+    Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
