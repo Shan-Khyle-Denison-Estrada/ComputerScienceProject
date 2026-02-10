@@ -1,29 +1,65 @@
 <script setup>
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
+import Modal from '@/Components/Modal.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import InputLabel from '@/Components/InputLabel.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
 
 const props = defineProps({
     complaints: Object,
+    natures: Array,
     filters: Object
 });
 
+// --- STATE ---
 const search = ref(props.filters.search || '');
+const statusFilter = ref(props.filters.status || '');
+const natureFilter = ref(props.filters.nature || '');
+const showFilterModal = ref(false);
 
+// --- ACTIONS ---
+
+// 1. Search (Debounced)
 const handleSearch = debounce(() => {
-    router.get(route('admin.complaints.index'), { search: search.value }, { preserveState: true, replace: true });
+    applyFilters(false);
 }, 300);
 
 watch(search, handleSearch);
 
-// NEW: Resolve Complaint Action
+// 2. Apply Filters
+const applyFilters = (closeModal = true) => {
+    router.get(route('admin.complaints.index'), { 
+        search: search.value,
+        status: statusFilter.value,
+        nature: natureFilter.value
+    }, { 
+        preserveState: true, 
+        replace: true,
+        preserveScroll: true
+    });
+    
+    if (closeModal) {
+        showFilterModal.value = false;
+    }
+};
+
+// 3. Clear Filters
+const clearFilters = () => {
+    statusFilter.value = '';
+    natureFilter.value = '';
+    applyFilters();
+};
+
+// 4. Resolve Complaint
 const resolveComplaint = (complaintId) => {
     if (confirm('Are you sure you want to mark this complaint as resolved?')) {
         router.patch(route('admin.complaints.resolve', complaintId), {}, {
             preserveScroll: true,
             onSuccess: () => {
-                // The page will automatically refresh with the new status
+                // Toast logic here if needed
             }
         });
     }
@@ -39,17 +75,34 @@ const resolveComplaint = (complaintId) => {
                 <h1 class="text-2xl font-bold text-gray-800">Complaints</h1>
                 <p class="text-gray-600 text-sm">Monitor and manage reported violations.</p>
             </div>
+            
             <div class="flex items-center gap-3">
                 <div class="relative">
                      <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                         <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
                     </span>
-                    <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search ID, Nature, Contact..." />
+                    <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search..." />
                 </div>
+                <button 
+                    @click="showFilterModal = true"
+                    class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+                    title="Filter Options"
+                >
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
+                </button>
             </div>
         </div>
 
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+            <div v-if="statusFilter || natureFilter" class="bg-gray-50 px-6 py-2 border-b border-gray-100 flex items-center gap-2 text-xs">
+                <span class="font-bold text-gray-500 uppercase tracking-wider">Active Filters:</span>
+                <span v-if="statusFilter" class="bg-white border px-2 py-0.5 rounded text-gray-600">Status: {{ statusFilter }}</span>
+                <span v-if="natureFilter" class="bg-white border px-2 py-0.5 rounded text-gray-600">Nature: {{ natureFilter }}</span>
+                <button @click="clearFilters" class="text-red-600 hover:text-red-800 hover:underline ml-auto">Clear All</button>
+            </div>
+
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
@@ -127,7 +180,7 @@ const resolveComplaint = (complaintId) => {
                         </tr>
                         <tr v-if="complaints.data.length === 0">
                             <td colspan="7" class="px-6 py-10 text-center text-gray-500">
-                                No complaints found.
+                                No complaints found matching your criteria.
                             </td>
                         </tr>
                     </tbody>
@@ -153,5 +206,38 @@ const resolveComplaint = (complaintId) => {
                 </div>
             </div>
         </div>
+
+        <Modal :show="showFilterModal" @close="showFilterModal = false" maxWidth="sm">
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-4">Filter Complaints</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <InputLabel value="Filter by Status" class="mb-1" />
+                        <select v-model="statusFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
+                            <option value="">All Statuses</option>
+                            <option value="pending">Pending</option>
+                            <option value="Resolved">Resolved</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <InputLabel value="Filter by Nature" class="mb-1" />
+                        <select v-model="natureFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
+                            <option value="">All Types</option>
+                            <option v-for="nature in natures" :key="nature" :value="nature">
+                                {{ nature }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <SecondaryButton @click="showFilterModal = false">Cancel</SecondaryButton>
+                    <PrimaryButton @click="applyFilters(true)">Apply Filters</PrimaryButton>
+                </div>
+            </div>
+        </Modal>
+
     </AuthenticatedLayout>
 </template>
