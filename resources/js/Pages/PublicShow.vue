@@ -3,7 +3,12 @@ import { Head, Link, useForm } from '@inertiajs/vue3';
 import { computed, ref } from 'vue';
 
 const props = defineProps({
-    franchise: Object
+    franchise: Object,
+    // [!code ++] Receive the dynamic list from controller
+    natureOfComplaints: {
+        type: Array,
+        default: () => []
+    }
 });
 
 // --- HELPER: Get Color ---
@@ -37,15 +42,8 @@ const currentOwner = computed(() => props.franchise.current_ownership?.new_owner
 const showComplaintModal = ref(false);
 const complaintSuccess = ref(false);
 
-const complaintOptions = [
-    'Overcharging / Overpricing',
-    'Refusal to Convey Passenger',
-    'Reckless Driving',
-    'Arrogance / Discourtesy',
-    'Trip Cutting',
-    'Operating without License',
-    'Others'
-];
+// [!code --] Removed hardcoded array
+// const complaintOptions = [ ... ];
 
 const form = useForm({
     franchise_id: props.franchise.id,
@@ -219,7 +217,12 @@ const submitComplaint = () => {
                                 <label class="block text-xs font-bold text-gray-700 mb-1">Nature of Complaint *</label>
                                 <select v-model="form.nature_of_complaint" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                     <option value="" disabled>Select Issue...</option>
-                                    <option v-for="opt in complaintOptions" :key="opt" :value="opt">{{ opt }}</option>
+                                    <option v-for="nature in natureOfComplaints" :key="nature.id" :value="nature.name">
+                                        {{ nature.name }}
+                                    </option>
+                                    <option>
+                                        Other
+                                    </option>
                                 </select>
                             </div>
 

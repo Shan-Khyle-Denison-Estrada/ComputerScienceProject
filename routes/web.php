@@ -136,6 +136,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     
     // resolving
     Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
+
+    Route::post('/admin/complaints/nature', [ComplaintController::class, 'storeNature'])->name('admin.complaints.nature.store');
+    Route::delete('/admin/complaints/nature/{nature}', [ComplaintController::class, 'destroyNature'])->name('admin.complaints.nature.destroy');
 });
 
 // --- FRANCHISE OWNER ROUTES ---

@@ -13,6 +13,7 @@ use App\Models\ActiveUnit;
 use App\Models\DriverAssignment;
 use App\Models\Complaint;
 use App\Models\NatureOfRedFlag;
+use App\Models\NatureOfComplaint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage; // Added for file storage
@@ -247,18 +248,19 @@ class FranchiseController extends Controller
         return Inertia::render('Verify');
     }
 
-    public function publicShow($id)
+public function publicShow($id)
     {
         $franchise = Franchise::with([
             'currentOwnership.newOwner.user',
             'currentActiveUnit.newUnit.make',
-            'driverAssignments.driver.user', 
-            'zone',
-            'assessments.payments'
+            'driverAssignments.driver.user',
+            'zone'
         ])->findOrFail($id);
 
         return Inertia::render('PublicShow', [
-            'franchise' => $franchise
+            'franchise' => $franchise,
+            // Pass the dynamic list of complaint natures
+            'natureOfComplaints' => NatureOfComplaint::orderBy('name')->get() 
         ]);
     }
 

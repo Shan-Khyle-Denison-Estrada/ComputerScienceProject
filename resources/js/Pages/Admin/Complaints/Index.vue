@@ -3,14 +3,16 @@ import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import DangerButton from '@/Components/DangerButton.vue'; // Assumed component
 import InputLabel from '@/Components/InputLabel.vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import TextInput from '@/Components/TextInput.vue'; // Assumed component
+import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
 
 const props = defineProps({
     complaints: Object,
-    natures: Array,
+    natures: Array, // Now an array of Objects {id, name}
     filters: Object
 });
 
@@ -19,6 +21,13 @@ const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 const natureFilter = ref(props.filters.nature || '');
 const showFilterModal = ref(false);
+const showManageModal = ref(false); // [!code ++] State for new modal
+
+// --- FORMS ---
+// [!code ++] Form for adding new nature
+const natureForm = useForm({
+    name: '',
+});
 
 // --- ACTIONS ---
 
@@ -58,9 +67,23 @@ const resolveComplaint = (complaintId) => {
     if (confirm('Are you sure you want to mark this complaint as resolved?')) {
         router.patch(route('admin.complaints.resolve', complaintId), {}, {
             preserveScroll: true,
-            onSuccess: () => {
-                // Toast logic here if needed
-            }
+        });
+    }
+};
+
+// [!code ++] 5. Add Nature
+const addNature = () => {
+    natureForm.post(route('admin.complaints.nature.store'), {
+        preserveScroll: true,
+        onSuccess: () => natureForm.reset(),
+    });
+};
+
+// [!code ++] 6. Delete Nature
+const deleteNature = (id) => {
+    if(confirm('Are you sure? This will remove it from the dropdown choices.')) {
+        router.delete(route('admin.complaints.nature.destroy', id), {
+             preserveScroll: true,
         });
     }
 };
@@ -83,6 +106,7 @@ const resolveComplaint = (complaintId) => {
                     </span>
                     <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search..." />
                 </div>
+                
                 <button 
                     @click="showFilterModal = true"
                     class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
@@ -92,6 +116,10 @@ const resolveComplaint = (complaintId) => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                 </button>
+
+                <SecondaryButton @click="showManageModal = true">
+                    Manage Types
+                </SecondaryButton>
             </div>
         </div>
 
@@ -225,8 +253,8 @@ const resolveComplaint = (complaintId) => {
                         <InputLabel value="Filter by Nature" class="mb-1" />
                         <select v-model="natureFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
                             <option value="">All Types</option>
-                            <option v-for="nature in natures" :key="nature" :value="nature">
-                                {{ nature }}
+                            <option v-for="nature in natures" :key="nature.id" :value="nature.name">
+                                {{ nature.name }}
                             </option>
                         </select>
                     </div>
@@ -235,6 +263,49 @@ const resolveComplaint = (complaintId) => {
                 <div class="mt-6 flex justify-end gap-3">
                     <SecondaryButton @click="showFilterModal = false">Cancel</SecondaryButton>
                     <PrimaryButton @click="applyFilters(true)">Apply Filters</PrimaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showManageModal" @close="showManageModal = false" maxWidth="md">
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-2">Manage Complaint Types</h2>
+                <p class="text-sm text-gray-500 mb-4">Add or remove standardized complaint nature options.</p>
+
+                <div class="bg-gray-50 rounded-lg border border-gray-200 max-h-60 overflow-y-auto mb-4 divide-y divide-gray-200">
+                    <div v-for="nature in natures" :key="nature.id" class="flex items-center justify-between p-3 text-sm">
+                        <span class="text-gray-700 font-medium">{{ nature.name }}</span>
+                        <button 
+                            @click="deleteNature(nature.id)"
+                            class="text-red-500 hover:text-red-700 p-1 hover:bg-red-50 rounded"
+                            title="Remove"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                    <div v-if="natures.length === 0" class="p-4 text-center text-gray-400 text-xs italic">
+                        No types defined yet.
+                    </div>
+                </div>
+
+                <form @submit.prevent="addNature" class="flex gap-2">
+                    <div class="flex-1">
+                        <input 
+                            v-model="natureForm.name" 
+                            type="text" 
+                            placeholder="Enter new complaint type..." 
+                            class="w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm"
+                            required
+                        />
+                        <div v-if="natureForm.errors.name" class="text-red-500 text-xs mt-1">{{ natureForm.errors.name }}</div>
+                    </div>
+                    <PrimaryButton :disabled="natureForm.processing">Add</PrimaryButton>
+                </form>
+
+                <div class="mt-6 flex justify-end">
+                    <SecondaryButton @click="showManageModal = false">Close</SecondaryButton>
                 </div>
             </div>
         </Modal>

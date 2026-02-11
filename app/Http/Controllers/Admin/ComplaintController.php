@@ -5,17 +5,18 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Complaint;
 use App\Models\Franchise;
+use App\Models\NatureOfComplaint; // Import the new model
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 class ComplaintController extends Controller
 {
     // Admin List View
-public function index(Request $request)
+    public function index(Request $request)
     {
         $query = Complaint::with(['franchise.currentActiveUnit.newUnit']);
 
-        // 1. Filter by Search (ID, Nature, Contact, Franchise ID)
+        // 1. Filter by Search
         if ($request->input('search')) {
             $search = $request->input('search');
             $query->where(function($q) use ($search) {
@@ -38,17 +39,33 @@ public function index(Request $request)
             $query->where('nature_of_complaint', $request->input('nature'));
         }
 
-        // Get distinct natures for the dropdown filter
-        $natures = Complaint::select('nature_of_complaint')
-            ->distinct()
-            ->orderBy('nature_of_complaint')
-            ->pluck('nature_of_complaint');
+        // [!code ++] Fetch from the specific table instead of distinct strings
+        $natures = NatureOfComplaint::orderBy('name')->get();
 
         return Inertia::render('Admin/Complaints/Index', [
             'complaints' => $query->latest()->paginate(10)->withQueryString(),
-            'natures' => $natures, // Pass distinct natures to view
+            'natures' => $natures, 
             'filters' => $request->only(['search', 'status', 'nature'])
         ]);
+    }
+
+    // [!code ++] New Method: Store Nature
+    public function storeNature(Request $request)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|unique:nature_of_complaints,name|max:255'
+        ]);
+
+        NatureOfComplaint::create($validated);
+
+        return back()->with('success', 'Complaint nature added successfully.');
+    }
+
+    // [!code ++] New Method: Delete Nature
+    public function destroyNature(NatureOfComplaint $nature)
+    {
+        $nature->delete();
+        return back()->with('success', 'Complaint nature removed successfully.');
     }
 
     // Store Complaint (Public or Admin)
