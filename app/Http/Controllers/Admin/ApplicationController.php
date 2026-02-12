@@ -24,7 +24,7 @@ class ApplicationController extends Controller
     // 1. List All Applications (Admin View)
     public function index(Request $request)
     {
-        $query = Application::with(['user', 'franchise', 'assessment']);
+        $query = Application::with(['user', 'franchise', 'assessment', 'attachments.requirement', 'inspections']);
 
         // Filters
         if ($request->status) {
@@ -47,7 +47,7 @@ class ApplicationController extends Controller
         return Inertia::render('Admin/Applications/Index', [
             'applications' => $query->latest()->paginate(10)->withQueryString(),
             'filters' => $request->only(['status', 'type', 'search']),
-            'requirements' => $requirements
+            'requirements' => $requirements,
         ]);
     }
 
@@ -195,17 +195,44 @@ class ApplicationController extends Controller
         return back()->with('success', 'Application approved and processed.');
     }
 
-    // 5. Manage Requirements (Store)
+// Update to handle Category (Evaluation vs Inspection)
     public function storeRequirement(Request $request)
     {
         $validated = $request->validate([
             'application_type' => 'required|string',
             'name' => 'required|string|max:255',
+            'category' => 'required|in:evaluation,inspection', // New validation
         ]);
 
         ApplicationRequirement::create($validated);
 
         return back()->with('success', 'Requirement added successfully.');
+    }
+
+    // NEW: Save Inspection Results
+    public function saveInspection(Request $request, Application $application)
+    {
+        $validated = $request->validate([
+            'inspections' => 'required|array',
+            'inspections.*.requirement_id' => 'required|exists:application_requirements,id',
+            'inspections.*.score' => 'nullable|numeric',
+            'inspections.*.remarks' => 'nullable|string',
+        ]);
+
+        foreach ($validated['inspections'] as $item) {
+            ApplicationInspection::updateOrCreate(
+                [
+                    'application_id' => $application->id,
+                    'application_requirement_id' => $item['requirement_id']
+                ],
+                [
+                    'score' => $item['score'],
+                    'remarks' => $item['remarks']
+                ]
+            );
+        }
+
+        return back()->with('success', 'Inspection results saved.');
     }
 
     // 6. Manage Requirements (Destroy)

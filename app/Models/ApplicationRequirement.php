@@ -6,5 +6,5 @@ use Illuminate\Database\Eloquent\Model;
 
 class ApplicationRequirement extends Model
 {
-    protected $fillable = ['application_type', 'name', 'is_required'];
+    protected $fillable = ['application_type', 'name', 'is_required', 'category'];
 }

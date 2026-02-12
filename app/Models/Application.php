@@ -27,4 +27,8 @@ class Application extends Model
     public function requirements() {
         return ApplicationRequirement::where('application_type', $this->type)->get();
     }
+
+    public function inspections() {
+        return $this->hasMany(ApplicationInspection::class);
+    }
 }

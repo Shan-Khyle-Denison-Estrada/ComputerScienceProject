@@ -149,6 +149,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/{application}/upload', [ApplicationController::class, 'uploadAttachment'])->name('applications.upload');
     Route::post('/admin/applications/requirements', [ApplicationController::class, 'storeRequirement'])->name('admin.applications.requirements.store');
     Route::delete('/admin/applications/requirements/{requirement}', [ApplicationController::class, 'destroyRequirement'])->name('admin.applications.requirements.destroy');
+    Route::post('/admin/applications/{application}/inspection', [ApplicationController::class, 'saveInspection'])
+    ->name('admin.applications.inspection.save');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
