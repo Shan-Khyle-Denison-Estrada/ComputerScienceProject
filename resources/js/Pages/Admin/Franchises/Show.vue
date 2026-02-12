@@ -730,9 +730,9 @@ const getDriverName = (driver) => {
                         <InputLabel>Select Driver</InputLabel>
                         <select v-model="driverForm.driver_id" class="mt-1 block w-full border-gray-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                              <option value="" disabled>Select driver...</option>
-                             <option v-for="d in drivers" :key="d.id" :value="d.id">
-                                {{ d.user.last_name }}, {{ d.user.first_name }} ({{ d.license_number }})
-                             </option>
+                            <option v-for="d in drivers" :key="d.id" :value="d.id">
+                                {{ d.first_name }}, {{ d.last_name }} ({{ d.license_number }})
+                            </option>
                         </select>
                          <p v-if="driverForm.errors.driver_id" class="text-sm text-red-600 mt-1">{{ driverForm.errors.driver_id }}</p>
                     </div>

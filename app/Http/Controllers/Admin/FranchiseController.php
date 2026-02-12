@@ -133,7 +133,7 @@ public function show(Franchise $franchise)
             'driverLogs.driver.user', // <--- ADDED: Shift History
             'zone',
             'assessments.payments',
-            'complaints.nature',
+            'complaints',
             'redFlags.nature'
         ]);
         
@@ -141,11 +141,14 @@ public function show(Franchise $franchise)
         $activeAssignment = $franchise->driverAssignments->where('is_active', true)->first();
         $franchise->active_driver = $activeAssignment ? $activeAssignment->driver : null;
 
+        $drivers = Driver::where('status', 'active') 
+        ->get();
+
         return Inertia::render('Admin/Franchises/Show', [
             'franchise' => $franchise,
             'operators' => Operator::with('user')->get(),
             'units' => Unit::with('make')->orderBy('plate_number')->get(),
-            'drivers' => Driver::with('user')->get(),
+            'drivers' => $drivers,
             'redFlagNatures' => NatureOfRedFlag::all(),
             'complaintNatures' => NatureOfComplaint::all(),
         ]);
