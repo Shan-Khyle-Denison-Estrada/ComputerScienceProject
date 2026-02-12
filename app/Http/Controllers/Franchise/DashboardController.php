@@ -3,9 +3,13 @@
 namespace App\Http\Controllers\Franchise;
 
 use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use App\Models\Franchise;
+use App\Models\DriverAssignment;
+use App\Models\DriverLog;
 
 class DashboardController extends Controller
 {
@@ -29,30 +33,21 @@ class DashboardController extends Controller
         })
         ->with([
             'currentOwnership',               
-            'currentActiveUnit.newUnit.make', // Current Unit
-            'unitHistory.newUnit.make',       // Unit History
-            'driver.user',                    // Current Driver
-            'driverAssignments.driver.user',  // Driver History
+            'currentActiveUnit.newUnit.make', 
+            'unitHistory.newUnit.make',       
+            // We load assignments to show the list of drivers to toggle
+            'driverAssignments.driver.user',  
             'ownershipHistory.newOwner.user', 
             'ownershipHistory.previousOwner.user', 
-            'zone',                           // Zone Information
-            'assessments.payments',           // For Payment History
-            'assessments.particulars'         // To show what was paid for
+            'zone',                           
+            'assessments.payments',           
+            'assessments.particulars'         
         ])
         ->get();
-
-        if ($franchises->isEmpty()) {
-             return Inertia::render('Franchise/Dashboard', [
-                'hasFranchise' => false,
-                'operator' => $operator->load('user'),
-                'franchises' => []
-            ]);
-        }
 
         // 3. Process each franchise to format nested data
         $franchises->transform(function ($franchise) {
             
-            // Calculate Status dynamically 
             $franchise->current_status = $franchise->status; 
 
             // Flatten payments
@@ -70,7 +65,17 @@ class DashboardController extends Controller
             // Sort histories
             $franchise->unit_history = $franchise->unitHistory->sortByDesc('date_changed')->values();
             $franchise->ownership_history = $franchise->ownershipHistory->sortByDesc('date_transferred')->values();
-            $franchise->driver_history = $franchise->driverAssignments->sortByDesc('created_at')->values();
+            
+            // Sort drivers so the 'Active' one (is_active = true) is always at the top
+            $franchise->driver_history = $franchise->driverAssignments
+                ->sortByDesc('is_active')
+                ->values();
+
+            // Helper to quickly identify active driver for the frontend card
+            $franchise->active_driver = $franchise->driverAssignments
+                ->where('is_active', true)
+                ->first()
+                ?->driver;
 
             return $franchise;
         });
@@ -80,5 +85,57 @@ class DashboardController extends Controller
             'franchises' => $franchises,
             'operator' => $operator->load('user'),
         ]);
+    }
+
+    /**
+     * Set the Active Driver for a Franchise.
+     * This toggles the 'is_active' flag and updates the DriverLog.
+     */
+    public function setActiveDriver(Request $request, $franchiseId)
+    {
+        $request->validate([
+            'driver_id' => 'required|exists:drivers,id'
+        ]);
+
+        $newDriverId = $request->input('driver_id');
+
+        DB::transaction(function () use ($franchiseId, $newDriverId) {
+            $now = now();
+
+            // 1. Find the currently active driver assignment for this franchise
+            $currentActive = DriverAssignment::where('franchise_id', $franchiseId)
+                ->where('is_active', true)
+                ->first();
+
+            // If the selected driver is already active, do nothing
+            if ($currentActive && $currentActive->driver_id == $newDriverId) {
+                return;
+            }
+
+            // 2. Deactivate the current driver and close their log
+            if ($currentActive) {
+                $currentActive->update(['is_active' => false]);
+                
+                // Update the log entry to set the end time
+                DriverLog::where('franchise_id', $franchiseId)
+                    ->where('driver_id', $currentActive->driver_id)
+                    ->whereNull('ended_at')
+                    ->update(['ended_at' => $now]);
+            }
+
+            // 3. Activate the new driver
+            DriverAssignment::where('franchise_id', $franchiseId)
+                ->where('driver_id', $newDriverId)
+                ->update(['is_active' => true]);
+
+            // 4. Create a new log entry for the new driver
+            DriverLog::create([
+                'franchise_id' => $franchiseId,
+                'driver_id' => $newDriverId,
+                'started_at' => $now,
+            ]);
+        });
+
+        return redirect()->back()->with('success', 'Active driver updated successfully.');
     }
 }

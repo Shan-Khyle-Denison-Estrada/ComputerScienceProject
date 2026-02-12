@@ -8,6 +8,7 @@ use App\Models\Operator;
 use App\Models\Unit;
 use App\Models\Driver;
 use App\Models\Zone;
+use App\Models\DriverLog; // Ensure this is imported
 use App\Models\Ownership;
 use App\Models\ActiveUnit;
 use App\Models\DriverAssignment;
@@ -122,35 +123,31 @@ class FranchiseController extends Controller
         return redirect()->route('admin.franchises.index')->with('success', 'Franchise created and QR code generated successfully.');
     }
 
-    public function show(Franchise $franchise)
+public function show(Franchise $franchise)
     {
+        // Load all necessary relationships, including the new 'driverLogs'
         $franchise->load([
             'currentOwnership.newOwner.user',
             'currentActiveUnit.newUnit.make',
-            'ownershipHistory.newOwner.user',
-            'ownershipHistory.previousOwner.user',
-            'unitHistory.newUnit.make',
-            'driverAssignments.driver.user', 
-            'assessments.payments',
+            'driverAssignments.driver.user',
+            'driverLogs.driver.user', // <--- ADDED: Shift History
             'zone',
-            // Load Complaints
-            'complaints' => function($q) {
-                $q->latest();
-            },
+            'assessments.payments',
+            'complaints.nature',
             'redFlags.nature'
         ]);
-
-        $redFlagNatures = NatureOfRedFlag::all();
-        $operators = Operator::with('user')->get();
-        $units = Unit::with('make')->get();
-        $allDrivers = Driver::with('user')->get();
+        
+        // Helper: Find the currently active driver
+        $activeAssignment = $franchise->driverAssignments->where('is_active', true)->first();
+        $franchise->active_driver = $activeAssignment ? $activeAssignment->driver : null;
 
         return Inertia::render('Admin/Franchises/Show', [
             'franchise' => $franchise,
-            'operators' => $operators,
-            'units' => $units,
-            'drivers' => $allDrivers,
-            'redFlagNatures' => $redFlagNatures,
+            'operators' => Operator::with('user')->get(),
+            'units' => Unit::with('make')->orderBy('plate_number')->get(),
+            'drivers' => Driver::with('user')->get(),
+            'redFlagNatures' => NatureOfRedFlag::all(),
+            'complaintNatures' => NatureOfComplaint::all(),
         ]);
     }
 
@@ -291,8 +288,7 @@ public function lookup(Request $request)
         return redirect()->route('franchises.public_show', $franchise->id);
     }
 
-    // Store Complaint (Ensuring this exists based on your Vue usage)
-    public function storeComplaint(Request $request, $franchiseId)
+public function storeComplaint(Request $request, $franchiseId)
     {
         $validated = $request->validate([
             'nature_of_complaint' => 'required|string',
@@ -307,9 +303,28 @@ public function lookup(Request $request)
 
         $franchise = Franchise::findOrFail($franchiseId);
         
-        $franchise->complaints()->create($validated);
+        // 1. Determine Incident DateTime
+        $incidentDateTime = Carbon::parse($validated['incident_date'] . ' ' . $validated['incident_time']);
 
-        return redirect()->back()->with('success', 'Complaint logged successfully.');
+        // 2. Find the driver who was active at that exact moment
+        // Logic: Started BEFORE incident AND (Ended AFTER incident OR Still Active/Null)
+        $driverLog = DriverLog::where('franchise_id', $franchiseId)
+            ->where('started_at', '<=', $incidentDateTime)
+            ->where(function($query) use ($incidentDateTime) {
+                $query->where('ended_at', '>=', $incidentDateTime)
+                      ->orWhereNull('ended_at');
+            })
+            ->first();
+
+        // 3. Attach Driver ID if found
+        $complaintData = $validated;
+        if ($driverLog) {
+            $complaintData['driver_id'] = $driverLog->driver_id;
+        }
+
+        $franchise->complaints()->create($complaintData);
+
+        return redirect()->back()->with('success', 'Complaint logged successfully. Driver identified: ' . ($driverLog ? $driverLog->driver->full_name : 'None'));
     }
 
     // NEW: Resolve Complaint

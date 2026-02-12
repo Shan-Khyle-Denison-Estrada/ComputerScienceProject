@@ -358,6 +358,15 @@ const getDriverName = (driver) => {
                                     Authorized Drivers
                                 </button>
                                 <button 
+                                    @click="activeTab = 'driver_logs'"
+                                    :class="[
+                                        activeTab === 'driver_logs' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                        'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
+                                    ]"
+                                >
+                                    Driver Logs
+                                </button>
+                                <button 
                                     @click="activeTab = 'financials'"
                                     :class="[
                                         activeTab === 'financials' ? 'border-amber-500 text-amber-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
@@ -616,6 +625,38 @@ const getDriverName = (driver) => {
                                             <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500 italic">
                                                 No red flags recorded for this franchise.
                                             </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'driver_logs'" class="p-6">
+                            <h3 class="font-bold text-gray-700 mb-4">Shift History</h3>
+                            <div class="overflow-x-auto border border-gray-100 rounded-lg">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Driver</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Started Shift</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ended Shift</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="log in franchise.driver_logs" :key="log.id">
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                {{ getDriverName(log.driver) }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                {{ new Date(log.started_at).toLocaleString() }}
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                <span v-if="log.ended_at">{{ new Date(log.ended_at).toLocaleString() }}</span>
+                                                <span v-else class="text-emerald-600 font-bold text-xs uppercase bg-emerald-100 px-2 py-1 rounded-full">Active</span>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="!franchise.driver_logs || franchise.driver_logs.length === 0">
+                                            <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500 italic">No driver logs recorded.</td>
                                         </tr>
                                     </tbody>
                                 </table>

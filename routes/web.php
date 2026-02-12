@@ -148,6 +148,9 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     })->name('franchise.dashboard');
 
     Route::get('/franchise/dashboard', [DashboardController::class, 'index'])->name('franchise.dashboard');
+
+    Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])
+        ->name('franchise.set-driver');
 });
 
 // --- PROFILE MANAGEMENT ---

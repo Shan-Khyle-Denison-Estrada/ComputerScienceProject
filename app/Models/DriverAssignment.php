@@ -9,7 +9,12 @@ class DriverAssignment extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['franchise_id', 'driver_id'];
+    // Added is_active to fillable
+    protected $fillable = ['franchise_id', 'driver_id', 'is_active'];
+
+    protected $casts = [
+        'is_active' => 'boolean'
+    ];
 
     public function franchise()
     {

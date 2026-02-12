@@ -88,4 +88,15 @@ class Franchise extends Model
         // 3. Default to Renewed
         return 'renewed';
     }
+
+    public function driverLogs()
+    {
+        return $this->hasMany(DriverLog::class)->latest('started_at');
+    }
+
+    // Helper to get the currently active assignment
+    public function activeAssignment()
+    {
+        return $this->hasOne(DriverAssignment::class)->where('is_active', true);
+    }
 }
