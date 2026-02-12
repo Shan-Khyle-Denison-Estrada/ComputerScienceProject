@@ -43,7 +43,11 @@ const menuItems = computed(() => {
                 route: 'admin.franchises.index', 
                 icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' 
             },
-
+            { 
+                name: 'Applications', 
+                route: 'applications.index', // Ensure this matches your actual route name in web.php
+                icon: 'M2.25 12.75V12A2.25 2.25 0 014.5 9.75h15A2.25 2.25 0 0121.75 12v.75m-8.69-6.44l-2.12-2.12a1.5 1.5 0 00-1.061-.44H4.5A2.25 2.25 0 002.25 6v12a2.25 2.25 0 002.25 2.25h15A2.25 2.25 0 0021.75 18V9a2.25 2.25 0 00-2.25-2.25h-5.379a1.5 1.5 0 01-1.06-.44z' 
+            },
             // --- GROUPS ---
             {
                 name: 'Master Data',
@@ -77,7 +81,7 @@ const menuItems = computed(() => {
                     { name: 'Zones', route: 'admin.zones.index' },
                     { name: 'Manage Users', route: 'admin.users.index' },
                 ]
-            }
+            },
         ];
     }
     // Franchise Owner View (Unchanged)
@@ -88,6 +92,11 @@ const menuItems = computed(() => {
                 route: 'franchise.dashboard', 
                 icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' 
             },
+            {
+                name: 'Apply / Renew',
+                route: 'franchise.applications.create', // Matches the route we defined in web.php
+                icon: 'M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z'
+            }
         ];
     }
     return [];

@@ -15,6 +15,8 @@ use App\Http\Controllers\Franchise\DashboardController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\RedFlagController;
+use App\Http\Controllers\Admin\ApplicationController;
+use App\Http\Controllers\Franchise\ApplicationController as FranchiseAppController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -139,6 +141,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::post('/admin/complaints/nature', [ComplaintController::class, 'storeNature'])->name('admin.complaints.nature.store');
     Route::delete('/admin/complaints/nature/{nature}', [ComplaintController::class, 'destroyNature'])->name('admin.complaints.nature.destroy');
+
+    // Applications Management
+    Route::get('/applications', [ApplicationController::class, 'index'])->name('applications.index');
+    Route::post('/applications', [ApplicationController::class, 'store'])->name('applications.store');
+    Route::post('/applications/{application}/approve', [ApplicationController::class, 'approve'])->name('admin.applications.approve');
+    Route::post('/applications/{application}/upload', [ApplicationController::class, 'uploadAttachment'])->name('applications.upload');
+    Route::post('/admin/applications/requirements', [ApplicationController::class, 'storeRequirement'])->name('admin.applications.requirements.store');
+    Route::delete('/admin/applications/requirements/{requirement}', [ApplicationController::class, 'destroyRequirement'])->name('admin.applications.requirements.destroy');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
@@ -151,6 +161,15 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
 
     Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])
         ->name('franchise.set-driver');
+
+    // Application Workflow
+    Route::get('/franchise/applications/create', [FranchiseAppController::class, 'create'])->name('franchise.applications.create');
+    Route::post('/franchise/applications', [FranchiseAppController::class, 'store'])->name('franchise.applications.store');
+    
+    // Step 2 & 3
+    Route::get('/franchise/applications/{application}/upload', [FranchiseAppController::class, 'edit'])->name('franchise.applications.edit');
+    Route::post('/franchise/applications/{application}/upload', [FranchiseAppController::class, 'uploadAttachment'])->name('franchise.applications.upload');
+    Route::post('/franchise/applications/{application}/submit', [FranchiseAppController::class, 'submit'])->name('franchise.applications.submit');
 });
 
 // --- PROFILE MANAGEMENT ---
