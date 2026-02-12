@@ -14,6 +14,7 @@ const props = defineProps({
     units: Array,
     drivers: Array,
     redFlagNatures: Array,
+    complaintNatures: Array,
 });
 
 // --- STATE ---
@@ -884,7 +885,9 @@ const getDriverName = (driver) => {
                         <label class="block text-sm font-medium text-gray-700 mb-1">Nature of Complaint *</label>
                         <select v-model="complaintForm.nature_of_complaint" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                             <option value="" disabled>Select nature of complaint...</option>
-                            <option v-for="option in complaintOptions" :key="option" :value="option">{{ option }}</option>
+                            <option v-for="nature in complaintNatures" :key="nature.id" :value="nature.id">
+                                {{ nature.name }}
+                            </option>
                         </select>
                     </div>
 
