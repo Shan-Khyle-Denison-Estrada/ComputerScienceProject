@@ -462,49 +462,85 @@ const getDriverName = (driver) => {
                                 </div>
                             </div>
                         </div>
+<div v-if="activeTab === 'financials'" class="p-6">
+    <h3 class="font-bold text-gray-700 mb-4">Assessment History</h3>
 
-                        <div v-if="activeTab === 'financials'" class="p-6">
-                            <h3 class="font-bold text-gray-700 mb-4">Assessments & Payments</h3>
-                            <div class="space-y-4">
-                                <div v-for="assessment in franchise.assessments" :key="assessment.id" class="border border-gray-200 rounded-lg overflow-hidden">
-                                    <div class="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-100">
-                                        <div>
-                                            <div class="text-sm font-bold text-gray-900">{{ assessment.description || 'Assessment' }}</div>
-                                            <div class="text-xs text-gray-500">Due: {{ assessment.due_date }}</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-sm font-black text-gray-800">₱ {{ Number(assessment.amount).toLocaleString() }}</div>
-                                            <span v-if="assessment.is_paid" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">Paid</span>
-                                            <span v-else class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase">Unpaid</span>
-                                        </div>
-                                    </div>
-                                    <div v-if="assessment.payments && assessment.payments.length > 0" class="bg-white">
-                                        <table class="min-w-full divide-y divide-gray-100">
-                                            <thead class="bg-white">
-                                                <tr>
-                                                    <th class="px-6 py-2 text-left text-[10px] uppercase font-bold text-gray-400">OR Number</th>
-                                                    <th class="px-6 py-2 text-left text-[10px] uppercase font-bold text-gray-400">Date Paid</th>
-                                                    <th class="px-6 py-2 text-right text-[10px] uppercase font-bold text-gray-400">Amount Paid</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-gray-50">
-                                                <tr v-for="payment in assessment.payments" :key="payment.id">
-                                                    <td class="px-6 py-2 text-sm text-gray-600 font-mono">{{ payment.or_number }}</td>
-                                                    <td class="px-6 py-2 text-sm text-gray-600">{{ payment.date_paid }}</td>
-                                                    <td class="px-6 py-2 text-sm text-gray-800 text-right font-medium">₱ {{ Number(payment.amount).toLocaleString() }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div v-else class="p-4 text-xs text-gray-400 italic text-center">
-                                        No payments recorded for this assessment.
-                                    </div>
-                                </div>
-                                <div v-if="!franchise.assessments || franchise.assessments.length === 0" class="text-center py-8 text-gray-400 italic">
-                                    No financial records found.
-                                </div>
-                            </div>
+<div class="overflow-x-auto border border-gray-100 rounded-lg shadow-sm">
+    <table class="min-w-full divide-y divide-gray-200">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Date & Ref</th>
+                <th class="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider w-1/3">Particulars</th>
+                <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Amount Due</th>
+                <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Paid</th>
+                <th class="px-6 py-4 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Balance</th>
+                <th class="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-if="!franchise.assessments || franchise.assessments.length === 0">
+                <td colspan="6" class="px-6 py-8 text-center text-gray-400 italic">
+                    No assessments recorded for this franchise.
+                </td>
+            </tr>
+            <tr v-for="assessment in franchise.assessments" :key="assessment.id" class="hover:bg-blue-50/50 transition-colors">
+                
+                <td class="px-6 py-4 whitespace-nowrap align-top">
+                    <div class="font-bold text-gray-800">{{ assessment.assessment_date }}</div>
+                    <div class="text-xs text-gray-400 font-mono mt-1">REF #{{ assessment.id }}</div>
+                    <div v-if="assessment.remarks" class="text-xs text-gray-500 italic mt-1 max-w-[150px] truncate">
+                        "{{ assessment.remarks }}"
+                    </div>
+                </td>
+
+                <td class="px-6 py-4 align-top">
+                    <div class="flex flex-col gap-1.5">
+                        <div v-for="particular in assessment.particulars" :key="particular.id" 
+                             class="flex justify-between items-center text-sm border-b border-gray-100 last:border-0 pb-1 last:pb-0">
+                            <span class="text-gray-600 font-medium">
+                                {{ particular.name }} 
+                                <span v-if="particular.pivot.quantity > 1" class="text-xs text-gray-400 ml-1">
+                                    (x{{ particular.pivot.quantity }})
+                                </span>
+                            </span>
+                            <span class="text-gray-400 text-xs tabular-nums">
+                                ₱{{ Number(particular.pivot.subtotal).toLocaleString(undefined, {minimumFractionDigits: 2}) }}
+                            </span>
                         </div>
+                    </div>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-right align-top">
+                    <div class="text-sm font-bold text-gray-800">
+                        ₱{{ Number(assessment.total_amount_due).toLocaleString(undefined, {minimumFractionDigits: 2}) }}
+                    </div>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-right align-top">
+                    <div class="text-sm font-medium text-emerald-600">
+                        ₱{{ Number(assessment.total_paid).toLocaleString(undefined, {minimumFractionDigits: 2}) }}
+                    </div>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-right align-top">
+                    <div class="text-sm font-bold" :class="assessment.balance > 0 ? 'text-rose-600' : 'text-gray-300'">
+                        ₱{{ Number(assessment.balance).toLocaleString(undefined, {minimumFractionDigits: 2}) }}
+                    </div>
+                </td>
+
+                <td class="px-6 py-4 whitespace-nowrap text-center align-top">
+                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-bold rounded-full border"
+                        :class="assessment.balance <= 0 
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-100' 
+                            : 'bg-rose-50 text-rose-700 border-rose-100'">
+                        {{ assessment.balance <= 0 ? 'PAID' : 'UNPAID' }}
+                    </span>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+</div>
 
                         <div v-if="activeTab === 'complaints'" class="p-6">
                             <div class="flex justify-between items-center mb-4">

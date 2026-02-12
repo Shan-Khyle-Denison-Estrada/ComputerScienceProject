@@ -132,7 +132,8 @@ public function show(Franchise $franchise)
             'driverAssignments.driver.user',
             'driverLogs.driver.user', // <--- ADDED: Shift History
             'zone',
-            'assessments.payments',
+            'assessments.payments', 
+            'assessments.particulars',
             'complaints.nature',
             'redFlags.nature'
         ]);
