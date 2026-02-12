@@ -139,6 +139,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     Route::post('/admin/complaints/nature', [ComplaintController::class, 'storeNature'])->name('admin.complaints.nature.store');
     Route::delete('/admin/complaints/nature/{nature}', [ComplaintController::class, 'destroyNature'])->name('admin.complaints.nature.destroy');
+
+    Route::get('/admin/applications', function () {
+        return Inertia::render('Admin/Applications/Index');
+    })->name('admin.applications.index');
+
+    Route::get('/admin/applications/{id}', function ($id) {
+        return Inertia::render('Admin/Applications/Show', ['id' => $id]);
+    })->name('admin.applications.show');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
