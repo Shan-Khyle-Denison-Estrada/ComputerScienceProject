@@ -8,21 +8,19 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule; // <-- Added this
 use Illuminate\Validation\Rules;
 use Inertia\Inertia;
 
 class UserController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
     public function index(Request $request)
     {
         $query = User::query();
 
-        // 1. Strict Requirement: Only display users with admin role
-        $query->where('role', 'admin'); 
-        // If using Enums: $query->where('role', UserRole::ADMIN);
+        // 1. Removed strict 'admin' requirement. 
+        // Optional: If you want to hide Franchise Owners from this specific staff management list, uncomment the line below:
+        // $query->where('role', '!=', UserRole::FRANCHISE_OWNER->value); 
 
         // 2. Handle Search
         if ($request->filled('search')) {
@@ -34,7 +32,7 @@ class UserController extends Controller
             });
         }
 
-        // 3. Handle Filtering (Optional: Role filter removed since we force Admin, keeping Status)
+        // 3. Handle Filtering
         if ($request->filled('status')) {
             $query->where('status', $request->status);
         }
@@ -47,15 +45,19 @@ class UserController extends Controller
         ]);
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
         $request->validate([
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
+            'contact_number' => 'nullable|string|max:255', // <-- Added
+            'street_address' => 'nullable|string|max:255', // <-- Added
+            'barangay' => 'nullable|string|max:255',       // <-- Added
+            'city' => 'nullable|string|max:255',           // <-- Added
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => 'required|string',
+            'role' => ['required', Rule::enum(UserRole::class)], // Using Enum validation
             'photo' => 'nullable|image|max:2048', // Max 2MB
         ]);
 
@@ -70,16 +72,19 @@ class UserController extends Controller
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
+            'contact_number' => $request->contact_number, // <-- Added
+            'street_address' => $request->street_address, // <-- Added
+            'barangay' => $request->barangay,             // <-- Added
+            'city' => $request->city,                     // <-- Added
             'password' => Hash::make($request->password),
-            'role' => $request->role, // Assuming string or cast: UserRole::from($request->role)
+            'role' => $request->role, 
             'user_photo' => $photoPath,
             'status' => 'active',
         ]);
 
         return back()->with('success', 'User account created successfully.');
     }
-
-    public function update(Request $request, $id)
+public function update(Request $request, $id)
     {
         $user = User::findOrFail($id);
 
@@ -88,7 +93,11 @@ class UserController extends Controller
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
-            'role' => 'required|string',
+            'contact_number' => 'nullable|string|max:255', // <-- Added
+            'street_address' => 'nullable|string|max:255', // <-- Added
+            'barangay' => 'nullable|string|max:255',       // <-- Added
+            'city' => 'nullable|string|max:255',           // <-- Added
+            'role' => ['required', Rule::enum(UserRole::class)], 
             'status' => 'required|in:active,inactive',
             'photo' => 'nullable|image|max:2048',
         ]);
@@ -98,7 +107,11 @@ class UserController extends Controller
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
-            'role' => $request->role, // UserRole::from($request->role)
+            'contact_number' => $request->contact_number, // <-- Added
+            'street_address' => $request->street_address, // <-- Added
+            'barangay' => $request->barangay,             // <-- Added
+            'city' => $request->city,                     // <-- Added
+            'role' => $request->role,
             'status' => $request->status,
         ];
 

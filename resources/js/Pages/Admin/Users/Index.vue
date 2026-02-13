@@ -357,6 +357,15 @@ const resetFilters = () => {
                         <select v-model="addForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="admin">Administrator</option>
                             <option value="franchise_owner">Franchise Owner</option>
+                            <option value="collector">Collector (CTO)</option>
+                            <option value="evaluator">Evaluator</option>
+                            <option value="inspector">Inspector</option>
+                            <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
+                            <option value="reviewer">Reviewer (TAB Head)</option>
+                            <option value="sp_approver">SP Approver</option>
+                            <option value="tab_approver">TAB Approver</option>
+                            <option value="releaser">Releaser</option>
+                            <option value="encoder">Encoder</option>
                         </select>
                     </div>
 
