@@ -159,6 +159,10 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
 
     Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])
         ->name('franchise.set-driver');
+
+    Route::get('/franchise/applications', function () {
+        return Inertia::render('Franchise/MakeApplication');
+    })->name('franchise.make-application');
 });
 
 // --- PROFILE MANAGEMENT ---
