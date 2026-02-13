@@ -30,7 +30,8 @@ const showChangeOwnerModal = ref(false);
 const inspectionForm = reactive({
     item: '',
     status: '',
-    remarks: ''
+    remarks: '',
+    options: [] // Dynamic dropdown options
 });
 
 // --- DUMMY DATA ---
@@ -51,13 +52,13 @@ const dummyApplications = ref([
             birthdate: '1985-05-20'
         },
         status: 'Pending',
-        documents: [
-            { name: 'Barangay Clearance', status: 'Verified' },
-            { name: 'Police Clearance', status: 'Verified' },
-            { name: 'Valid ID (Govt Issued)', status: 'Pending Review' },
-            { name: 'Cedula', status: 'Pending Review' },
+        evaluation_requirements: [
+            { id: 1, name: 'Barangay Clearance', status: 'Approved', file_url: '#' },
+            { id: 2, name: 'Police Clearance', status: 'Approved', file_url: '#' },
+            { id: 3, name: 'Valid ID (Govt Issued)', status: 'Pending', file_url: '#' },
+            { id: 4, name: 'Cedula', status: 'Pending', file_url: '#' },
         ],
-        inspection: [],
+        inspection_requirements: [],
         receipt: {
             or_number: '7894561',
             date: 'Oct 26, 2024',
@@ -87,16 +88,16 @@ const dummyApplications = ref([
             birthdate: '1990-11-15'
         },
         status: 'Approved',
-        documents: [
-            { name: 'Previous Franchise Permit', status: 'Verified' },
-            { name: 'Emission Test Result', status: 'Verified' },
-            { name: 'Vehicle OR/CR', status: 'Verified' },
-            { name: 'Insurance Policy', status: 'Verified' },
+        evaluation_requirements: [
+            { id: 1, name: 'Previous Franchise Permit', status: 'Approved', file_url: '#' },
+            { id: 2, name: 'Emission Test Result', status: 'Approved', file_url: '#' },
+            { id: 3, name: 'Vehicle OR/CR', status: 'Approved', file_url: '#' },
+            { id: 4, name: 'Insurance Policy', status: 'Approved', file_url: '#' },
         ],
-        inspection: [
-            { item: 'Headlights (Low/High)', status: 'Passed', remarks: 'OK' },
-            { item: 'Signal Lights', status: 'Passed', remarks: 'OK' },
-            { item: 'Brakes', status: 'Passed', remarks: 'OK' },
+        inspection_requirements: [
+            { id: 1, name: 'Headlights (Low/High)', options: 'Working, Defective', status: 'Working', remarks: 'OK' },
+            { id: 2, name: 'Signal Lights', options: 'Working, Defective', status: 'Working', remarks: 'OK' },
+            { id: 3, name: 'Brakes', options: 'Excellent, Good, Needs Repair', status: 'Good', remarks: 'OK' },
         ],
         receipt: {
             or_number: '7894562',
@@ -128,8 +129,8 @@ const dummyApplications = ref([
             birthdate: '1978-03-10'
         },
         status: 'Rejected',
-        documents: [],
-        inspection: [],
+        evaluation_requirements: [],
+        inspection_requirements: [],
         receipt: null
     },
     {
@@ -148,8 +149,8 @@ const dummyApplications = ref([
             birthdate: '1965-08-30'
         },
         status: 'Pending',
-        documents: [],
-        inspection: [],
+        evaluation_requirements: [],
+        inspection_requirements: [],
         receipt: {
             or_number: '7894564',
             date: 'Oct 19, 2024',
@@ -178,11 +179,10 @@ const dummyApplications = ref([
             birthdate: '1980-02-14'
         },
         status: 'Returned',
-        documents: [],
-        inspection: [],
+        evaluation_requirements: [],
+        inspection_requirements: [],
         receipt: null
     },
-    // --- APPROVED INSTANCES ---
     {
         id: 6,
         reference_no: 'APP-2024-006',
@@ -199,13 +199,13 @@ const dummyApplications = ref([
             birthdate: '1995-12-05'
         },
         status: 'Approved', 
-        documents: [
-            { name: 'Barangay Clearance', status: 'Verified' },
-            { name: 'Police Clearance', status: 'Verified' },
-            { name: 'Valid ID', status: 'Verified' },
+        evaluation_requirements: [
+            { id: 1, name: 'Barangay Clearance', status: 'Approved', file_url: '#' },
+            { id: 2, name: 'Police Clearance', status: 'Approved', file_url: '#' },
+            { id: 3, name: 'Valid ID', status: 'Approved', file_url: '#' },
         ],
-        inspection: [],
-        receipt: null 
+        inspection_requirements: [],
+        receipt: null
     },
     {
         id: 7,
@@ -223,8 +223,8 @@ const dummyApplications = ref([
             birthdate: '1960-09-21'
         },
         status: 'Approved',
-        documents: [],
-        inspection: [],
+        evaluation_requirements: [],
+        inspection_requirements: [],
         receipt: null
     },
     {
@@ -243,8 +243,8 @@ const dummyApplications = ref([
             birthdate: '1988-01-01'
         },
         status: 'Approved',
-        documents: [],
-        inspection: [],
+        evaluation_requirements: [],
+        inspection_requirements: [],
         receipt: null
     }
 ]);
@@ -254,8 +254,8 @@ const dummyApplications = ref([
 const application = computed(() => {
     const found = dummyApplications.value.find(app => String(app.id) === String(props.id));
     const app = found || dummyApplications.value[0]; 
-    if (!app.inspection) app.inspection = [];
-    if (!app.documents) app.documents = [];
+    if (!app.inspection_requirements) app.inspection_requirements = [];
+    if (!app.evaluation_requirements) app.evaluation_requirements = [];
     return app;
 });
 
@@ -269,11 +269,24 @@ const showReceiptTab = computed(() => {
 
 // --- ACTIONS ---
 
+// Evaluation Logic
+const updateEvaluationStatus = (index, status) => {
+    const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
+    if (appIndex !== -1) {
+        dummyApplications.value[appIndex].evaluation_requirements[index].status = status;
+    }
+};
+
+// Inspection Logic
 const openInspectionModal = (index, itemData) => {
     selectedItemIndex.value = index;
-    inspectionForm.item = itemData.item;
-    inspectionForm.status = itemData.status;
+    inspectionForm.item = itemData.name;
+    inspectionForm.status = itemData.status === 'Pending' ? '' : itemData.status;
     inspectionForm.remarks = itemData.remarks;
+    
+    // Parse dynamic options
+    inspectionForm.options = itemData.options ? itemData.options.split(',').map(o => o.trim()) : ['Pass', 'Fail'];
+    
     showInspectionModal.value = true;
 };
 
@@ -283,24 +296,18 @@ const closeInspectionModal = () => {
     inspectionForm.item = '';
     inspectionForm.status = '';
     inspectionForm.remarks = '';
+    inspectionForm.options = [];
 };
 
 const saveInspection = () => {
     if (selectedItemIndex.value !== null) {
         const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
         if (appIndex !== -1) {
-             dummyApplications.value[appIndex].inspection[selectedItemIndex.value] = {
-                item: inspectionForm.item,
-                status: inspectionForm.status,
-                remarks: inspectionForm.remarks
-             };
+             dummyApplications.value[appIndex].inspection_requirements[selectedItemIndex.value].status = inspectionForm.status;
+             dummyApplications.value[appIndex].inspection_requirements[selectedItemIndex.value].remarks = inspectionForm.remarks;
         }
     }
     closeInspectionModal();
-};
-
-const selectStatus = (status) => {
-    inspectionForm.status = status;
 };
 
 const formatCurrency = (value) => {
@@ -329,7 +336,6 @@ const formatCurrency = (value) => {
                 </div>
 
                 <div class="flex gap-2">
-                    
                     <template v-if="application.status === 'Approved' && application.type === 'Franchise Owner Account'">
                         <PrimaryButton @click="showCreateAccountModal = true" class="flex items-center gap-2">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0z" /></svg>
@@ -352,7 +358,7 @@ const formatCurrency = (value) => {
                     </template>
 
                     <template v-else-if="application.status === 'Rejected'">
-                    </template>
+                        </template>
 
                     <template v-else>
                         <button v-if="application.type !== 'Franchise Owner Account'" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
@@ -365,276 +371,252 @@ const formatCurrency = (value) => {
                             Approve
                         </button>
                     </template>
-
                 </div>
             </div>
 
-            <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-4 gap-4">
+            <div class="flex-1 flex gap-4 h-full min-h-0">
                 
-                <div class="lg:col-span-1 h-full min-h-0">
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5 h-full flex flex-col">
-                        <h2 class="text-base font-bold text-gray-900 mb-4 flex-none">Applicant Information</h2>
-                        
-                        <div class="flex-1 overflow-y-auto pr-1 custom-scrollbar">
-                            <div class="flex flex-col items-center mb-5">
-                                <div class="h-20 w-20 rounded-full bg-gray-200 flex items-center justify-center text-xl font-bold text-gray-500 mb-3 overflow-hidden border-2 border-white shadow-md flex-none">
-                                    <img v-if="application.applicant.photo" :src="application.applicant.photo" class="h-full w-full object-cover" />
-                                    <span v-else>{{ application.applicant.first_name.charAt(0) }}</span>
-                                </div>
-                                <h3 class="text-lg font-bold text-gray-900 text-center leading-tight break-words w-full">{{ application.applicant.first_name }} {{ application.applicant.last_name }}</h3>
-                                <p class="text-sm text-gray-500 text-center break-all">{{ application.applicant.email }}</p>
-                            </div>
+                <div class="w-80 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden shrink-0">
+                    <div class="bg-gray-50 border-b border-gray-100 p-4">
+                        <div class="flex items-center gap-3">
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide"
+                                :class="{
+                                    'bg-yellow-100 text-yellow-800': application.status === 'Pending',
+                                    'bg-green-100 text-green-800': application.status === 'Approved',
+                                    'bg-red-100 text-red-800': application.status === 'Rejected',
+                                    'bg-amber-100 text-amber-800': application.status === 'Returned',
+                                }">
+                                {{ application.status }}
+                            </span>
+                            <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{{ application.type }}</span>
+                        </div>
+                    </div>
 
-                            <div class="space-y-3 text-sm">
-                                <div class="flex justify-between border-b border-gray-100 pb-2">
-                                    <span class="text-gray-500">Contact No.</span>
-                                    <span class="font-medium text-gray-900">{{ application.applicant.contact }}</span>
+                    <div class="flex-1 overflow-y-auto custom-scrollbar p-4">
+                        <div class="flex flex-col items-center text-center mb-6">
+                            <div class="w-20 h-20 rounded-full bg-gray-200 border-2 border-white shadow-md flex items-center justify-center text-2xl font-bold text-gray-400 mb-3 overflow-hidden">
+                                <img v-if="application.applicant.photo" :src="application.applicant.photo" class="w-full h-full object-cover" />
+                                <span v-else>{{ application.applicant.first_name.charAt(0) }}</span>
+                            </div>
+                            <h2 class="text-lg font-bold text-gray-900 leading-tight">{{ application.applicant.first_name }} {{ application.applicant.last_name }}</h2>
+                            <p class="text-sm text-gray-500">{{ application.applicant.email }}</p>
+                        </div>
+
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Contact No.</p>
+                                <p class="text-sm font-medium text-gray-800">{{ application.applicant.contact }}</p>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Address</p>
+                                <p class="text-sm font-medium text-gray-800 leading-snug">{{ application.applicant.address }}</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Civil Status</p>
+                                    <p class="text-sm font-medium text-gray-800">{{ application.applicant.civil_status }}</p>
                                 </div>
-                                <div class="flex justify-between border-b border-gray-100 pb-2">
-                                    <span class="text-gray-500">Civil Status</span>
-                                    <span class="font-medium text-gray-900">{{ application.applicant.civil_status }}</span>
+                                <div>
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Birthdate</p>
+                                    <p class="text-sm font-medium text-gray-800">{{ application.applicant.birthdate }}</p>
                                 </div>
-                                <div class="flex justify-between border-b border-gray-100 pb-2">
-                                    <span class="text-gray-500">Birthdate</span>
-                                    <span class="font-medium text-gray-900">{{ application.applicant.birthdate }}</span>
-                                </div>
-                                <div class="pt-1">
-                                    <span class="text-gray-500 block mb-1">Address</span>
-                                    <span class="font-medium text-gray-900 leading-tight">{{ application.applicant.address }}</span>
-                                </div>
+                            </div>
+                            <div>
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Date Submitted</p>
+                                <p class="text-sm font-medium text-gray-800">{{ application.date_submitted }}</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-3 h-full min-h-0 flex flex-col gap-4">
-                    
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 flex-none">
-                        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 items-center">
-                            <div class="border-r border-gray-100 last:border-0 md:pr-4">
-                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Reference</span>
-                                <span class="font-mono text-sm font-bold text-gray-800">{{ application.reference_no }}</span>
-                            </div>
-                            <div class="border-r border-gray-100 last:border-0 md:px-4">
-                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Type</span>
-                                <span class="text-sm font-bold text-blue-600 truncate block" :title="application.type">{{ application.type }}</span>
-                            </div>
-                            <div class="border-r border-gray-100 last:border-0 md:px-4">
-                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block">Submitted</span>
-                                <span class="text-sm font-medium text-gray-700">{{ application.date_submitted }}</span>
-                            </div>
-                            <div class="md:pl-4">
-                                <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider block mb-1">Status</span>
-                                <span 
-                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold border"
-                                    :class="{
-                                        'bg-green-50 text-green-700 border-green-200': application.status === 'Approved',
-                                        'bg-yellow-50 text-yellow-700 border-yellow-200': application.status === 'Pending',
-                                        'bg-red-50 text-red-700 border-red-200': application.status === 'Rejected',
-                                        'bg-amber-100 text-amber-800 border-amber-200': application.status === 'Returned',
-                                    }"
-                                >
-                                    {{ application.status }}
-                                </span>
-                            </div>
-                        </div>
+                <div class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="flex-none bg-white border-b border-gray-100 flex px-2 pt-2">
+                        <button 
+                            @click="activeTab = 'evaluation'" 
+                            class="px-5 py-2.5 text-sm font-bold border-b-2 transition-colors duration-150"
+                            :class="activeTab === 'evaluation' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        >
+                            Evaluation
+                        </button>
+                        
+                        <button 
+                            v-if="showInspectionTab"
+                            @click="activeTab = 'inspection'" 
+                            class="px-5 py-2.5 text-sm font-bold border-b-2 transition-colors duration-150"
+                            :class="activeTab === 'inspection' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        >
+                            Inspection
+                        </button>
+
+                        <button 
+                            v-if="showReceiptTab"
+                            @click="activeTab = 'receipt'" 
+                            class="px-5 py-2.5 text-sm font-bold border-b-2 transition-colors duration-150"
+                            :class="activeTab === 'receipt' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'"
+                        >
+                            Official Receipt
+                        </button>
                     </div>
 
-                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col flex-1 min-h-0 overflow-hidden">
+                    <div class="flex-1 overflow-hidden flex flex-col relative">
                         
-                        <div class="flex-none border-b border-gray-200 flex">
-                            <button 
-                                @click="activeTab = 'evaluation'"
-                                class="px-6 py-3 text-sm font-bold border-b-2 transition-colors duration-150 focus:outline-none"
-                                :class="activeTab === 'evaluation' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
-                            >
-                                Evaluation
-                                <span class="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ application.documents.length }}</span>
-                            </button>
-                            
-                            <button 
-                                v-if="showInspectionTab"
-                                @click="activeTab = 'inspection'"
-                                class="px-6 py-3 text-sm font-bold border-b-2 transition-colors duration-150 focus:outline-none"
-                                :class="activeTab === 'inspection' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
-                            >
-                                Inspection
-                                <span class="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{{ application.inspection.length }}</span>
-                            </button>
-
-                            <button 
-                                v-if="showReceiptTab"
-                                @click="activeTab = 'receipt'"
-                                class="px-6 py-3 text-sm font-bold border-b-2 transition-colors duration-150 focus:outline-none"
-                                :class="activeTab === 'receipt' ? 'border-blue-600 text-blue-600 bg-blue-50/50' : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'"
-                            >
-                                Official Receipt
-                            </button>
-                        </div>
-                        
-                        <div v-show="activeTab === 'evaluation'" class="flex-1 overflow-y-auto p-0 custom-scrollbar">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">Document Name</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verification</th>
-                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="(doc, index) in application.documents" :key="index" class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-3 text-sm font-medium text-gray-900">
-                                            <div class="flex items-center gap-2">
-                                                <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" /></svg>
-                                                {{ doc.name }}
+                        <div v-if="activeTab === 'evaluation'" class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                            <h3 class="text-sm font-bold text-gray-800 mb-4">Required Documents Verification</h3>
+                            <div class="space-y-3">
+                                <div v-for="(doc, index) in application.evaluation_requirements" :key="index" class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-blue-200 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                                            :class="doc.status === 'Approved' ? 'bg-green-100 text-green-600' : (doc.status === 'Rejected' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600')">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-gray-800">{{ doc.name }}</p>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded"
+                                                    :class="doc.status === 'Approved' ? 'bg-green-100 text-green-700' : (doc.status === 'Rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700')">
+                                                    {{ doc.status }}
+                                                </span>
                                             </div>
-                                        </td>
-                                        <td class="px-6 py-3 text-sm">
-                                            <span 
-                                                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
-                                                :class="{
-                                                    'text-green-700 bg-green-50 border-green-100': doc.status === 'Verified',
-                                                    'text-yellow-700 bg-yellow-50 border-yellow-100': doc.status === 'Pending Review',
-                                                    'text-red-700 bg-red-50 border-red-100': doc.status === 'Invalid',
-                                                    'text-amber-700 bg-amber-50 border-amber-100': doc.status === 'Returned for Correction'
-                                                }"
-                                            >
-                                                <span 
-                                                    class="w-1.5 h-1.5 rounded-full" 
-                                                    :class="{
-                                                        'bg-green-500': doc.status === 'Verified',
-                                                        'bg-yellow-500': doc.status === 'Pending Review',
-                                                        'bg-red-500': doc.status === 'Invalid',
-                                                        'bg-amber-500': doc.status === 'Returned for Correction'
-                                                    }"
-                                                ></span>
-                                                {{ doc.status }}
-                                            </span>
-                                        </td>
-                                        <td class="px-6 py-3 text-right text-sm font-medium">
-                                            <button class="text-blue-600 hover:text-blue-900 hover:underline">View</button>
-                                        </td>
-                                    </tr>
-                                    <tr v-if="application.documents.length === 0">
-                                        <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm italic">No documents available</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div v-show="activeTab === 'inspection' && showInspectionTab" class="flex-1 overflow-y-auto p-0 custom-scrollbar">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">Item</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Status</th>
-                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="(item, index) in application.inspection" :key="index" class="hover:bg-gray-50 transition-colors">
-                                        <td class="px-6 py-3 text-sm font-medium text-gray-900">
-                                            {{ item.item }}
-                                        </td>
-                                        <td class="px-6 py-3 text-sm">
-                                            <button 
-                                                @click="openInspectionModal(index, item)"
-                                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:shadow-sm hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
-                                                :class="{
-                                                    'text-green-700 bg-green-50 border-green-100': item.status === 'Passed',
-                                                    'text-red-700 bg-red-50 border-red-100': item.status === 'Failed',
-                                                    'text-gray-700 bg-gray-50 border-gray-200': item.status === 'Pending'
-                                                }"
-                                            >
-                                                <span 
-                                                    class="w-2 h-2 rounded-full" 
-                                                    :class="{
-                                                        'bg-green-500': item.status === 'Passed',
-                                                        'bg-red-500': item.status === 'Failed',
-                                                        'bg-gray-400': item.status === 'Pending'
-                                                    }"
-                                                ></span>
-                                                {{ item.status }}
-                                                <svg class="w-3 h-3 ml-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                                </svg>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <button class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">View File</button>
+                                        
+                                        <div class="flex border border-gray-200 rounded-md overflow-hidden bg-white ml-2">
+                                            <button @click="updateEvaluationStatus(index, 'Approved')" class="px-3 py-1.5 hover:bg-green-50 text-gray-400 hover:text-green-600 transition-colors" :class="{'bg-green-50 text-green-600': doc.status === 'Approved'}" title="Approve">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                                             </button>
-                                        </td>
-                                        <td class="px-6 py-3 text-sm text-gray-500 truncate max-w-xs">
-                                            {{ item.remarks }}
-                                        </td>
-                                    </tr>
-                                    <tr v-if="application.inspection.length === 0">
-                                        <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm italic">No inspection items found</td>
-                                    </tr>
-                                </tbody>
-                            </table>
+                                            <div class="w-px bg-gray-200"></div>
+                                            <button @click="updateEvaluationStatus(index, 'Rejected')" class="px-3 py-1.5 hover:bg-red-50 text-gray-400 hover:text-red-600 transition-colors" :class="{'bg-red-50 text-red-600': doc.status === 'Rejected'}" title="Reject">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-if="application.evaluation_requirements.length === 0" class="text-center py-6 text-sm text-gray-400 italic">
+                                    No documents required for this application type.
+                                </div>
+                            </div>
                         </div>
 
-                        <div v-if="activeTab === 'receipt' && showReceiptTab && application.receipt" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-100 flex items-center justify-center">
+                        <div v-if="activeTab === 'inspection' && showInspectionTab" class="flex-1 overflow-y-auto p-6 custom-scrollbar">
+                            <h3 class="text-sm font-bold text-gray-800 mb-4">Physical Inspection Checklist</h3>
+                            <div class="space-y-3">
+                                <div v-for="(item, index) in application.inspection_requirements" :key="index" class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl hover:border-blue-200 transition-colors">
+                                    <div class="flex items-center gap-4">
+                                        <div class="w-10 h-10 rounded-lg flex items-center justify-center"
+                                            :class="item.status === 'Pending' ? 'bg-yellow-100 text-yellow-600' : 'bg-blue-100 text-blue-600'">
+                                            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                            </svg>
+                                        </div>
+                                        <div>
+                                            <p class="font-bold text-gray-800">{{ item.name }}</p>
+                                            <div class="flex items-center gap-2 mt-0.5">
+                                                <span class="text-[10px] font-bold uppercase tracking-wide px-2 py-0.5 rounded"
+                                                    :class="item.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : 'bg-blue-100 text-blue-700'">
+                                                    {{ item.status }}
+                                                </span>
+                                                <span v-if="item.remarks" class="text-[11px] text-gray-500 italic max-w-xs truncate" :title="item.remarks">
+                                                    - {{ item.remarks }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="flex items-center gap-2">
+                                        <button @click="openInspectionModal(index, item)" class="px-3 py-1.5 text-xs font-medium text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors">
+                                            Update Rating
+                                        </button>
+                                    </div>
+                                </div>
+                                <div v-if="application.inspection_requirements.length === 0" class="text-center py-6 text-sm text-gray-400 italic">
+                                    No inspection required for this application type.
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'receipt' && showReceiptTab" class="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-gray-100 flex items-start justify-center">
                             
-                            <div class="bg-white w-full max-w-4xl shadow-md border border-gray-300 rounded-sm relative flex flex-col md:flex-row min-h-[350px]">
-                                <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-600 z-10"></div>
+                            <div v-if="application.receipt" class="w-full max-w-4xl bg-white rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row overflow-hidden">
                                 
-                                <div class="w-full md:w-1/3 bg-gray-50 border-r border-gray-200 p-6 flex flex-col">
-                                    <div class="mb-6">
-                                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Official Receipt</h3>
-                                        <div class="text-2xl font-mono text-red-600 font-bold tracking-tight">#{{ application.receipt.or_number }}</div>
-                                        <div class="text-sm text-gray-500 mt-1">{{ application.receipt.date }}</div>
-                                    </div>
+                                <div class="md:w-1/3 bg-gray-50 p-6 md:p-8 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col justify-between">
+                                    <div>
+                                        <h2 class="text-xl font-bold text-gray-900 uppercase tracking-widest">Official Receipt</h2>
+                                        <p class="text-xs text-gray-500 mt-1">Republic of the Philippines<br>City of Zamboanga</p>
 
-                                    <div class="mb-auto">
-                                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1.5">Received from</div>
-                                        <div class="font-bold text-gray-900 text-base leading-tight">{{ application.receipt.payee.first_name }} {{ application.receipt.payee.last_name }}</div>
-                                        <div class="text-xs text-gray-500 mt-1 leading-snug">{{ application.receipt.payee.address }}</div>
-                                    </div>
+                                        <div class="mt-8 space-y-4">
+                                            <div>
+                                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">O.R. No.</p>
+                                                <p class="font-mono font-bold text-red-600 text-xl">{{ application.receipt.or_number }}</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider">Date</p>
+                                                <p class="font-medium text-gray-800">{{ application.receipt.date }}</p>
+                                            </div>
+                                        </div>
 
-                                    <div class="mt-6 pt-6 border-t border-gray-200">
-                                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">Payment Method</div>
-                                        <span class="inline-block px-3 py-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded shadow-sm uppercase">
-                                            {{ application.receipt.payment.method }}
-                                        </span>
+                                        <div class="mt-8">
+                                            <p class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Received from</p>
+                                            <p class="font-bold text-gray-900">{{ application.receipt.payee.first_name }} {{ application.receipt.payee.last_name }}</p>
+                                            <p class="text-sm text-gray-600 leading-snug mt-1">{{ application.receipt.payee.address }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="mt-8 pt-6 border-t border-gray-200">
+                                        <div class="flex justify-between items-center">
+                                            <span class="text-xs text-gray-500 font-bold uppercase tracking-wider">Paid via</span>
+                                            <span class="font-medium text-gray-900 text-sm">{{ application.receipt.payment.method }}</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                <div class="w-full md:w-2/3 p-6 flex flex-col">
+                                <div class="md:w-2/3 p-6 md:p-8 flex flex-col">
                                     <div class="flex-1">
                                         <table class="w-full text-sm">
                                             <thead>
-                                                <tr class="text-xs text-gray-400 border-b border-gray-100">
-                                                    <th class="text-left font-medium py-2 uppercase tracking-wide">Particulars</th>
-                                                    <th class="text-right font-medium py-2 uppercase tracking-wide">Amount</th>
+                                                <tr class="border-b-2 border-gray-800">
+                                                    <th class="text-left py-3 text-gray-600 font-bold uppercase tracking-wider text-xs">Nature of Collection</th>
+                                                    <th class="text-right py-3 text-gray-600 font-bold uppercase tracking-wider text-xs">Amount</th>
                                                 </tr>
                                             </thead>
-                                            <tbody class="divide-y divide-gray-50">
-                                                <tr v-for="(item, i) in application.receipt.particulars" :key="i">
-                                                    <td class="py-2.5 text-gray-700">{{ item.name }}</td>
-                                                    <td class="py-2.5 text-right text-gray-900 font-medium">{{ formatCurrency(item.amount) }}</td>
+                                            <tbody>
+                                                <tr v-for="(item, i) in application.receipt.particulars" :key="i" class="border-b border-gray-100">
+                                                    <td class="py-3 text-gray-800">{{ item.name }}</td>
+                                                    <td class="py-3 text-right font-mono text-gray-900">{{ formatCurrency(item.amount) }}</td>
                                                 </tr>
                                             </tbody>
                                         </table>
                                     </div>
 
-                                    <div class="mt-4 pt-4 border-t-2 border-gray-100">
-                                        <div class="flex justify-between items-end">
-                                            <span class="text-sm font-medium text-gray-500 uppercase tracking-wide pb-1">Total Amount Due</span>
-                                            <span class="text-3xl font-bold text-gray-900 leading-none">{{ formatCurrency(application.receipt.total_amount_due) }}</span>
+                                    <div class="mt-8 pt-4 flex justify-end">
+                                        <div class="w-full sm:w-2/3 md:w-1/2 space-y-2">
+                                            <div class="flex justify-between items-end border-b-2 border-gray-800 pb-2 mb-3">
+                                                <span class="font-bold text-gray-900 uppercase tracking-wider text-sm">Total Due:</span>
+                                                <span class="font-mono font-bold text-xl text-gray-900">{{ formatCurrency(application.receipt.total_amount_due) }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-500">Amount Paid:</span>
+                                                <span class="font-mono font-medium text-gray-900">{{ formatCurrency(application.receipt.payment.amount_paid) }}</span>
+                                            </div>
+                                            <div class="flex justify-between text-sm">
+                                                <span class="text-gray-500">Change:</span>
+                                                <span class="font-mono font-medium text-gray-900">{{ formatCurrency(application.receipt.payment.change) }}</span>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
+
                             </div>
 
-                        </div>
-
-                        <div v-else-if="activeTab === 'receipt' && showReceiptTab" class="flex-1 flex items-center justify-center bg-gray-50">
-                            <div class="text-center">
-                                <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
-                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
-                                    </svg>
-                                </div>
-                                <h3 class="text-lg font-medium text-gray-900">No Receipt Available</h3>
-                                <p class="text-gray-500 text-sm mt-1 max-w-xs mx-auto">No official receipt has been generated for this application yet.</p>
+                            <div v-else class="flex flex-col items-center justify-center text-gray-400 h-full w-full">
+                                <svg class="w-12 h-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p>No receipt issued for this application yet.</p>
                             </div>
                         </div>
 
@@ -644,39 +626,37 @@ const formatCurrency = (value) => {
         </div>
 
         <Modal :show="showInspectionModal" @close="closeInspectionModal" maxWidth="md">
-            <div class="p-6">
-                <h2 class="text-lg font-bold text-gray-900 mb-1">Update Inspection Status</h2>
-                <p class="text-sm text-gray-500 mb-6">Evaluating: <span class="font-medium text-gray-800">{{ inspectionForm.item }}</span></p>
-
-                <div class="grid grid-cols-3 gap-3 mb-6">
-                    <button type="button" @click="selectStatus('Passed')" class="flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all" :class="inspectionForm.status === 'Passed' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-green-200 hover:bg-green-50/50'">
-                        <div class="w-8 h-8 rounded-full flex items-center justify-center mb-2" :class="inspectionForm.status === 'Passed' ? 'bg-green-200' : 'bg-gray-100'">
-                            <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                        </div>
-                        <span class="text-xs font-bold">Passed</span>
-                    </button>
-                    <button type="button" @click="selectStatus('Pending')" class="flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all" :class="inspectionForm.status === 'Pending' ? 'border-gray-500 bg-gray-50 text-gray-700' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'">
-                         <div class="w-8 h-8 rounded-full flex items-center justify-center mb-2" :class="inspectionForm.status === 'Pending' ? 'bg-gray-300' : 'bg-gray-100'">
-                            <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        </div>
-                        <span class="text-xs font-bold">Pending</span>
-                    </button>
-                    <button type="button" @click="selectStatus('Failed')" class="flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all" :class="inspectionForm.status === 'Failed' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 hover:border-red-200 hover:bg-red-50/50'">
-                         <div class="w-8 h-8 rounded-full flex items-center justify-center mb-2" :class="inspectionForm.status === 'Failed' ? 'bg-red-200' : 'bg-gray-100'">
-                            <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </div>
-                        <span class="text-xs font-bold">Failed</span>
-                    </button>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md flex flex-col overflow-hidden">
+                <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+                    <h2 class="text-lg font-bold text-gray-900">Update Inspection Rating</h2>
+                    <button @click="closeInspectionModal" class="text-gray-400 hover:text-gray-600">✕</button>
                 </div>
 
-                <div class="mb-6">
-                    <InputLabel for="remarks" value="Remarks / Observations" />
-                    <TextInput id="remarks" type="text" v-model="inspectionForm.remarks" class="mt-1 block w-full" placeholder="Enter specific details about the finding..." />
+                <div class="p-6 space-y-4">
+                    <div class="bg-gray-50 p-3 rounded-md border border-gray-200 mb-2">
+                        <span class="text-xs text-gray-500 uppercase font-bold block mb-1">Requirement</span>
+                        <span class="text-sm font-medium text-gray-900">{{ inspectionForm.item }}</span>
+                    </div>
+
+                    <div>
+                        <InputLabel for="status" value="Rating / Status" />
+                        <select id="status" v-model="inspectionForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
+                            <option value="" disabled>Select a rating...</option>
+                            <option v-for="opt in inspectionForm.options" :key="opt" :value="opt">
+                                {{ opt }}
+                            </option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <InputLabel for="remarks" value="Remarks / Observations (Optional)" />
+                        <TextInput id="remarks" type="text" v-model="inspectionForm.remarks" class="mt-1 block w-full text-sm" placeholder="Enter specific details..." />
+                    </div>
                 </div>
 
-                <div class="flex justify-end gap-3">
+                <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
                     <SecondaryButton @click="closeInspectionModal">Cancel</SecondaryButton>
-                    <PrimaryButton @click="saveInspection">Save Update</PrimaryButton>
+                    <PrimaryButton @click="saveInspection" :disabled="!inspectionForm.status">Save Update</PrimaryButton>
                 </div>
             </div>
         </Modal>
