@@ -280,8 +280,8 @@ const getStepStatus = (app, stepId) => {
     <AuthenticatedLayout>
         <Head title="My Applications" />
 
-        <div class="py-12 bg-gray-50/50 min-h-screen">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="bg-gray-50/50">
+            <div class="">
                 
                 <div class="flex justify-between items-center mb-6">
                     <div>
