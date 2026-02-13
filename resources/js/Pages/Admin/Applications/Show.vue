@@ -8,7 +8,7 @@ import TextInput from '@/Components/TextInput.vue';
 import { Head, Link } from '@inertiajs/vue3';
 import { computed, ref, reactive } from 'vue';
 
-// Import Components (Assumed to be created as per previous instruction)
+// Import Components
 import CreateFranchiseAccountModal from '@/Components/Modals/CreateFranchiseAccountModal.vue';
 import ChangeOfUnitModal from '@/Components/Modals/ChangeOfUnitModal.vue';
 import ChangeOfOwnerModal from '@/Components/Modals/ChangeOfOwnerModal.vue';
@@ -33,7 +33,7 @@ const inspectionForm = reactive({
     remarks: ''
 });
 
-// --- DUMMY DATA (Synced with Index.vue) ---
+// --- DUMMY DATA ---
 const dummyApplications = ref([
     {
         id: 1,
@@ -51,9 +51,25 @@ const dummyApplications = ref([
             birthdate: '1985-05-20'
         },
         status: 'Pending',
-        documents: [{ name: 'Barangay Clearance', status: 'Verified' }],
+        documents: [
+            { name: 'Barangay Clearance', status: 'Verified' },
+            { name: 'Police Clearance', status: 'Verified' },
+            { name: 'Valid ID (Govt Issued)', status: 'Pending Review' },
+            { name: 'Cedula', status: 'Pending Review' },
+        ],
         inspection: [],
-        receipt: null
+        receipt: {
+            or_number: '7894561',
+            date: 'Oct 26, 2024',
+            payee: { first_name: 'Juan', last_name: 'Dela Cruz', address: 'San Jose, Zamboanga City' },
+            particulars: [
+                { name: 'Filing Fee', amount: 500.00 },
+                { name: 'Legal Research Fund', amount: 50.00 },
+                { name: 'Documentary Stamp', amount: 30.00 }
+            ],
+            total_amount_due: 580.00,
+            payment: { amount_paid: 580.00, change: 0.00, method: 'Cash' }
+        }
     },
     {
         id: 2,
@@ -71,9 +87,30 @@ const dummyApplications = ref([
             birthdate: '1990-11-15'
         },
         status: 'Approved',
-        documents: [],
-        inspection: [],
-        receipt: null
+        documents: [
+            { name: 'Previous Franchise Permit', status: 'Verified' },
+            { name: 'Emission Test Result', status: 'Verified' },
+            { name: 'Vehicle OR/CR', status: 'Verified' },
+            { name: 'Insurance Policy', status: 'Verified' },
+        ],
+        inspection: [
+            { item: 'Headlights (Low/High)', status: 'Passed', remarks: 'OK' },
+            { item: 'Signal Lights', status: 'Passed', remarks: 'OK' },
+            { item: 'Brakes', status: 'Passed', remarks: 'OK' },
+        ],
+        receipt: {
+            or_number: '7894562',
+            date: 'Oct 24, 2024',
+            payee: { first_name: 'Maria', last_name: 'Santos', address: 'Tetuan, Zamboanga City' },
+            particulars: [
+                { name: 'Franchise Fee (Renewal)', amount: 1500.00 },
+                { name: 'Mayor\'s Permit', amount: 1200.00 },
+                { name: 'Garbage Fee', amount: 200.00 },
+                { name: 'Sticker', amount: 50.00 }
+            ],
+            total_amount_due: 2950.00,
+            payment: { amount_paid: 3000.00, change: 50.00, method: 'Cash' }
+        }
     },
     {
         id: 3,
@@ -113,7 +150,17 @@ const dummyApplications = ref([
         status: 'Pending',
         documents: [],
         inspection: [],
-        receipt: null
+        receipt: {
+            or_number: '7894564',
+            date: 'Oct 19, 2024',
+            payee: { first_name: 'Anna', last_name: 'Reyes', address: 'Pasonanca, Zamboanga City' },
+            particulars: [
+                { name: 'Change Unit Fee', amount: 500.00 },
+                { name: 'Processing Fee', amount: 100.00 },
+            ],
+            total_amount_due: 600.00,
+            payment: { amount_paid: 600.00, change: 0.00, method: 'Cash' }
+        }
     },
     {
         id: 5,
@@ -152,7 +199,11 @@ const dummyApplications = ref([
             birthdate: '1995-12-05'
         },
         status: 'Approved', 
-        documents: [],
+        documents: [
+            { name: 'Barangay Clearance', status: 'Verified' },
+            { name: 'Police Clearance', status: 'Verified' },
+            { name: 'Valid ID', status: 'Verified' },
+        ],
         inspection: [],
         receipt: null 
     },
@@ -213,7 +264,7 @@ const showInspectionTab = computed(() => {
 });
 
 const showReceiptTab = computed(() => {
-    return ['Renewal', 'Change of Unit', 'Change of Owner'].includes(application.value.type);
+    return ['Renewal', 'Change of Unit', 'Change of Owner', 'Franchise Owner Account'].includes(application.value.type);
 });
 
 // --- ACTIONS ---
@@ -235,6 +286,16 @@ const closeInspectionModal = () => {
 };
 
 const saveInspection = () => {
+    if (selectedItemIndex.value !== null) {
+        const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
+        if (appIndex !== -1) {
+             dummyApplications.value[appIndex].inspection[selectedItemIndex.value] = {
+                item: inspectionForm.item,
+                status: inspectionForm.status,
+                remarks: inspectionForm.remarks
+             };
+        }
+    }
     closeInspectionModal();
 };
 
@@ -409,15 +470,169 @@ const formatCurrency = (value) => {
                         </div>
                         
                         <div v-show="activeTab === 'evaluation'" class="flex-1 overflow-y-auto p-0 custom-scrollbar">
-                             <div class="p-8 text-center text-gray-400 italic">Documents View</div>
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/2">Document Name</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Verification</th>
+                                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr v-for="(doc, index) in application.documents" :key="index" class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-3 text-sm font-medium text-gray-900">
+                                            <div class="flex items-center gap-2">
+                                                <svg class="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clip-rule="evenodd" /></svg>
+                                                {{ doc.name }}
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-3 text-sm">
+                                            <span 
+                                                class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium border"
+                                                :class="{
+                                                    'text-green-700 bg-green-50 border-green-100': doc.status === 'Verified',
+                                                    'text-yellow-700 bg-yellow-50 border-yellow-100': doc.status === 'Pending Review',
+                                                    'text-red-700 bg-red-50 border-red-100': doc.status === 'Invalid',
+                                                    'text-amber-700 bg-amber-50 border-amber-100': doc.status === 'Returned for Correction'
+                                                }"
+                                            >
+                                                <span 
+                                                    class="w-1.5 h-1.5 rounded-full" 
+                                                    :class="{
+                                                        'bg-green-500': doc.status === 'Verified',
+                                                        'bg-yellow-500': doc.status === 'Pending Review',
+                                                        'bg-red-500': doc.status === 'Invalid',
+                                                        'bg-amber-500': doc.status === 'Returned for Correction'
+                                                    }"
+                                                ></span>
+                                                {{ doc.status }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-3 text-right text-sm font-medium">
+                                            <button class="text-blue-600 hover:text-blue-900 hover:underline">View</button>
+                                        </td>
+                                    </tr>
+                                    <tr v-if="application.documents.length === 0">
+                                        <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm italic">No documents available</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
                         <div v-show="activeTab === 'inspection' && showInspectionTab" class="flex-1 overflow-y-auto p-0 custom-scrollbar">
-                             <div class="p-8 text-center text-gray-400 italic">Inspection View</div>
+                            <table class="min-w-full divide-y divide-gray-200">
+                                <thead class="bg-gray-50 sticky top-0 z-10 shadow-sm">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/3">Item</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Status</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white divide-y divide-gray-200">
+                                    <tr v-for="(item, index) in application.inspection" :key="index" class="hover:bg-gray-50 transition-colors">
+                                        <td class="px-6 py-3 text-sm font-medium text-gray-900">
+                                            {{ item.item }}
+                                        </td>
+                                        <td class="px-6 py-3 text-sm">
+                                            <button 
+                                                @click="openInspectionModal(index, item)"
+                                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium border cursor-pointer hover:shadow-sm hover:scale-105 transition-all focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-blue-500"
+                                                :class="{
+                                                    'text-green-700 bg-green-50 border-green-100': item.status === 'Passed',
+                                                    'text-red-700 bg-red-50 border-red-100': item.status === 'Failed',
+                                                    'text-gray-700 bg-gray-50 border-gray-200': item.status === 'Pending'
+                                                }"
+                                            >
+                                                <span 
+                                                    class="w-2 h-2 rounded-full" 
+                                                    :class="{
+                                                        'bg-green-500': item.status === 'Passed',
+                                                        'bg-red-500': item.status === 'Failed',
+                                                        'bg-gray-400': item.status === 'Pending'
+                                                    }"
+                                                ></span>
+                                                {{ item.status }}
+                                                <svg class="w-3 h-3 ml-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                                </svg>
+                                            </button>
+                                        </td>
+                                        <td class="px-6 py-3 text-sm text-gray-500 truncate max-w-xs">
+                                            {{ item.remarks }}
+                                        </td>
+                                    </tr>
+                                    <tr v-if="application.inspection.length === 0">
+                                        <td colspan="3" class="px-6 py-8 text-center text-gray-400 text-sm italic">No inspection items found</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
 
-                        <div v-if="activeTab === 'receipt' && showReceiptTab" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-100 flex items-center justify-center">
-                             <div class="p-8 text-center text-gray-400 italic">Receipt View</div>
+                        <div v-if="activeTab === 'receipt' && showReceiptTab && application.receipt" class="flex-1 overflow-y-auto p-4 custom-scrollbar bg-gray-100 flex items-center justify-center">
+                            
+                            <div class="bg-white w-full max-w-4xl shadow-md border border-gray-300 rounded-sm relative flex flex-col md:flex-row min-h-[350px]">
+                                <div class="absolute top-0 left-0 w-full h-1.5 bg-blue-600 z-10"></div>
+                                
+                                <div class="w-full md:w-1/3 bg-gray-50 border-r border-gray-200 p-6 flex flex-col">
+                                    <div class="mb-6">
+                                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Official Receipt</h3>
+                                        <div class="text-2xl font-mono text-red-600 font-bold tracking-tight">#{{ application.receipt.or_number }}</div>
+                                        <div class="text-sm text-gray-500 mt-1">{{ application.receipt.date }}</div>
+                                    </div>
+
+                                    <div class="mb-auto">
+                                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-1.5">Received from</div>
+                                        <div class="font-bold text-gray-900 text-base leading-tight">{{ application.receipt.payee.first_name }} {{ application.receipt.payee.last_name }}</div>
+                                        <div class="text-xs text-gray-500 mt-1 leading-snug">{{ application.receipt.payee.address }}</div>
+                                    </div>
+
+                                    <div class="mt-6 pt-6 border-t border-gray-200">
+                                        <div class="text-xs text-gray-400 uppercase tracking-wide mb-2">Payment Method</div>
+                                        <span class="inline-block px-3 py-1 bg-white border border-gray-200 text-gray-700 text-xs font-bold rounded shadow-sm uppercase">
+                                            {{ application.receipt.payment.method }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div class="w-full md:w-2/3 p-6 flex flex-col">
+                                    <div class="flex-1">
+                                        <table class="w-full text-sm">
+                                            <thead>
+                                                <tr class="text-xs text-gray-400 border-b border-gray-100">
+                                                    <th class="text-left font-medium py-2 uppercase tracking-wide">Particulars</th>
+                                                    <th class="text-right font-medium py-2 uppercase tracking-wide">Amount</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-50">
+                                                <tr v-for="(item, i) in application.receipt.particulars" :key="i">
+                                                    <td class="py-2.5 text-gray-700">{{ item.name }}</td>
+                                                    <td class="py-2.5 text-right text-gray-900 font-medium">{{ formatCurrency(item.amount) }}</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+
+                                    <div class="mt-4 pt-4 border-t-2 border-gray-100">
+                                        <div class="flex justify-between items-end">
+                                            <span class="text-sm font-medium text-gray-500 uppercase tracking-wide pb-1">Total Amount Due</span>
+                                            <span class="text-3xl font-bold text-gray-900 leading-none">{{ formatCurrency(application.receipt.total_amount_due) }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div v-else-if="activeTab === 'receipt' && showReceiptTab" class="flex-1 flex items-center justify-center bg-gray-50">
+                            <div class="text-center">
+                                <div class="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4 text-gray-400">
+                                    <svg class="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                </div>
+                                <h3 class="text-lg font-medium text-gray-900">No Receipt Available</h3>
+                                <p class="text-gray-500 text-sm mt-1 max-w-xs mx-auto">No official receipt has been generated for this application yet.</p>
+                            </div>
                         </div>
 
                     </div>
@@ -426,7 +641,41 @@ const formatCurrency = (value) => {
         </div>
 
         <Modal :show="showInspectionModal" @close="closeInspectionModal" maxWidth="md">
-            <div class="p-6"><h2 class="text-lg font-bold">Inspection Update</h2></div>
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-1">Update Inspection Status</h2>
+                <p class="text-sm text-gray-500 mb-6">Evaluating: <span class="font-medium text-gray-800">{{ inspectionForm.item }}</span></p>
+
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    <button type="button" @click="selectStatus('Passed')" class="flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all" :class="inspectionForm.status === 'Passed' ? 'border-green-500 bg-green-50 text-green-700' : 'border-gray-200 hover:border-green-200 hover:bg-green-50/50'">
+                        <div class="w-8 h-8 rounded-full flex items-center justify-center mb-2" :class="inspectionForm.status === 'Passed' ? 'bg-green-200' : 'bg-gray-100'">
+                            <svg class="w-5 h-5 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <span class="text-xs font-bold">Passed</span>
+                    </button>
+                    <button type="button" @click="selectStatus('Pending')" class="flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all" :class="inspectionForm.status === 'Pending' ? 'border-gray-500 bg-gray-50 text-gray-700' : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50/50'">
+                         <div class="w-8 h-8 rounded-full flex items-center justify-center mb-2" :class="inspectionForm.status === 'Pending' ? 'bg-gray-300' : 'bg-gray-100'">
+                            <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <span class="text-xs font-bold">Pending</span>
+                    </button>
+                    <button type="button" @click="selectStatus('Failed')" class="flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all" :class="inspectionForm.status === 'Failed' ? 'border-red-500 bg-red-50 text-red-700' : 'border-gray-200 hover:border-red-200 hover:bg-red-50/50'">
+                         <div class="w-8 h-8 rounded-full flex items-center justify-center mb-2" :class="inspectionForm.status === 'Failed' ? 'bg-red-200' : 'bg-gray-100'">
+                            <svg class="w-5 h-5 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </div>
+                        <span class="text-xs font-bold">Failed</span>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <InputLabel for="remarks" value="Remarks / Observations" />
+                    <TextInput id="remarks" type="text" v-model="inspectionForm.remarks" class="mt-1 block w-full" placeholder="Enter specific details about the finding..." />
+                </div>
+
+                <div class="flex justify-end gap-3">
+                    <SecondaryButton @click="closeInspectionModal">Cancel</SecondaryButton>
+                    <PrimaryButton @click="saveInspection">Save Update</PrimaryButton>
+                </div>
+            </div>
         </Modal>
 
         <CreateFranchiseAccountModal 
