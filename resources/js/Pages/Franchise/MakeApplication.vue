@@ -9,65 +9,18 @@ import { ref, computed } from 'vue';
 
 // --- DATA STATE ---
 const allApplications = ref([
-    // Active / Ongoing
-    { 
-        id: 101, ref_no: 'APP-2024-055', type: 'Renewal', 
-        date: '2024-11-12', status: 'Pending', current_step: 1, 
-        remarks: 'Application submitted. Waiting for initial review.',
-        is_active: true
-    },
-    { 
-        id: 102, ref_no: 'APP-2024-048', type: 'Change of Owner', 
-        date: '2024-11-10', status: 'Under Review', current_step: 2, 
-        remarks: 'Legal office verifying Deed of Sale authenticity.',
-        is_active: true
-    },
-    // RETURNED ITEM (Clickable)
-    { 
-        id: 103, ref_no: 'APP-2024-042', type: 'Change of Unit', 
-        date: '2024-11-05', status: 'Returned', current_step: 2, 
-        remarks: 'ACTION REQUIRED: Uploaded OR/CR is blurred. Please re-upload clear copy.',
-        is_active: true
-    },
-    { 
-        id: 104, ref_no: 'APP-2024-039', type: 'Change of Unit', 
-        date: '2024-10-28', status: 'Inspection', current_step: 3, 
-        remarks: 'Unit scheduled for physical inspection on Nov 15, 2:00 PM.',
-        is_active: true
-    },
-    { 
-        id: 105, ref_no: 'APP-2024-035', type: 'Renewal', 
-        date: '2024-10-25', status: 'For Payment', current_step: 3, 
-        remarks: 'Assessment approved. Please proceed to payment.',
-        is_active: true
-    },
-    { 
-        id: 106, ref_no: 'APP-2024-030', type: 'Change of Owner', 
-        date: '2024-10-20', status: 'Processing', current_step: 4, 
-        remarks: 'Finalizing franchise amendment printing.',
-        is_active: true
-    },
-    // Past
-    { 
-        id: 99, ref_no: 'APP-2024-001', type: 'Renewal', 
-        date: '2024-01-15', status: 'Approved', current_step: 4, 
-        remarks: 'Renewal successful.',
-        is_active: false
-    },
-    { 
-        id: 98, ref_no: 'APP-2023-089', type: 'Change of Unit', 
-        date: '2023-12-10', status: 'Rejected', current_step: 2, 
-        remarks: 'Unit age exceeds limit (15 years).',
-        is_active: false
-    },
+    { id: 101, ref_no: 'APP-2024-055', type: 'Renewal', date: '2024-11-12', status: 'Pending', current_step: 1, remarks: 'Application submitted. Waiting for initial review.', is_active: true },
+    { id: 102, ref_no: 'APP-2024-048', type: 'Change of Owner', date: '2024-11-10', status: 'Under Review', current_step: 2, remarks: 'Legal office verifying Deed of Sale authenticity.', is_active: true },
+    { id: 103, ref_no: 'APP-2024-042', type: 'Change of Unit', date: '2024-11-05', status: 'Returned', current_step: 2, remarks: 'ACTION REQUIRED: Uploaded OR/CR is blurred. Please re-upload clear copy.', is_active: true },
+    { id: 104, ref_no: 'APP-2024-039', type: 'Change of Unit', date: '2024-10-28', status: 'Inspection', current_step: 3, remarks: 'Unit scheduled for physical inspection on Nov 15, 2:00 PM.', is_active: true },
+    { id: 105, ref_no: 'APP-2024-035', type: 'Renewal', date: '2024-10-25', status: 'For Payment', current_step: 3, remarks: 'Assessment approved. Please proceed to payment.', is_active: true },
+    { id: 106, ref_no: 'APP-2024-030', type: 'Change of Owner', date: '2024-10-20', status: 'Processing', current_step: 4, remarks: 'Finalizing franchise amendment printing.', is_active: true },
+    { id: 99, ref_no: 'APP-2024-001', type: 'Renewal', date: '2024-01-15', status: 'Approved', current_step: 4, remarks: 'Renewal successful.', is_active: false },
+    { id: 98, ref_no: 'APP-2023-089', type: 'Change of Unit', date: '2023-12-10', status: 'Rejected', current_step: 2, remarks: 'Unit age exceeds limit (15 years).', is_active: false },
 ]);
 
-// --- STATUS STEPPER CONFIG ---
 const processSteps = [
-    { id: 1, label: 'Sub' }, 
-    { id: 2, label: 'Rev' },
-    { id: 3, label: 'Insp/Pay' },
-    { id: 4, label: 'Done' },
+    { id: 1, label: 'Sub' }, { id: 2, label: 'Rev' }, { id: 3, label: 'Insp/Pay' }, { id: 4, label: 'Done' },
 ];
 
 // --- MODAL STATES ---
@@ -78,15 +31,14 @@ const selectedReturnedApp = ref(null);
 const currentStep = ref(1); 
 const selectedType = ref('renewal');
 
-// Existing vs New Modes
 const ownerMode = ref('existing');
 const unitMode = ref('existing');
 
 const barangayQuery = ref('');
 const showBarangayDropdown = ref(false);
 const compliancePreview = ref(null); 
-const docPreviews = ref({}); // For documents
-const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); // For unit photos
+const docPreviews = ref({}); 
+const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); 
 
 // --- CONFIGURATION & DUMMY DATA ---
 const applicationTypes = [
@@ -97,73 +49,38 @@ const applicationTypes = [
 
 const evaluationRequirementsConfig = {
     renewal: [
-        { id: 'prev_permit', name: 'Previous Franchise Permit' },
-        { id: 'emission', name: 'Emission Test Result' },
-        { id: 'or_cr', name: 'Vehicle OR/CR' },
-        { id: 'insurance', name: 'Insurance Policy' }
+        { id: 'prev_permit', name: 'Previous Franchise Permit' }, { id: 'emission', name: 'Emission Test Result' }, { id: 'or_cr', name: 'Vehicle OR/CR' }, { id: 'insurance', name: 'Insurance Policy' }
     ],
     change_unit: [
-        { id: 'new_or_cr', name: 'OR/CR of New Unit' },
-        { id: 'deed_of_sale_unit', name: 'Deed of Sale / Invoice of New Unit' },
-        { id: 'emission', name: 'Emission Test Result' }
+        { id: 'new_or_cr', name: 'OR/CR of New Unit' }, { id: 'deed_of_sale_unit', name: 'Deed of Sale / Invoice of New Unit' }, { id: 'emission', name: 'Emission Test Result' }
     ],
     change_owner: [
-        { id: 'deed_of_sale_owner', name: 'Deed of Sale' },
-        { id: 'valid_id', name: 'Valid ID of New Owner (Govt Issued)' },
-        { id: 'brgy_clearance', name: 'Barangay Clearance of New Owner' },
-        { id: 'police_clearance', name: 'Police Clearance of New Owner' }
+        { id: 'deed_of_sale_owner', name: 'Deed of Sale' }, { id: 'valid_id', name: 'Valid ID of New Owner (Govt Issued)' }, { id: 'brgy_clearance', name: 'Barangay Clearance of New Owner' }, { id: 'police_clearance', name: 'Police Clearance of New Owner' }
     ]
 };
 
 const dummyBarangays = [{ name: 'San Jose' }, { name: 'Tetuan' }, { name: 'Putik' }, { name: 'Tumaga' }, { name: 'Pasonanca' }];
 const dummyMakes = [{ id: 1, name: 'Honda' }, { id: 2, name: 'Kawasaki' }, { id: 3, name: 'Bajaj' }, { id: 4, name: 'Yamaha' }];
-const dummyMyFranchises = [
-    { id: 101, plate: 'ABC-123', make: 'Honda' },
-    { id: 102, plate: 'XYZ-789', make: 'Kawasaki' }
-];
-
-const dummyOwners = [
-    { id: 1, name: 'Juan Dela Cruz', email: 'juan@example.com' },
-    { id: 2, name: 'Maria Santos', email: 'maria@example.com' },
-    { id: 3, name: 'Pedro Penduko', email: 'pedro@example.com' },
-];
-
+const dummyMyFranchises = [{ id: 101, plate: 'ABC-123', make: 'Honda' }, { id: 102, plate: 'XYZ-789', make: 'Kawasaki' }];
+const dummyOwners = [{ id: 1, name: 'Juan Dela Cruz', email: 'juan@example.com' }, { id: 2, name: 'Maria Santos', email: 'maria@example.com' }, { id: 3, name: 'Pedro Penduko', email: 'pedro@example.com' }];
 const dummyUnits = [
-    { id: 1, plate: 'ABC-123', make: 'Honda', motor: 'H123456', chassis: 'C123456' },
-    { id: 2, plate: 'XYZ-789', make: 'Kawasaki', motor: 'K987654', chassis: 'K987654' },
-    { id: 3, plate: 'DBP-001', make: 'Suzuki', motor: 'S112233', chassis: 'S445566' },
+    { id: 1, plate: 'ABC-123', make: 'Honda', motor: 'H123456', chassis: 'C123456' }, { id: 2, plate: 'XYZ-789', make: 'Kawasaki', motor: 'K987654', chassis: 'K987654' }, { id: 3, plate: 'DBP-001', make: 'Suzuki', motor: 'S112233', chassis: 'S445566' }
 ];
 
 // --- FORMS ---
 const form = useForm({
-    type: 'renewal',
-    selected_franchise_id: '', 
-    application_date: new Date().toISOString().split('T')[0], 
-    remarks: '',
-
-    // Owner Fields
-    existing_owner_id: '',
-    first_name: '', middle_name: '', last_name: '', contact_number: '', email: '', 
-    street_address: '', barangay: '', city: 'Zamboanga City',
-
-    // Unit Fields
-    existing_unit_id: '',
-    make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
+    type: 'renewal', selected_franchise_id: '', application_date: new Date().toISOString().split('T')[0], remarks: '',
+    existing_owner_id: '', first_name: '', middle_name: '', last_name: '', contact_number: '', email: '', street_address: '', barangay: '', city: 'Zamboanga City',
+    existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
     unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
-    
-    // Evaluation Docs
     documents: {} 
 });
 
-const complianceForm = useForm({
-    file: null,
-    remarks: ''
-});
+const complianceForm = useForm({ file: null, remarks: '' });
 
 // --- HELPERS & ACTIONS ---
 const activeApplications = computed(() => allApplications.value.filter(app => app.is_active));
 const pastApplications = computed(() => allApplications.value.filter(app => !app.is_active));
-
 const filteredBarangays = computed(() => dummyBarangays.filter(b => b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())));
 const isUnitRequired = computed(() => ['change_unit'].includes(selectedType.value));
 const isOwnerRequired = computed(() => ['change_owner'].includes(selectedType.value));
@@ -174,69 +91,77 @@ const areAllDocsUploaded = computed(() => {
     return reqs.every(r => form.documents[r.id]);
 });
 
-// Open Modal Actions
+// FIX 2: Strict Step 2 Validation
+const isStep2Valid = computed(() => {
+    if (isFranchiseSelectRequired.value && !form.selected_franchise_id) return false;
+    if (!areAllDocsUploaded.value) return false;
+
+    if (isOwnerRequired.value) {
+        if (ownerMode.value === 'existing' && !form.existing_owner_id) return false;
+        if (ownerMode.value === 'new') {
+            if (!form.first_name || !form.last_name || !form.contact_number || !form.street_address || !form.barangay) return false;
+        }
+    }
+
+    if (isUnitRequired.value) {
+        if (unitMode.value === 'existing' && !form.existing_unit_id) return false;
+        if (unitMode.value === 'new') {
+            if (!form.make_id || !form.model_year || !form.plate_number || !form.motor_number || !form.chassis_number || !form.cr_number) return false;
+            if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) return false;
+        }
+    }
+
+    return true;
+});
+
 const openModal = () => { 
-    showNewAppModal.value = true; 
-    currentStep.value = 1; 
-    form.reset(); 
-    docPreviews.value = {}; 
-    unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
-    ownerMode.value = 'existing';
-    unitMode.value = 'existing';
+    showNewAppModal.value = true; currentStep.value = 1; form.reset(); 
+    docPreviews.value = {}; unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
+    ownerMode.value = 'existing'; unitMode.value = 'existing';
 };
 const closeModal = () => { showNewAppModal.value = false; form.reset(); };
 
 const handleCardClick = (app) => {
     if (app.status === 'Returned') {
-        selectedReturnedApp.value = app;
-        complianceForm.reset();
-        compliancePreview.value = null;
-        showComplyModal.value = true;
+        selectedReturnedApp.value = app; complianceForm.reset(); compliancePreview.value = null; showComplyModal.value = true;
     }
 };
+const closeComplyModal = () => { showComplyModal.value = false; selectedReturnedApp.value = null; };
 
-const closeComplyModal = () => {
-    showComplyModal.value = false;
-    selectedReturnedApp.value = null;
+// FIX 1: Clear Form States on Type Change
+const selectType = (typeId) => { 
+    selectedType.value = typeId; 
+    form.type = typeId; 
+    currentStep.value = 2; 
+    
+    // Wipe all previous states to prevent backend contamination
+    form.documents = {};
+    docPreviews.value = {};
+    form.unit_front_photo = null; form.unit_back_photo = null; form.unit_left_photo = null; form.unit_right_photo = null;
+    unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
+    form.existing_owner_id = '';
+    form.existing_unit_id = '';
 };
-
-// Form Actions
-const selectType = (typeId) => { selectedType.value = typeId; form.type = typeId; currentStep.value = 2; };
 
 const handleDocChange = (event, reqId) => {
     const file = event.target.files[0];
-    if (file) { 
-        form.documents[reqId] = file; 
-        docPreviews.value[reqId] = file.name; 
-    }
+    if (file) { form.documents[reqId] = file; docPreviews.value[reqId] = file.name; }
 };
 
 const handleUnitPhoto = (event, side) => {
     const file = event.target.files[0];
-    if (file) {
-        form[`unit_${side}_photo`] = file;
-        unitPhotoPreviews.value[side] = URL.createObjectURL(file);
-    }
+    if (file) { form[`unit_${side}_photo`] = file; unitPhotoPreviews.value[side] = URL.createObjectURL(file); }
 };
 
 const handleComplianceFile = (event) => {
     const file = event.target.files[0];
-    if (file) { 
-        complianceForm.file = file; 
-        compliancePreview.value = file.name;
-    }
+    if (file) { complianceForm.file = file; compliancePreview.value = file.name; }
 };
 
 const submitApplication = () => {
     const newApp = {
-        id: Math.random(),
-        ref_no: `APP-2024-${Math.floor(Math.random() * 1000)}`,
-        type: applicationTypes.find(t => t.id === selectedType.value).name,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending',
-        current_step: 1,
-        remarks: 'New submission',
-        is_active: true
+        id: Math.random(), ref_no: `APP-2024-${Math.floor(Math.random() * 1000)}`, type: applicationTypes.find(t => t.id === selectedType.value).name,
+        date: new Date().toISOString().split('T')[0], status: 'Pending', current_step: 1, remarks: 'New submission', is_active: true
     };
     allApplications.value.unshift(newApp);
     alert("Application Submitted!");
@@ -253,7 +178,6 @@ const submitCompliance = () => {
     closeComplyModal();
 };
 
-// Retrieval Helpers
 const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
 const getSelectedFranchiseLabel = () => {
     const f = dummyMyFranchises.find(fran => fran.id === form.selected_franchise_id);
@@ -280,8 +204,8 @@ const getStepStatus = (app, stepId) => {
     <AuthenticatedLayout>
         <Head title="My Applications" />
 
-        <div class="bg-gray-50/50">
-            <div class="">
+        <div class="py-12 bg-gray-50/50 min-h-screen">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 
                 <div class="flex justify-between items-center mb-6">
                     <div>
@@ -548,7 +472,7 @@ const getStepStatus = (app, stepId) => {
                             </div>
 
                             <div class="pt-2">
-                                <h3 class="text-sm font-bold text-gray-800 mb-1 border-b border-gray-100 pb-2">Evaluation Requirements</h3>
+                                <h3 class="text-sm font-bold text-gray-800 mb-1 border-b border-gray-200 pb-2">Evaluation Requirements</h3>
                                 <p class="text-xs text-gray-500 mb-4 leading-tight">Please upload clear copies (PDF, JPG, PNG) of the following mandatory documents. Physical inspection is scheduled separately.</p>
                                 
                                 <div class="space-y-3">
@@ -633,7 +557,7 @@ const getStepStatus = (app, stepId) => {
                             {{ currentStep === 1 ? 'Cancel' : 'Back' }}
                         </SecondaryButton>
                         
-                        <PrimaryButton v-if="currentStep < 3" @click="currentStep++" :disabled="currentStep === 2 && (!form.selected_franchise_id || !areAllDocsUploaded)">
+                        <PrimaryButton v-if="currentStep < 3" @click="currentStep++" :disabled="currentStep === 2 && !isStep2Valid">
                             Next Review
                         </PrimaryButton>
                         

@@ -74,6 +74,15 @@ const faqs = [
                             Scan QR
                         </Link>
                     </div>
+
+                    <div class="mt-5 flex justify-start">
+                        <Link href="/apply" class="text-sm text-slate-500 hover:text-blue-600 transition-colors flex items-center gap-1 font-medium group">
+                            Existing Operator without an account? 
+                            <span class="underline underline-offset-4 decoration-slate-300 group-hover:decoration-blue-600 transition-colors">Apply here</span>
+                            <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                        </Link>
+                    </div>
+
                 </div>
 
                 <div class="relative lg:ml-auto">

@@ -222,19 +222,7 @@ watch(mode, () => {
                 </div>
 
                 <div class="border-t border-gray-100 pt-4 mb-6">
-                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Transaction Details</h3>
                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel value="Effective Date" class="text-xs mb-0" />
-                            <TextInput type="date" v-model="form.transfer_date" class="block w-full text-sm py-1" required />
-                        </div>
-                        <div>
-                            <InputLabel value="Transfer Fee" class="text-xs mb-0" />
-                            <div class="relative">
-                                <span class="absolute left-3 top-1.5 text-gray-500 sm:text-sm">₱</span>
-                                <TextInput type="number" v-model="form.transfer_fee" class="block w-full text-sm py-1 pl-7" placeholder="0.00" />
-                            </div>
-                        </div>
                         <div class="col-span-2">
                              <InputLabel value="Remarks" class="text-xs mb-0" />
                              <TextInput v-model="form.remarks" class="block w-full text-sm py-1" placeholder="Optional notes..." />
