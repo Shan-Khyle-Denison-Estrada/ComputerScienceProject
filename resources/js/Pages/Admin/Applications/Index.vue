@@ -4,20 +4,15 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
-// --- DUMMY DATA: APPLICATIONS ---
-const dummyApplications = [
-    { id: 1, reference_no: 'APP-2024-001', type: 'Franchise Owner Account', date_submitted: 'Oct 25, 2024', applicant: { first_name: 'Juan', last_name: 'Dela Cruz', email: 'juan.delacruz@example.com', photo: null }, status: 'Pending' },
-    { id: 2, reference_no: 'APP-2024-002', type: 'Renewal', date_submitted: 'Oct 23, 2024', applicant: { first_name: 'Maria', last_name: 'Santos', email: 'maria.santos@example.com', photo: null }, status: 'Approved' },
-    { id: 3, reference_no: 'APP-2024-003', type: 'Change of Owner', date_submitted: 'Oct 20, 2024', applicant: { first_name: 'Pedro', last_name: 'Penduko', email: 'pedro.p@example.com', photo: null }, status: 'Rejected' },
-    { id: 4, reference_no: 'APP-2024-004', type: 'Change of Unit', date_submitted: 'Oct 18, 2024', applicant: { first_name: 'Anna', last_name: 'Reyes', email: 'anna.reyes@example.com', photo: null }, status: 'Pending' },
-    { id: 5, reference_no: 'APP-2024-005', type: 'Renewal', date_submitted: 'Oct 15, 2024', applicant: { first_name: 'Carlos', last_name: 'Garcia', email: 'carlos.g@example.com', photo: null }, status: 'Returned' },
-    { id: 6, reference_no: 'APP-2024-006', type: 'Franchise Owner Account', date_submitted: 'Oct 10, 2024', applicant: { first_name: 'Elena', last_name: 'Torres', email: 'elena.t@example.com', photo: null }, status: 'Approved' },
-    { id: 7, reference_no: 'APP-2024-007', type: 'Change of Unit', date_submitted: 'Oct 05, 2024', applicant: { first_name: 'Roberto', last_name: 'Gomez', email: 'robert.g@example.com', photo: null }, status: 'Approved' },
-    { id: 8, reference_no: 'APP-2024-008', type: 'Change of Owner', date_submitted: 'Oct 01, 2024', applicant: { first_name: 'Mario', last_name: 'Bros', email: 'mario.b@example.com', photo: null }, status: 'Approved' }
-];
+// --- PROPS (Real Data from Backend) ---
+const props = defineProps({
+    applications: Array,
+    evaluationRequirements: Array,
+    inspectionRequirements: Array
+});
 
 // --- CONSTANTS ---
 const applicationTypes = [
@@ -27,66 +22,54 @@ const applicationTypes = [
     'Change of Unit'
 ];
 
-// --- DUMMY DATA: REQUIREMENTS PREPPED FOR BACKEND ---
-// Added 'type' to evaluation requirements for grouping
-const evaluationRequirements = ref([
-    { id: 1, name: 'Barangay Clearance', type: 'Franchise Owner Account' },
-    { id: 2, name: 'Police Clearance', type: 'Franchise Owner Account' },
-    { id: 3, name: 'TIN ID', type: 'Franchise Owner Account' },
-    { id: 4, name: 'Previous Franchise Contract', type: 'Renewal' },
-    { id: 5, name: 'Deed of Sale', type: 'Change of Owner' },
-    { id: 6, name: 'OR/CR of New Unit', type: 'Change of Unit' },
-]);
-
-const inspectionRequirements = ref([
-    { id: 1, name: 'Headlight and Tail Light', options: 'Working, Defective' },
-    { id: 2, name: 'Brake System', options: 'Excellent, Good, Needs Repair' },
-    { id: 3, name: 'Trash Receptacle', options: 'Present, Missing' },
-]);
-
 // --- STATE MANAGEMENT ---
 const showFilterModal = ref(false);
 const showRequirementsModal = ref(false);
 const search = ref('');
 const filterStatus = ref('');
-const filterType = ref(''); // Added filterType state
+const filterType = ref('');
 
 // Requirements Modal State
 const activeReqTab = ref('evaluation');
 const isEditingReq = ref(false);
-// Added 'type' to the form state
 const reqForm = ref({ id: null, name: '', options: '', type: '' });
 
 // --- COMPUTED PROPERTIES ---
 const filteredApplications = computed(() => {
-    return dummyApplications.filter(app => {
+    // [!code focus] Changed from dummyApplications to props.applications
+    return props.applications.filter(app => {
         const searchLower = search.value.toLowerCase();
+        
+        // Safety check for null values
+        const fName = app.applicant?.first_name || '';
+        const lName = app.applicant?.last_name || '';
+        const refNo = app.reference_no || '';
+        const appType = app.type || '';
+
         const matchesSearch = 
-            app.applicant.first_name.toLowerCase().includes(searchLower) ||
-            app.applicant.last_name.toLowerCase().includes(searchLower) ||
-            app.reference_no.toLowerCase().includes(searchLower) ||
-            app.type.toLowerCase().includes(searchLower);
+            fName.toLowerCase().includes(searchLower) ||
+            lName.toLowerCase().includes(searchLower) ||
+            refNo.toLowerCase().includes(searchLower) ||
+            appType.toLowerCase().includes(searchLower);
 
         const matchesStatus = filterStatus.value ? app.status.toLowerCase() === filterStatus.value.toLowerCase() : true;
-        const matchesType = filterType.value ? app.type === filterType.value : true; // Added type check
+        const matchesType = filterType.value ? app.type === filterType.value : true;
 
         return matchesSearch && matchesStatus && matchesType;
     });
 });
 
-const currentRequirementsList = computed(() => activeReqTab.value === 'evaluation' ? evaluationRequirements.value : inspectionRequirements.value);
+const currentRequirementsList = computed(() => activeReqTab.value === 'evaluation' ? props.evaluationRequirements : props.inspectionRequirements);
 
 // Group evaluation requirements by type
 const groupedEvaluationRequirements = computed(() => {
     const groups = {};
-    // Initialize groups based on constant to ensure order
     applicationTypes.forEach(type => groups[type] = []);
     
-    evaluationRequirements.value.forEach(req => {
+    props.evaluationRequirements.forEach(req => {
         if (groups[req.type]) {
             groups[req.type].push(req);
         } else {
-            // Handle edge case if type doesn't exist in constant
             if (!groups['Other']) groups['Other'] = [];
             groups['Other'].push(req);
         }
@@ -105,7 +88,7 @@ const closeFilterModal = () => showFilterModal.value = false;
 const applyFilters = () => closeFilterModal();
 const resetFilters = () => { 
     filterStatus.value = ''; 
-    filterType.value = ''; // Reset type filter
+    filterType.value = ''; 
     search.value = ''; 
     closeFilterModal(); 
 };
@@ -115,7 +98,6 @@ const closeRequirementsModal = () => { showRequirementsModal.value = false; rese
 const setReqTab = (tab) => { activeReqTab.value = tab; resetReqForm(); };
 
 const resetReqForm = () => { 
-    // Default to first type if not set
     reqForm.value = { id: null, name: '', options: '', type: applicationTypes[0] }; 
     isEditingReq.value = false; 
 };
@@ -130,38 +112,28 @@ const editRequirement = (req) => {
     isEditingReq.value = true; 
 };
 
+// [!code focus] Backend Connection
 const saveRequirement = () => {
     if (!reqForm.value.name.trim()) return;
     
-    const list = activeReqTab.value === 'evaluation' ? evaluationRequirements.value : inspectionRequirements.value;
-
-    if (isEditingReq.value) {
-        const index = list.findIndex(r => r.id === reqForm.value.id);
-        if (index !== -1) {
-            list[index].name = reqForm.value.name;
-            if (activeReqTab.value === 'evaluation') list[index].type = reqForm.value.type;
-            if (activeReqTab.value === 'inspection') list[index].options = reqForm.value.options;
-        }
-    } else {
-        const newReq = { id: Date.now(), name: reqForm.value.name };
-        
-        if (activeReqTab.value === 'evaluation') {
-            newReq.type = reqForm.value.type;
-        }
-        
-        if (activeReqTab.value === 'inspection') {
-            newReq.options = reqForm.value.options.trim() || 'Pass, Fail'; 
-        }
-        
-        list.push(newReq);
-    }
-    resetReqForm();
+    router.post(route('admin.requirements.store'), {
+        category: activeReqTab.value,
+        id: reqForm.value.id,
+        name: reqForm.value.name,
+        type: reqForm.value.type,
+        options: reqForm.value.options
+    }, {
+        preserveScroll: true,
+        onSuccess: () => resetReqForm()
+    });
 };
 
+// [!code focus] Backend Connection
 const deleteRequirement = (id) => {
     if (confirm("Are you sure you want to delete this requirement?")) {
-        if (activeReqTab.value === 'evaluation') evaluationRequirements.value = evaluationRequirements.value.filter(r => r.id !== id);
-        else inspectionRequirements.value = inspectionRequirements.value.filter(r => r.id !== id);
+        router.delete(route('admin.requirements.destroy', { type: activeReqTab.value, id: id }), {
+            preserveScroll: true
+        });
     }
 };
 </script>

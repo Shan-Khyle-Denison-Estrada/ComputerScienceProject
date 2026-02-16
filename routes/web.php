@@ -16,6 +16,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\RedFlagController;
 use App\Http\Controllers\Public\ApplicationController;
+use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -144,13 +145,17 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/complaints/nature', [ComplaintController::class, 'storeNature'])->name('admin.complaints.nature.store');
     Route::delete('/admin/complaints/nature/{nature}', [ComplaintController::class, 'destroyNature'])->name('admin.complaints.nature.destroy');
 
-    Route::get('/admin/applications', function () {
-        return Inertia::render('Admin/Applications/Index');
-    })->name('admin.applications.index');
+    // Application Index
+    Route::get('/admin/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
+    Route::get('/admin/applications/{id}', [AdminApplicationController::class, 'show'])->name('admin.applications.show');
 
-    Route::get('/admin/applications/{id}', function ($id) {
-        return Inertia::render('Admin/Applications/Show', ['id' => $id]);
-    })->name('admin.applications.show');
+    // Requirements Management (Unified Route for both Evaluation & Inspection)
+    Route::post('/admin/applications/requirements', [AdminApplicationController::class, 'storeRequirement'])->name('admin.requirements.store');
+    Route::delete('/admin/applications/requirements/{type}/{id}', [AdminApplicationController::class, 'destroyRequirement'])->name('admin.requirements.destroy');
+    
+    // Actions
+    Route::post('/admin/applications/{id}/return', [AdminApplicationController::class, 'returnApplication'])->name('admin.applications.return');
+    Route::post('/admin/applications/{id}/inspect', [AdminApplicationController::class, 'updateInspection'])->name('admin.applications.inspect');
 });
 
 // --- FRANCHISE OWNER ROUTES ---
