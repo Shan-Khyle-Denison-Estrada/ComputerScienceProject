@@ -23,6 +23,9 @@ const processSteps = [
     { id: 1, label: 'Sub' }, { id: 2, label: 'Rev' }, { id: 3, label: 'Insp/Pay' }, { id: 4, label: 'Done' },
 ];
 
+// --- VIEW STATE ---
+const activeTab = ref('active'); // 'active' or 'history'
+
 // --- MODAL STATES ---
 const showNewAppModal = ref(false);
 const showComplyModal = ref(false);
@@ -91,7 +94,7 @@ const areAllDocsUploaded = computed(() => {
     return reqs.every(r => form.documents[r.id]);
 });
 
-// FIX 2: Strict Step 2 Validation
+// Strict Step 2 Validation
 const isStep2Valid = computed(() => {
     if (isFranchiseSelectRequired.value && !form.selected_franchise_id) return false;
     if (!areAllDocsUploaded.value) return false;
@@ -122,13 +125,14 @@ const openModal = () => {
 const closeModal = () => { showNewAppModal.value = false; form.reset(); };
 
 const handleCardClick = (app) => {
+    // Only allow clicking if it's returned, to open the compliance modal
     if (app.status === 'Returned') {
         selectedReturnedApp.value = app; complianceForm.reset(); compliancePreview.value = null; showComplyModal.value = true;
     }
 };
 const closeComplyModal = () => { showComplyModal.value = false; selectedReturnedApp.value = null; };
 
-// FIX 1: Clear Form States on Type Change
+// Clear Form States on Type Change
 const selectType = (typeId) => { 
     selectedType.value = typeId; 
     form.type = typeId; 
@@ -192,11 +196,9 @@ const getSelectedUnitLabel = () => {
     return u ? `${u.plate} - ${u.make}` : 'Not Selected';
 };
 
-const getStepStatus = (app, stepId) => {
-    if (app.status === 'Returned' && app.current_step === stepId) return 'error';
-    if (app.current_step > stepId) return 'completed';
-    if (app.current_step === stepId) return 'current';
-    return 'upcoming';
+// Helper for the compact progress bar in table
+const getStepPercentage = (app) => {
+    return ((app.current_step) / processSteps.length) * 100;
 };
 </script>
 
@@ -204,8 +206,8 @@ const getStepStatus = (app, stepId) => {
     <AuthenticatedLayout>
         <Head title="My Applications" />
 
-        <div class="py-12 bg-gray-50/50 min-h-screen">
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="">
+            <div class="">
                 
                 <div class="flex justify-between items-center mb-6">
                     <div>
@@ -217,107 +219,159 @@ const getStepStatus = (app, stepId) => {
                     </PrimaryButton>
                 </div>
 
-                <div class="mb-10">
-                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-wider mb-4 border-l-4 border-blue-500 pl-3">Active Applications</h2>
+                <div class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden min-h-[500px] flex flex-col">
                     
-                    <div v-if="activeApplications.length === 0" class="bg-white rounded-lg p-6 text-center border border-dashed text-gray-400 text-sm">
-                        No active applications.
+                    <div class="border-b border-gray-200">
+                        <nav class="flex -mb-px px-6" aria-label="Tabs">
+                            <button 
+                                @click="activeTab = 'active'"
+                                :class="[
+                                    activeTab === 'active' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                    'whitespace-nowrap py-4 px-4 border-b-2 font-bold text-sm transition-colors flex items-center gap-2'
+                                ]">
+                                Active Applications
+                                <span v-if="activeApplications.length > 0" class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-normal">
+                                    {{ activeApplications.length }}
+                                </span>
+                            </button>
+                            <button 
+                                @click="activeTab = 'history'"
+                                :class="[
+                                    activeTab === 'history' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
+                                    'whitespace-nowrap py-4 px-4 border-b-2 font-bold text-sm transition-colors'
+                                ]">
+                                Application History
+                            </button>
+                        </nav>
                     </div>
 
-                    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        <div v-for="app in activeApplications" :key="app.id" 
-                             @click="handleCardClick(app)"
-                             class="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden transition-all duration-200 flex flex-col h-full"
-                             :class="{ 'cursor-pointer hover:ring-2 hover:ring-red-400 hover:shadow-md': app.status === 'Returned', 'hover:shadow-md': app.status !== 'Returned' }">
-                            
-                            <div class="px-4 py-3 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                                <div class="flex flex-col">
-                                    <span class="text-xs font-bold text-gray-800 uppercase">{{ app.type }}</span>
-                                    <span class="text-[10px] text-gray-500 font-mono">{{ app.ref_no }}</span>
-                                </div>
-                                <span class="px-2 py-0.5 rounded text-[10px] font-bold border"
-                                    :class="{
-                                        'bg-yellow-50 text-yellow-700 border-yellow-200': app.status === 'Pending',
-                                        'bg-blue-50 text-blue-700 border-blue-200': ['Under Review', 'Inspection', 'Processing', 'For Payment'].includes(app.status),
-                                        'bg-red-100 text-red-700 border-red-200 animate-pulse': app.status === 'Returned'
-                                    }">
-                                    {{ app.status }}
-                                </span>
+                    <div class="flex-1 flex flex-col">
+                        
+                        <div v-if="activeTab === 'active'">
+                            <div v-if="activeApplications.length === 0" class="p-10 text-center text-gray-400">
+                                <svg class="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                </svg>
+                                <p class="text-sm">No active applications found.</p>
+                                <button @click="openModal" class="text-blue-600 text-sm font-medium hover:underline mt-2">Start a new application</button>
                             </div>
 
-                            <div class="px-4 py-4 flex-1 flex flex-col justify-between">
-                                <div class="relative mb-3">
-                                    <div class="absolute top-1/2 left-0 w-full h-0.5 bg-gray-100 -translate-y-1/2 z-0"></div>
-                                    <div class="absolute top-1/2 left-0 h-0.5 bg-green-500 -translate-y-1/2 z-0 transition-all duration-500"
-                                         :style="{ width: `${((app.current_step - 1) / (processSteps.length - 1)) * 100}%` }">
-                                    </div>
-                                    <div class="relative z-10 flex justify-between w-full">
-                                        <div v-for="step in processSteps" :key="step.id" class="flex flex-col items-center">
-                                            <div class="w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold border transition-colors bg-white"
-                                                :class="{
-                                                    'border-green-500 bg-green-500 text-white': getStepStatus(app, step.id) === 'completed',
-                                                    'border-green-500 text-green-600': getStepStatus(app, step.id) === 'current',
-                                                    'border-red-500 text-red-600': getStepStatus(app, step.id) === 'error',
-                                                    'border-gray-200 text-gray-300': getStepStatus(app, step.id) === 'upcoming'
-                                                }">
-                                                <span v-if="getStepStatus(app, step.id) === 'completed'">✓</span>
-                                                <span v-else-if="getStepStatus(app, step.id) === 'error'">!</span>
-                                                <span v-else>{{ step.id }}</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                            <div v-else class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No. & Date</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Current Status</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Progress</th>
+                                            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latest Remarks</th>
+                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="app in activeApplications" :key="app.id" 
+                                            @click="handleCardClick(app)"
+                                            class="transition-colors group"
+                                            :class="{ 
+                                                'hover:bg-red-50 cursor-pointer': app.status === 'Returned',
+                                                'hover:bg-gray-50': app.status !== 'Returned'
+                                            }">
+                                            
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="flex flex-col">
+                                                    <span class="text-sm font-bold text-gray-900 font-mono">{{ app.ref_no }}</span>
+                                                    <span class="text-xs text-gray-500">{{ app.date }}</span>
+                                                </div>
+                                            </td>
 
-                                <div class="flex justify-between items-start text-xs text-gray-600 gap-2 mt-auto">
-                                    <p class="line-clamp-2 flex-1 italic" :class="{'text-red-600 font-medium': app.status === 'Returned'}" :title="app.remarks">"{{ app.remarks }}"</p>
-                                    <span class="text-gray-400 whitespace-nowrap text-[10px]">{{ app.date }}</span>
-                                </div>
-                                
-                                <div v-if="app.status === 'Returned'" class="mt-3 text-center text-xs font-bold text-red-500 uppercase tracking-wide border-t pt-2 border-red-100">
-                                    Click to Comply &rarr;
-                                </div>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <div class="text-sm font-medium text-gray-700">{{ app.type }}</div>
+                                            </td>
+
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2.5 py-1 inline-flex text-xs leading-4 font-bold rounded border"
+                                                    :class="{
+                                                        'bg-yellow-50 text-yellow-700 border-yellow-200': app.status === 'Pending',
+                                                        'bg-blue-50 text-blue-700 border-blue-200': ['Under Review', 'Inspection', 'Processing', 'For Payment'].includes(app.status),
+                                                        'bg-red-100 text-red-700 border-red-200 animate-pulse': app.status === 'Returned'
+                                                    }">
+                                                    {{ app.status }}
+                                                </span>
+                                            </td>
+
+                                            <td class="px-6 py-4 align-middle">
+                                                <div class="w-full">
+                                                    <div class="flex justify-between items-end mb-1">
+                                                        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">
+                                                            Step {{ app.current_step }} of {{ processSteps.length }}
+                                                        </span>
+                                                        <span class="text-[10px] text-gray-400 font-mono">
+                                                            {{ Math.round((app.current_step / processSteps.length) * 100) }}%
+                                                        </span>
+                                                    </div>
+                                                    <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                        <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
+                                                             :class="{'bg-red-500': app.status === 'Returned', 'bg-green-500': app.status === 'Approved'}"
+                                                             :style="{ width: `${getStepPercentage(app)}%` }"></div>
+                                                    </div>
+                                                </div>
+                                            </td>
+
+                                            <td class="px-6 py-4">
+                                                <div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">
+                                                    "{{ app.remarks }}"
+                                                </div>
+                                            </td>
+
+                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                <button v-if="app.status === 'Returned'" class="text-red-600 hover:text-red-900 font-bold text-xs uppercase flex items-center justify-end gap-1 ml-auto">
+                                                    Comply
+                                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                                                </button>
+                                                <span v-else class="text-gray-300 text-xs">View</span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <div class="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-200">
-                    <div class="px-6 py-4 border-b border-gray-200 bg-gray-50">
-                        <h2 class="text-sm font-bold text-gray-700 uppercase">Application History</h2>
-                    </div>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No.</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                <tr v-if="pastApplications.length === 0">
-                                    <td colspan="5" class="px-6 py-4 text-center text-sm text-gray-500">No past applications found.</td>
-                                </tr>
-                                <tr v-for="app in pastApplications" :key="app.id" class="hover:bg-gray-50">
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-900 font-mono">{{ app.ref_no }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-700">{{ app.type }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">{{ app.date }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap">
-                                        <span class="px-2 inline-flex text-[10px] leading-5 font-semibold rounded-full uppercase"
-                                            :class="{
-                                                'bg-green-100 text-green-800': app.status === 'Approved',
-                                                'bg-red-100 text-red-800': app.status === 'Rejected' || app.status === 'Cancelled'
-                                            }">
-                                            {{ app.status }}
-                                        </span>
-                                    </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 max-w-xs truncate">{{ app.remarks }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                        <div v-if="activeTab === 'history'">
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No.</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-if="pastApplications.length === 0">
+                                            <td colspan="5" class="px-6 py-10 text-center text-sm text-gray-500">No past applications found.</td>
+                                        </tr>
+                                        <tr v-for="app in pastApplications" :key="app.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-6 py-4 whitespace-nowrap text-xs font-bold text-gray-900 font-mono">{{ app.ref_no }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-700">{{ app.type }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500">{{ app.date }}</td>
+                                            <td class="px-6 py-4 whitespace-nowrap">
+                                                <span class="px-2 py-0.5 inline-flex text-[10px] leading-4 font-semibold rounded-full uppercase border"
+                                                    :class="{
+                                                        'bg-green-100 text-green-800 border-green-200': app.status === 'Approved',
+                                                        'bg-red-100 text-red-800 border-red-200': app.status === 'Rejected' || app.status === 'Cancelled'
+                                                    }">
+                                                    {{ app.status }}
+                                                </span>
+                                            </td>
+                                            <td class="px-6 py-4 whitespace-nowrap text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">{{ app.remarks }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
                     </div>
                 </div>
 
