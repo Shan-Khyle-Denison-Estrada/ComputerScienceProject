@@ -282,7 +282,7 @@ public function finalizeAccount(Request $request, $id)
 
             // A. Create User (Franchise Owner)
             $user = User::create([
-'user_photo' => $userPhotoPath, // Save the NEW path
+                'user_photo' => $userPhotoPath, // Save the NEW path
                 'first_name' => $validated['first_name'],
                 'middle_name' => $validated['middle_name'],
                 'last_name' => $validated['last_name'],
