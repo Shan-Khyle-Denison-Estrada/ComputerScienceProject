@@ -5,13 +5,14 @@ import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
     show: Boolean,
     barangays: { type: Array, default: () => [] },
     zones: { type: Array, default: () => [] },
-    unitMakes: { type: Array, default: () => [] }
+    unitMakes: { type: Array, default: () => [] },
+    application: { type: Object, default: null } 
 });
 
 const emit = defineEmits(['close']);
@@ -33,23 +34,21 @@ const franchiseUIStates = ref([
     { isExpanded: true, previews: { front: null, back: null, left: null, right: null } }
 ]);
 
-// --- FORM ---
 const form = useForm({
-    first_name: '', middle_name: '', last_name: '',
-    email: '', contact_number: '', tin_number: '',
-    street_address: '', barangay: '', city: 'Zamboanga City',
-    owner_photo: null, 
-
-    franchises: [
-        {
-            zone_id: '', date_issued: new Date().toISOString().split('T')[0],
-            make_id: '', model_year: '', plate_number: '', cr_number: '',
-            motor_number: '', chassis_number: '',
-            unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
-        }
-    ],
-
-    password: '', password_confirmation: '',
+    owner_photo_path: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    email: '',
+    contact_number: '',
+    tin_number: '',
+    street_address: '',
+    // [!code focus] CHANGE TO ID
+    barangay_id: '', 
+    city: 'Zamboanga City',
+    password: '',
+    password_confirmation: '',
+    franchises: []
 });
 
 // --- HELPERS ---
@@ -118,18 +117,92 @@ const handleUnitPhoto = (e, index, side) => {
 };
 
 const submit = () => {
-    if (!form.barangay && barangayQuery.value) form.barangay = barangayQuery.value;
-    form.post(route('admin.accounts.store'), {
-        onSuccess: () => { 
-            emit('close'); form.reset(); currentStep.value = 1; ownerPhotoPreview.value = null;
-            franchiseUIStates.value = [{ isExpanded: true, previews: { front: null, back: null, left: null, right: null } }];
-        },
-        forceFormData: true
+    form.post(route('admin.applications.finalize', props.application.id), {
+        onSuccess: () => emit('close'),
+        onError: (errors) => {
+            console.error("Submission Errors:", errors);
+            // Optionally set currentStep to where the error is
+            if(errors.first_name || errors.email) currentStep.value = 1;
+            if(errors['franchises.0.plate_number']) currentStep.value = 2;
+        }
     });
 };
 
 const dummyZones = [{id:1, name:'Zone 1'}, {id:2, name:'Zone 2'}];
 const dummyMakes = [{id:1, name:'Honda'}, {id:2, name:'Kawasaki'}, {id:3, name:'Suzuki'}];
+
+// --- AUTOFILL TRIGGER ---
+watch(() => props.show, (isOpen) => {
+    if (isOpen && props.application) {
+        console.log("🟢 Modal Open. Application Data:", props.application);
+        populateForm(props.application);
+    }
+});
+
+// 2. Update Populate Logic
+function populateForm(app) {
+    // 1. PERSONAL INFO
+    const user = app.applicant || {}; 
+
+    form.first_name = user.first_name || '';
+    form.middle_name = user.middle_name || '';
+    form.last_name = user.last_name || '';
+    form.email = user.email || '';
+    form.contact_number = user.contact || '';
+    form.tin_number = user.tin_number || '';
+    form.street_address = user.street || '';
+    form.city = user.city || 'Zamboanga City';
+    form.owner_photo_path = user.photo_path || user.user_photo || '';
+
+    // [!code focus] BARANGAY: FIX SAME AS ZONE
+    // Direct ID assignment. No string matching required.
+    form.barangay_id = user.barangay_id || '';
+    form.owner_photo_path = user.user_photo_path || user.photo_path || '';
+
+    // 2. FRANCHISE INFO
+    const sourceUnits = app.franchises || [];
+    
+    // Clear and Rebuild
+    form.franchises = [];
+    franchiseUIStates.value = []; 
+
+    if (sourceUnits.length > 0) {
+        sourceUnits.forEach(unit => {
+            form.franchises.push({
+                zone_id: unit.zone_id,
+                make_id: unit.make_id,
+                plate_number: unit.plate_number || '',
+                chassis_number: unit.chassis_number || '',
+                motor_number: unit.motor_number || '',
+                cr_number: unit.cr_number || '',
+                model_year: unit.model_year || '',
+                date_issued: new Date().toISOString().split('T')[0],
+                // We send the existing paths (strings) to the backend
+// [!code ++] CAPTURE RAW PATHS
+                unit_front_photo_path: unit.unit_front_photo_path || '', 
+                unit_back_photo_path: unit.unit_back_photo_path || '',   
+                unit_left_photo_path: unit.unit_left_photo_path || '',   
+                unit_right_photo_path: unit.unit_right_photo_path || '',
+            });
+
+            // UI State for Images
+            franchiseUIStates.value.push({
+                isExpanded: true,
+                previews: {
+                    front: unit.unit_front_photo || null,
+                    back: unit.unit_back_photo || null,
+                    left: unit.unit_left_photo || null,
+                    right: unit.unit_right_photo || null
+                }
+            });
+        });
+    } else {
+        form.franchises.push({
+            date_issued: new Date().toISOString().split('T')[0] // Default for empty form
+        });
+        franchiseUIStates.value.push({ isExpanded: true, previews: {} });
+    }
+}
 </script>
 
 <template>
@@ -188,15 +261,20 @@ const dummyMakes = [{id:1, name:'Honda'}, {id:2, name:'Kawasaki'}, {id:3, name:'
                             <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Address</h3>
                             <div class="grid grid-cols-3 gap-3">
                                 <div><InputLabel value="Street Address" class="text-[11px]" /><TextInput v-model="form.street_address" class="w-full text-xs py-1.5" /></div>
-                                <div class="relative">
-                                    <InputLabel value="Barangay" class="text-[11px]" />
-                                    <TextInput v-model="barangayQuery" @focus="showBarangayDropdown = true" @input="showBarangayDropdown = true" class="w-full text-xs py-1.5" placeholder="Search..." autocomplete="off" />
-                                    <div v-if="showBarangayDropdown && filteredBarangays.length > 0" class="absolute z-10 w-full bg-white border border-gray-200 mt-1 rounded shadow-lg max-h-32 overflow-y-auto custom-scrollbar">
-                                        <div v-for="b in filteredBarangays" :key="b.id" @click="selectBarangay(b.name)" class="px-3 py-2 hover:bg-blue-50 cursor-pointer text-xs text-gray-700">{{ b.name }}</div>
-                                    </div>
-                                    <div v-if="showBarangayDropdown" @click="showBarangayDropdown = false" class="fixed inset-0 z-0 bg-transparent cursor-default"></div>
-                                </div>
-                                <div><InputLabel value="City" class="text-[11px]" /><TextInput v-model="form.city" class="w-full text-xs py-1.5 bg-gray-50" readonly /></div>
+<div>
+    <InputLabel value="Barangay" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+    
+    <select 
+        v-model="form.barangay_id" 
+        class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5"
+    >
+        <option value="" disabled>Select Barangay</option>
+        <option v-for="b in barangays" :key="b.id" :value="b.id">
+            {{ b.name }}
+        </option>
+    </select>
+</div>
+                                <div><InputLabel value="City" class="text-[11px]" /><TextInput v-model="form.city" class="w-full text-xs py-1.5 bg-gray-50"/></div>
                             </div>
                         </div>
                     </div>
@@ -234,7 +312,14 @@ const dummyMakes = [{id:1, name:'Honda'}, {id:2, name:'Kawasaki'}, {id:3, name:'
                                         <option v-for="z in (props.zones.length ? props.zones : dummyZones)" :key="z.id" :value="z.id">{{ z.name || z.description }}</option>
                                     </select>
                                 </div>
-                                <div><InputLabel value="Date Issued" class="text-[10px]" /><TextInput type="date" v-model="franchise.date_issued" class="w-full text-xs py-1.5" /></div>
+<div>
+            <InputLabel value="Date Issued" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+            <TextInput 
+                type="date" 
+                v-model="franchise.date_issued" 
+                class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5"
+            />
+        </div>
                                 <div>
                                     <InputLabel value="Make / Brand" class="text-[10px]" />
                                     <select v-model="franchise.make_id" class="w-full text-xs py-1.5 border-gray-300 rounded shadow-sm">
@@ -252,16 +337,39 @@ const dummyMakes = [{id:1, name:'Honda'}, {id:2, name:'Kawasaki'}, {id:3, name:'
 
                             <div class="mt-4 pt-3 border-t border-gray-100">
                                 <span class="text-[9px] font-bold text-gray-400 uppercase block mb-2">Unit Photos</span>
-                                <div class="grid grid-cols-4 gap-4">
-                                    <div v-for="side in ['front', 'back', 'left', 'right']" :key="side" class="aspect-video border rounded border-gray-200 overflow-hidden relative bg-gray-50 hover:border-blue-400 transition-colors group/photo">
-                                        <img v-if="franchiseUIStates[index].previews[side]" :src="franchiseUIStates[index].previews[side]" class="w-full h-full object-cover" />
-                                        <div v-else class="flex flex-col items-center justify-center h-full text-gray-300">
-                                            <svg class="w-5 h-5 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /></svg>
-                                            <span class="text-[8px] uppercase font-bold">{{ side }}</span>
-                                        </div>
-                                        <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" accept="image/*" @change="(e) => handleUnitPhoto(e, index, side)" />
-                                    </div>
-                                </div>
+<div class="grid grid-cols-4 gap-2 mt-4">
+    <div class="border p-2 rounded text-center">
+        <span class="text-[10px] font-bold text-gray-500">Front</span>
+        <div v-if="franchiseUIStates[index]?.previews?.front">
+            <img :src="franchiseUIStates[index].previews.front" class="h-16 w-full object-cover rounded" />
+        </div>
+        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+    </div>
+
+    <div class="border p-2 rounded text-center">
+        <span class="text-[10px] font-bold text-gray-500">Back</span>
+        <div v-if="franchiseUIStates[index]?.previews?.back">
+            <img :src="franchiseUIStates[index].previews.back" class="h-16 w-full object-cover rounded" />
+        </div>
+        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+    </div>
+
+    <div class="border p-2 rounded text-center">
+        <span class="text-[10px] font-bold text-gray-500">Left</span>
+        <div v-if="franchiseUIStates[index]?.previews?.left">
+            <img :src="franchiseUIStates[index].previews.left" class="h-16 w-full object-cover rounded" />
+        </div>
+        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+    </div>
+
+    <div class="border p-2 rounded text-center">
+        <span class="text-[10px] font-bold text-gray-500">Right</span>
+        <div v-if="franchiseUIStates[index]?.previews?.right">
+            <img :src="franchiseUIStates[index].previews.right" class="h-16 w-full object-cover rounded" />
+        </div>
+        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+    </div>
+</div>
                             </div>
                         </div>
                     </div>

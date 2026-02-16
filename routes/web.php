@@ -17,6 +17,7 @@ use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\RedFlagController;
 use App\Http\Controllers\Public\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
+use App\Http\Controllers\Admin\ApplicationShowController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -147,15 +148,18 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // Application Index
     Route::get('/admin/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
-    Route::get('/admin/applications/{id}', [AdminApplicationController::class, 'show'])->name('admin.applications.show');
 
     // Requirements Management (Unified Route for both Evaluation & Inspection)
     Route::post('/admin/applications/requirements', [AdminApplicationController::class, 'storeRequirement'])->name('admin.requirements.store');
     Route::delete('/admin/applications/requirements/{type}/{id}', [AdminApplicationController::class, 'destroyRequirement'])->name('admin.requirements.destroy');
-    
-    // Actions
-    Route::post('/admin/applications/{id}/return', [AdminApplicationController::class, 'returnApplication'])->name('admin.applications.return');
-    Route::post('/admin/applications/{id}/inspect', [AdminApplicationController::class, 'updateInspection'])->name('admin.applications.inspect');
+
+    Route::get('/applications/{id}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
+    Route::post('/applications/{id}/evaluate', [ApplicationShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate');
+    Route::post('/applications/{id}/return', [ApplicationShowController::class, 'returnApplication'])->name('admin.applications.return');
+    Route::post('/applications/{id}/reject', [ApplicationShowController::class, 'rejectApplication'])->name('admin.applications.reject');
+    Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
+    Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
+
 });
 
 // --- FRANCHISE OWNER ROUTES ---

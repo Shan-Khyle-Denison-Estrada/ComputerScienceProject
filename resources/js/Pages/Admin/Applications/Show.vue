@@ -5,7 +5,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { computed, ref, reactive } from 'vue';
 
 // Import Components
@@ -14,24 +14,28 @@ import ChangeOfUnitModal from '@/Components/Modals/ChangeOfUnitModal.vue';
 import ChangeOfOwnerModal from '@/Components/Modals/ChangeOfOwnerModal.vue';
 
 const props = defineProps({
-    id: [String, Number],
+    application: Object, // Receive the full application object from the backend
+    barangays: { type: Array, default: () => [] },
+    zones: { type: Array, default: () => [] },
+    unitMakes: { type: Array, default: () => [] },
 });
 
 // --- STATE ---
 const activeTab = ref('evaluation');
 const showInspectionModal = ref(false);
 const showFranchiseModal = ref(false); 
-const showRequirementModal = ref(false); // NEW: Requirement Modal State
+const showRequirementModal = ref(false);
 
 const selectedItemIndex = ref(null);
 const selectedFranchise = ref(null);
-const selectedRequirementIndex = ref(null); // NEW: Selected Req Index
+const selectedRequirementIndex = ref(null);
 
 // Modal States
 const showCreateAccountModal = ref(false);
 const showChangeUnitModal = ref(false);
 const showChangeOwnerModal = ref(false);
-const showReturnModal = ref(false); 
+const showReturnModal = ref(false);
+const showRejectModal = ref(false);
 
 const inspectionForm = reactive({
     item: '',
@@ -44,277 +48,53 @@ const returnForm = reactive({
     remarks: ''
 });
 
-// NEW: Form for Requirement Review
+const rejectForm = reactive({
+    remarks: ''
+});
+
 const requirementForm = reactive({
     remarks: ''
 });
 
-// --- DUMMY DATA ---
-const dummyApplications = ref([
-    {
-        id: 1,
-        reference_no: 'APP-2024-001',
-        type: 'Franchise Owner Account',
-        date_submitted: 'Oct 25, 2024',
-        applicant: {
-            first_name: 'Juan', middle_name: 'Perez', last_name: 'Dela Cruz', email: 'juan.delacruz@example.com', photo: null,
-            contact: '0917-123-4567', address: 'San Jose, Zamboanga City', civil_status: 'Married', birthdate: '1985-05-20',
-            tin_number: '111-222-333-000'
-        },
-        status: 'Pending',
-        evaluation_requirements: [
-            { id: 1, name: 'Barangay Clearance', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 2, name: 'Police Clearance', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 3, name: 'Valid ID (Govt Issued)', status: 'Pending', file_url: '#', remarks: '' },
-            { id: 4, name: 'Cedula', status: 'Pending', file_url: '#', remarks: '' },
-        ],
-        inspection_requirements: [],
-        franchises: [
-            {
-                id: 101, zone_id: 1, zone_name: 'Zone 1 (Poblacion)', date_issued: '2024-10-01',
-                make_id: 1, make_name: 'Honda', model_year: '2024', plate_number: 'ABC-123', cr_number: 'CR-NEW-001',
-                motor_number: 'M-NEW-001', chassis_number: 'C-NEW-001',
-                unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null
-            }
-        ],
-        complaints: [],
-        receipt: {
-            or_number: '7894561', date: 'Oct 26, 2024', payee: { first_name: 'Juan', last_name: 'Dela Cruz', address: 'San Jose, Zamboanga City' },
-            particulars: [ { name: 'Filing Fee', amount: 500.00 }, { name: 'Legal Research Fund', amount: 50.00 }, { name: 'Documentary Stamp', amount: 30.00 } ],
-            total_amount_due: 580.00, payment: { amount_paid: 580.00, change: 0.00, method: 'Cash' }
-        }
-    },
-    {
-        id: 2,
-        reference_no: 'APP-2024-002',
-        type: 'Renewal',
-        date_submitted: 'Oct 23, 2024',
-        applicant: {
-            first_name: 'Maria', middle_name: 'Cruz', last_name: 'Santos', email: 'maria.santos@example.com', photo: null,
-            contact: '0918-987-6543', address: 'Tetuan, Zamboanga City', civil_status: 'Single', birthdate: '1990-11-15'
-        },
-        status: 'Approved',
-        evaluation_requirements: [
-            { id: 1, name: 'Previous Franchise Permit', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 2, name: 'Emission Test Result', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 3, name: 'Vehicle OR/CR', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 4, name: 'Insurance Policy', status: 'Approved', file_url: '#', remarks: '' },
-        ],
-        inspection_requirements: [
-            { id: 1, name: 'Headlights (Low/High)', options: 'Working, Defective', status: 'Working', remarks: 'OK' },
-            { id: 2, name: 'Signal Lights', options: 'Working, Defective', status: 'Working', remarks: 'OK' },
-            { id: 3, name: 'Brakes', options: 'Excellent, Good, Needs Repair', status: 'Good', remarks: 'OK' },
-            { id: 4, name: 'Trash Receptacle', options: 'Present, Missing', status: 'Present', remarks: 'OK' }
-        ],
-        franchises: [],
-        complaints: [
-            {
-                id: 101,
-                nature_of_complaint: 'Overcharging',
-                remarks: 'Driver charged P50 for a P20 route.',
-                status: 'Pending',
-                fare_collected: 50.00,
-                pick_up_point: 'KCC Mall',
-                drop_off_point: 'Guiwan',
-                complainant_contact: '0999-888-7777',
-                incident_date: '2024-10-10',
-                incident_time: '14:30'
-            },
-            {
-                id: 102,
-                nature_of_complaint: 'Refusal to Convey',
-                remarks: 'Driver refused to take passenger to destination due to rain.',
-                status: 'Resolved',
-                fare_collected: 0.00,
-                pick_up_point: 'City Hall',
-                drop_off_point: 'Pasonanca',
-                complainant_contact: '0922-333-1111',
-                incident_date: '2024-09-15',
-                incident_time: '18:00'
-            }
-        ],
-        receipt: {
-            or_number: '7894562', date: 'Oct 24, 2024', payee: { first_name: 'Maria', last_name: 'Santos', address: 'Tetuan, Zamboanga City' },
-            particulars: [ { name: 'Franchise Fee (Renewal)', amount: 1500.00 }, { name: 'Mayor\'s Permit', amount: 1200.00 }, { name: 'Garbage Fee', amount: 200.00 }, { name: 'Sticker', amount: 50.00 } ],
-            total_amount_due: 2950.00, payment: { amount_paid: 3000.00, change: 50.00, method: 'Cash' }
-        }
-    },
-    {
-        id: 3,
-        reference_no: 'APP-2024-003', type: 'Change of Owner', date_submitted: 'Oct 20, 2024',
-        applicant: { 
-            first_name: 'Pedro', middle_name: 'A.', last_name: 'Penduko', email: 'pedro.p@example.com', photo: null, 
-            contact: '0920-555-4444', address: 'Putik, Zamboanga City', civil_status: 'Married', birthdate: '1978-03-10' 
-        },
-        status: 'Rejected', 
-        evaluation_requirements: [
-             { id: 1, name: 'Deed of Sale', status: 'Rejected', file_url: '#', remarks: 'Notarization expired' },
-             { id: 2, name: 'Valid ID (New Owner)', status: 'Approved', file_url: '#', remarks: '' },
-             { id: 3, name: 'Transfer Fee Receipt', status: 'Approved', file_url: '#', remarks: '' }
-        ], 
-        inspection_requirements: [], 
-        franchises: [],
-        complaints: [], 
-        receipt: null
-    },
-    {
-        id: 4,
-        reference_no: 'APP-2024-004', type: 'Change of Unit', date_submitted: 'Oct 18, 2024',
-        applicant: { 
-            first_name: 'Anna', middle_name: 'B.', last_name: 'Reyes', email: 'anna.reyes@example.com', photo: null, 
-            contact: '0917-777-8888', address: 'Pasonanca, Zamboanga City', civil_status: 'Widowed', birthdate: '1965-08-30' 
-        },
-        status: 'Pending', 
-        evaluation_requirements: [
-            { id: 1, name: 'OR/CR of New Unit', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 2, name: 'Surrender of Old Plate', status: 'Pending', file_url: '#', remarks: 'Waiting for physical turn-over' }
-        ], 
-        inspection_requirements: [
-            { id: 1, name: 'Headlights (Low/High)', options: 'Working, Defective', status: 'Working', remarks: 'Brand new unit' },
-            { id: 2, name: 'Signal Lights', options: 'Working, Defective', status: 'Working', remarks: '' },
-            { id: 3, name: 'Brakes', options: 'Excellent, Good, Needs Repair', status: 'Excellent', remarks: '' },
-             { id: 4, name: 'Sidecar Integrity', options: 'Pass, Fail', status: 'Pass', remarks: '' }
-        ], 
-        franchises: [],
-        complaints: [],
-        receipt: {
-            or_number: '7894564', date: 'Oct 19, 2024', payee: { first_name: 'Anna', last_name: 'Reyes', address: 'Pasonanca, Zamboanga City' },
-            particulars: [ { name: 'Change Unit Fee', amount: 500.00 }, { name: 'Processing Fee', amount: 100.00 } ],
-            total_amount_due: 600.00, payment: { amount_paid: 600.00, change: 0.00, method: 'Cash' }
-        }
-    },
-    {
-        id: 5,
-        reference_no: 'APP-2024-005', type: 'Renewal', date_submitted: 'Oct 15, 2024',
-        applicant: { 
-            first_name: 'Carlos', middle_name: 'D.', last_name: 'Garcia', email: 'carlos.g@example.com', photo: null, 
-            contact: '0999-111-2222', address: 'Sta. Maria, Zamboanga City', civil_status: 'Married', birthdate: '1980-02-14' 
-        },
-        status: 'Returned', 
-        evaluation_requirements: [
-             { id: 1, name: 'Previous Franchise Permit', status: 'Approved', file_url: '#', remarks: '' },
-            { id: 2, name: 'Emission Test Result', status: 'Rejected', file_url: '#', remarks: 'Image too blurry, please re-upload' },
-            { id: 3, name: 'Vehicle OR/CR', status: 'Approved', file_url: '#', remarks: '' },
-        ], 
-        inspection_requirements: [
-             { id: 1, name: 'Headlights (Low/High)', options: 'Working, Defective', status: 'Working', remarks: '' },
-            { id: 2, name: 'Brakes', options: 'Excellent, Good, Needs Repair', status: 'Needs Repair', remarks: 'Brake pads worn out' },
-        ], 
-        franchises: [],
-        complaints: [
-            {
-                id: 103,
-                nature_of_complaint: 'Reckless Driving',
-                remarks: 'Swerving and overspeeding in school zone.',
-                status: 'Pending',
-                fare_collected: 0.00,
-                pick_up_point: 'Sta. Maria',
-                drop_off_point: 'Pasonanca',
-                complainant_contact: '0915-123-9876',
-                incident_date: '2024-10-12',
-                incident_time: '07:30'
-            }
-        ],
-        receipt: null
-    },
-    {
-        id: 6,
-        reference_no: 'APP-2024-006', type: 'Franchise Owner Account', date_submitted: 'Oct 10, 2024',
-        applicant: { 
-            first_name: 'Elena', 
-            middle_name: 'Marie', 
-            last_name: 'Torres', 
-            email: 'elena.t@example.com', 
-            photo: null, 
-            contact: '0922-333-4444', 
-            tin_number: '123-456-789-000', 
-            address: 'Tumaga, Zamboanga City',
-            civil_status: 'Single', 
-            birthdate: '1995-12-05' 
-        },
-        franchises: [
-            {
-                id: 201, zone_id: 1, zone_name: 'Zone 1 (Poblacion)', date_issued: '2023-05-10',
-                make_id: 1, make_name: 'Honda', model_year: '2023', plate_number: 'ZC-8888', cr_number: 'CR-12345',
-                motor_number: 'M12345', chassis_number: 'C12345',
-                unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null
-            },
-             {
-                id: 202, zone_id: 2, zone_name: 'Zone 2 (East Coast)', date_issued: '2024-01-15',
-                make_id: 2, make_name: 'Kawasaki', model_year: '2024', plate_number: 'ZC-9999', cr_number: 'CR-67890',
-                motor_number: 'M67890', chassis_number: 'C67890',
-                unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null
-            }
-        ],
-        status: 'Approved', 
-        evaluation_requirements: [
-            { id: 1, name: 'Barangay Clearance', status: 'Approved', file_url: '#', remarks: '' }, 
-            { id: 2, name: 'Police Clearance', status: 'Approved', file_url: '#', remarks: '' }, 
-            { id: 3, name: 'Valid ID', status: 'Approved', file_url: '#', remarks: '' },
-             { id: 4, name: 'TIN ID', status: 'Approved', file_url: '#', remarks: '' },
-        ],
-        inspection_requirements: [], complaints: [], receipt: null
-    },
-    {
-        id: 7,
-        reference_no: 'APP-2024-007', type: 'Change of Unit', date_submitted: 'Oct 05, 2024',
-        applicant: { 
-            first_name: 'Roberto', middle_name: 'S.', last_name: 'Gomez', email: 'robert.g@example.com', photo: null, 
-            contact: '0915-888-9999', address: 'Baliwasan, Zamboanga City', civil_status: 'Widower', birthdate: '1960-09-21' 
-        },
-        status: 'Approved', 
-        evaluation_requirements: [
-             { id: 1, name: 'OR/CR of New Unit', status: 'Approved', file_url: '#', remarks: '' },
-             { id: 2, name: 'Surrender of Old Plate', status: 'Approved', file_url: '#', remarks: '' }
-        ], 
-        inspection_requirements: [
-            { id: 1, name: 'Headlights (Low/High)', options: 'Working, Defective', status: 'Working', remarks: '' },
-            { id: 2, name: 'Signal Lights', options: 'Working, Defective', status: 'Working', remarks: '' },
-             { id: 3, name: 'Brakes', options: 'Excellent, Good, Needs Repair', status: 'Good', remarks: '' },
-        ], 
-        franchises: [],
-        complaints: [], 
-        receipt: {
-            or_number: '7894567', date: 'Oct 06, 2024', payee: { first_name: 'Roberto', last_name: 'Gomez', address: 'Baliwasan, Zamboanga City' },
-            particulars: [ { name: 'Change Unit Fee', amount: 500.00 }, { name: 'Processing Fee', amount: 100.00 } ],
-            total_amount_due: 600.00, payment: { amount_paid: 1000.00, change: 400.00, method: 'Cash' }
-        }
-    },
-    {
-        id: 8,
-        reference_no: 'APP-2024-008', type: 'Change of Owner', date_submitted: 'Oct 01, 2024',
-        applicant: { 
-            first_name: 'Mario', middle_name: 'Luigi', last_name: 'Bros', email: 'mario.b@example.com', photo: null, 
-            contact: '0911-222-3333', address: 'Calarian, Zamboanga City', civil_status: 'Single', birthdate: '1988-01-01' 
-        },
-        status: 'Approved', 
-        evaluation_requirements: [
-             { id: 1, name: 'Deed of Sale', status: 'Approved', file_url: '#', remarks: '' },
-             { id: 2, name: 'Valid ID (New Owner)', status: 'Approved', file_url: '#', remarks: '' },
-             { id: 3, name: 'Transfer Fee Receipt', status: 'Approved', file_url: '#', remarks: '' }
-        ], 
-        inspection_requirements: [], 
-        franchises: [],
-        complaints: [], 
-        receipt: {
-            or_number: '7894568', date: 'Oct 02, 2024', payee: { first_name: 'Mario', last_name: 'Bros', address: 'Calarian, Zamboanga City' },
-            particulars: [ { name: 'Transfer Fee', amount: 1000.00 }, { name: 'Processing Fee', amount: 100.00 } ],
-            total_amount_due: 1100.00, payment: { amount_paid: 1100.00, change: 0.00, method: 'Cash' }
-        }
-    }
-]);
-
 // --- COMPUTED PROPERTIES ---
 
 const application = computed(() => {
-    const found = dummyApplications.value.find(app => String(app.id) === String(props.id));
-    const app = found || dummyApplications.value[0]; 
-    if (!app.inspection_requirements) app.inspection_requirements = [];
-    if (!app.evaluation_requirements) app.evaluation_requirements = [];
-    if (!app.complaints) app.complaints = [];
-    if (!app.franchises) app.franchises = []; // Ensure franchises array exists
-    return app;
+    // Safely handle missing arrays by defaulting to empty arrays
+    const app = props.application || {};
+    return {
+        ...app,
+        inspection_requirements: app.inspection_requirements || [],
+        evaluation_requirements: app.evaluation_requirements || [],
+        complaints: app.complaints || [],
+        franchises: app.franchises || [], // Ensure this is never undefined
+        applicant: app.applicant || {}
+    };
 });
+
+const confirmRejectApplication = () => {
+    if (!confirm("Are you sure you want to completely REJECT this application? This action cannot be undone.")) return;
+
+    router.post(route('admin.applications.reject', application.value.id), {
+        remarks: rejectForm.remarks
+    }, {
+        onSuccess: () => {
+            showRejectModal.value = false;
+            rejectForm.remarks = '';
+        }
+    });
+};
+
+// [!code ++] Add the approval action
+const confirmApproveApplication = () => {
+    if (!confirm("Are you sure you want to APPROVE this application?")) return;
+    
+    router.post(route('admin.applications.approve', props.application.id), {}, {
+        onSuccess: () => {
+            // Optional: You can auto-open the finalize modal here if desired
+            // showCreateAccountModal.value = true;
+        }
+    });
+};
 
 const showInspectionTab = computed(() => {
     return ['Renewal', 'Change of Unit'].includes(application.value.type);
@@ -328,7 +108,6 @@ const showComplaintsTab = computed(() => {
     return application.value.type === 'Renewal';
 });
 
-// NEW: Computed for current requirement Modal
 const selectedRequirement = computed(() => {
     if (selectedRequirementIndex.value === null) return null;
     return application.value.evaluation_requirements[selectedRequirementIndex.value];
@@ -337,28 +116,20 @@ const selectedRequirement = computed(() => {
 // --- ACTIONS ---
 
 const resolveComplaint = (index) => {
-    const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
-    if (appIndex !== -1 && confirm('Are you sure you want to mark this complaint as Resolved?')) {
-        dummyApplications.value[appIndex].complaints[index].status = 'Resolved';
+    if (confirm('Are you sure you want to mark this complaint as Resolved?')) {
+        alert("Feature coming soon connected to backend.");
     }
 };
 
 const promptRejectDocument = (index) => {
     const reason = prompt("Please state the reason for rejecting this document (e.g. Blurred, Expired, Incorrect):");
-    if (reason !== null) { // if user didn't cancel
-        updateEvaluationStatus(index, 'Rejected', reason);
+    if (reason !== null) { 
+        selectedRequirementIndex.value = index;
+        requirementForm.remarks = reason;
+        saveRequirementStatus('Rejected');
     }
 };
 
-const updateEvaluationStatus = (index, status, remarks = '') => {
-    const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
-    if (appIndex !== -1) {
-        dummyApplications.value[appIndex].evaluation_requirements[index].status = status;
-        dummyApplications.value[appIndex].evaluation_requirements[index].remarks = remarks; // Save reason
-    }
-};
-
-// NEW: Requirement Modal Actions
 const openRequirementModal = (index) => {
     selectedRequirementIndex.value = index;
     requirementForm.remarks = application.value.evaluation_requirements[index].remarks || '';
@@ -371,14 +142,36 @@ const closeRequirementModal = () => {
     requirementForm.remarks = '';
 };
 
+// Backend Integration: Update Evaluation Status
 const saveRequirementStatus = (status) => {
     if (selectedRequirementIndex.value !== null) {
-        updateEvaluationStatus(selectedRequirementIndex.value, status, status === 'Rejected' ? requirementForm.remarks : '');
-        closeRequirementModal();
+        const evaluation = application.value.evaluation_requirements[selectedRequirementIndex.value];
+        
+        router.post(route('admin.applications.evaluate', application.value.id), {
+            evaluation_id: evaluation.id,
+            status: status,
+            remarks: requirementForm.remarks
+        }, {
+            preserveScroll: true,
+            onSuccess: () => {
+                closeRequirementModal();
+            }
+        });
     }
 };
 
-// Inspection Logic
+// Backend Integration: Return Application
+const confirmReturnApplication = () => {
+    router.post(route('admin.applications.return', application.value.id), {
+        remarks: returnForm.remarks
+    }, {
+        onSuccess: () => {
+            showReturnModal.value = false;
+            returnForm.remarks = '';
+        }
+    });
+};
+
 const openInspectionModal = (index, itemData) => {
     selectedItemIndex.value = index;
     inspectionForm.item = itemData.name;
@@ -398,17 +191,14 @@ const closeInspectionModal = () => {
 };
 
 const saveInspection = () => {
+    // Placeholder logic
     if (selectedItemIndex.value !== null) {
-        const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
-        if (appIndex !== -1) {
-             dummyApplications.value[appIndex].inspection_requirements[selectedItemIndex.value].status = inspectionForm.status;
-             dummyApplications.value[appIndex].inspection_requirements[selectedItemIndex.value].remarks = inspectionForm.remarks;
-        }
+         application.value.inspection_requirements[selectedItemIndex.value].status = inspectionForm.status;
+         application.value.inspection_requirements[selectedItemIndex.value].remarks = inspectionForm.remarks;
     }
     closeInspectionModal();
 };
 
-// Franchise Modal Logic
 const openFranchiseModal = (franchise) => {
     selectedFranchise.value = franchise;
     showFranchiseModal.value = true;
@@ -417,15 +207,6 @@ const openFranchiseModal = (franchise) => {
 const closeFranchiseModal = () => {
     showFranchiseModal.value = false;
     selectedFranchise.value = null;
-};
-
-const confirmReturnApplication = () => {
-    const appIndex = dummyApplications.value.findIndex(app => app.id === application.value.id);
-    if (appIndex !== -1) {
-        dummyApplications.value[appIndex].status = 'Returned';
-    }
-    showReturnModal.value = false;
-    returnForm.remarks = '';
 };
 
 const formatCurrency = (value) => {
@@ -478,10 +259,10 @@ const formatCurrency = (value) => {
                         <button @click="showReturnModal = true" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                             Return
                         </button>
-                        <button class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
+                        <button @click="showRejectModal = true" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2">
                             Reject
                         </button>
-                        <button class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                             Approve
                         </button>
                     </template>
@@ -783,6 +564,12 @@ const formatCurrency = (value) => {
                         </div>
                     </div>
                 </div>
+                <div class="mb-6" v-if="selectedFranchise && selectedFranchise.franchise_certificate_photo">
+                    <h3 class="text-sm font-semibold text-gray-700 mb-2">Franchise Certificate</h3>
+                    <div class="border rounded p-2 bg-gray-50">
+                        <img :src="selectedFranchise.franchise_certificate_photo" alt="Franchise Certificate" class="w-full h-auto rounded shadow-sm">
+                    </div>
+                </div>
 
                 <div class="mt-6 flex justify-end">
                     <SecondaryButton @click="closeFranchiseModal">Close</SecondaryButton>
@@ -895,7 +682,42 @@ const formatCurrency = (value) => {
             </div>
         </Modal>
 
-        <CreateFranchiseAccountModal :show="showCreateAccountModal" :application="application" @close="showCreateAccountModal = false" />
+<Modal :show="showRejectModal" @close="showRejectModal = false">
+    <div class="p-6">
+        <h2 class="text-lg font-medium text-red-900 mb-4">Reject Application</h2>
+        <p class="text-sm text-gray-600 mb-4">
+            Are you sure you want to reject this application? This action is typically final.
+        </p>
+        <div class="mb-4">
+            <InputLabel value="Reason for Rejection" />
+            <textarea 
+                v-model="rejectForm.remarks"
+                rows="4" 
+                class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" 
+                placeholder="E.g., Applicant does not meet residency requirements..."
+            ></textarea>
+        </div>
+        <div class="flex justify-end gap-3">
+            <SecondaryButton @click="showRejectModal = false">Cancel</SecondaryButton>
+            <PrimaryButton 
+                class="bg-red-600 hover:bg-red-700 focus:ring-red-500" 
+                @click="confirmRejectApplication" 
+                :disabled="!rejectForm.remarks"
+            >
+                Confirm Rejection
+            </PrimaryButton>
+        </div>
+    </div>
+</Modal>
+
+<CreateFranchiseAccountModal 
+            :show="showCreateAccountModal" 
+            :application="application" 
+            :barangays="barangays"
+            :zones="zones"
+            :unitMakes="unitMakes"
+            @close="showCreateAccountModal = false" 
+        />
         <ChangeOfUnitModal :show="showChangeUnitModal" :application="application" @close="showChangeUnitModal = false" />
         <ChangeOfOwnerModal :show="showChangeOwnerModal" :application="application" @close="showChangeOwnerModal = false" />
 
