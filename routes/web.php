@@ -15,6 +15,7 @@ use App\Http\Controllers\Franchise\DashboardController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\ComplaintController;
 use App\Http\Controllers\Admin\RedFlagController;
+use App\Http\Controllers\Public\ApplicationController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -26,9 +27,8 @@ Route::get('/', function () {
     ]);
 })->name('home');
 
-Route::get('/apply', function () {
-    return Inertia::render('Apply');
-})->name('apply');
+Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
+Route::post('/apply', [ApplicationController::class, 'store'])->name('application.store');
 
 Route::get('/about', function () {
     return Inertia::render('About');
