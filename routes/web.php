@@ -160,6 +160,39 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
     Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
+
+
+Route::get('/franchise-owner', function () {
+    return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
+        'application' => null, 
+        'barangays' => [],
+        'zones' => [],
+        'unitMakes' => [],
+    ]);
+});
+
+Route::get('/renewal', function () {
+    return Inertia::render('Admin/Applications/ShowRenewal', [
+        'application' => null,
+    ]);
+});
+
+Route::get('/change-of-unit', function () {
+    return Inertia::render('Admin/Applications/ShowChangeOfUnit', [
+        'application' => null,
+    ]);
+});
+
+Route::get('/change-of-owner', function () {
+    return Inertia::render('Admin/Applications/ShowChangeOfOwner', [
+        'application' => null,
+    ]);
+});
+
+
+
+
+
 });
 
 // --- FRANCHISE OWNER ROUTES ---

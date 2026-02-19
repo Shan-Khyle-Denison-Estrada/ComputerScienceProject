@@ -70,8 +70,10 @@ class ApplicationController extends Controller
             'units.*.unit_back_photo' => 'required|image|max:5120',
             'units.*.unit_left_photo' => 'required|image|max:5120',
             'units.*.unit_right_photo' => 'required|image|max:5120',
-            'units.*.cr_photo' => 'required|image|max:5120',
-            'units.*.or_photo' => 'required|image|max:5120',
+// CHANGED: Allow documents (PDFs) for Certificates and Registrations
+            'units.*.cr_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'units.*.or_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'units.*.franchise_certificate_photo' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
 
             // Requirements Container (Relaxed validation)
             'requirement_files' => 'nullable|array', 
@@ -121,7 +123,7 @@ class ApplicationController extends Controller
                             'application_id' => $application->id,
                             'requirement_id' => $reqId,
                             'file_path' => $path,
-                            'is_compliant' => false,
+                            'is_compliant' => null,
                             'remarks' => 'Submitted by applicant'
                         ]);
                     }

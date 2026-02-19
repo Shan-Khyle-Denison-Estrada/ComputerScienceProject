@@ -84,7 +84,27 @@ const handleRequirementUpload = (event, reqId) => {
 
 const nextStep = () => { if (currentStep.value < 3) { currentStep.value++; window.scrollTo(0, 0); } };
 const prevStep = () => { if (currentStep.value > 1) { currentStep.value--; window.scrollTo(0, 0); } };
-const submit = () => { form.post(route('application.store'), { preserveScroll: true, onSuccess: () => form.reset() }); };
+// const submit = () => { form.post(route('application.store'), { preserveScroll: true, onSuccess: () => form.reset() }); };
+// Update your submit function to use Inertia's callbacks
+const submit = () => {
+    form.post(route('application.store'), {
+        preserveScroll: true,
+        onError: () => {
+            // If validation fails, open the modal
+            showErrorModal.value = true;
+        },
+        onSuccess: () => {
+            // If it succeeds, ensure the modal is closed
+            showErrorModal.value = false;
+        }
+    });
+};
+
+const showErrorModal = ref(false);
+
+const removeRequirementFile = (reqId) => {
+    delete form.requirement_files[reqId];
+};
 </script>
 
 <template>
@@ -165,16 +185,117 @@ const submit = () => { form.post(route('application.store'), { preserveScroll: t
                                     <div class="border-t border-gray-200 pt-4">
                                         <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase">Photos</h4>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                                            <div class="bg-white p-3 border rounded"><InputLabel value="Front" /><input type="file" @change="e => handleFileChange(e, index, 'unit_front_photo')" class="block w-full text-xs"/></div>
-                                            <div class="bg-white p-3 border rounded"><InputLabel value="Back" /><input type="file" @change="e => handleFileChange(e, index, 'unit_back_photo')" class="block w-full text-xs"/></div>
-                                            <div class="bg-white p-3 border rounded"><InputLabel value="Left" /><input type="file" @change="e => handleFileChange(e, index, 'unit_left_photo')" class="block w-full text-xs"/></div>
-                                            <div class="bg-white p-3 border rounded"><InputLabel value="Right" /><input type="file" @change="e => handleFileChange(e, index, 'unit_right_photo')" class="block w-full text-xs"/></div>
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="Front" />
+                                                
+                                                <div v-if="unit.unit_front_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.unit_front_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.unit_front_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_front_photo')" class="block w-full text-xs mt-1"/>
+                                            </div>
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="Back" />
+                                                
+                                                <div v-if="unit.unit_back_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.unit_back_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.unit_back_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_back_photo')" class="block w-full text-xs mt-1"/>
+                                            </div> 
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="Left" />
+                                                
+                                                <div v-if="unit.unit_left_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.unit_left_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.unit_left_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_left_photo')" class="block w-full text-xs mt-1"/>
+                                            </div> 
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="Right" />
+                                                
+                                                <div v-if="unit.unit_right_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.unit_right_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.unit_right_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_right_photo')" class="block w-full text-xs mt-1"/>
+                                            </div> 
+
                                         </div>
                                         <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase">Documents</h4>
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                            <div class="bg-yellow-50 p-3 border border-yellow-200 rounded"><InputLabel value="CR" /><input type="file" @change="e => handleFileChange(e, index, 'cr_photo')" class="block w-full text-xs"/></div>
-                                            <div class="bg-yellow-50 p-3 border border-yellow-200 rounded"><InputLabel value="OR" /><input type="file" @change="e => handleFileChange(e, index, 'or_photo')" class="block w-full text-xs"/></div>
-                                            <div class="bg-green-50 p-3 border border-green-200 rounded"><InputLabel value="Cert" /><input type="file" @change="e => handleFileChange(e, index, 'franchise_certificate_photo')" class="block w-full text-xs"/></div>
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="CR" />
+                                                
+                                                <div v-if="unit.cr_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.cr_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.cr_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'cr_photo')" class="block w-full text-xs mt-1"/>
+                                            </div> 
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="OR" />
+                                                
+                                                <div v-if="unit.or_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.or_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.or_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'or_photo')" class="block w-full text-xs mt-1"/>
+                                            </div> 
+
+
+
+                                            <div class="bg-white p-3 border rounded">
+                                                <InputLabel value="Franchise Certificate" />
+                                                
+                                                <div v-if="unit.franchise_certificate_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
+                                                    <span class="text-xs text-green-700 font-medium truncate pr-2">
+                                                        {{ unit.franchise_certificate_photo.name }}
+                                                    </span>
+                                                    <button type="button" @click="unit.franchise_certificate_photo = null" class="text-gray-400 hover:text-red-500 transition">
+                                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                    </button>
+                                                </div>
+
+                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'franchise_certificate_photo')" class="block w-full text-xs mt-1"/>
+                                            </div> 
                                         </div>
                                     </div>
                                 </div>
@@ -206,15 +327,27 @@ const submit = () => { form.post(route('application.store'), { preserveScroll: t
                                                 <p class="text-xs text-gray-400">Required Document</p>
                                             </div>
 
-                                            <div class="md:col-span-2">
-                                                <input 
-                                                    type="file" 
-                                                    @change="e => handleRequirementUpload(e, req.id)"
-                                                    accept=".jpg,.jpeg,.png,.pdf"
-                                                    class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer"
-                                                />
-                                                <InputError :message="form.errors[`requirement_files.${req.id}`]" class="mt-1" />
+                                        <div class="md:col-span-2">
+                                            
+                                            <div v-if="form.requirement_files[req.id]" class="flex items-center justify-between bg-blue-50 p-3 rounded-lg border border-blue-200">
+                                                <div class="flex items-center text-sm text-blue-700 font-medium truncate">
+                                                    <svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                                    <span class="truncate">{{ form.requirement_files[req.id].name }}</span>
+                                                </div>
+                                                <button type="button" @click="removeRequirementFile(req.id)" class="ml-4 text-sm text-red-500 hover:text-red-700 font-medium flex-shrink-0">
+                                                    Remove
+                                                </button>
                                             </div>
+
+                                            <input v-else
+                                                type="file" 
+                                                @change="e => handleRequirementUpload(e, req.id)"
+                                                accept=".jpg,.jpeg,.png,.pdf"
+                                                class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition cursor-pointer"
+                                            />
+                                            
+                                            <InputError :message="form.errors[`requirement_files.${req.id}`]" class="mt-1" />
+                                        </div>
 
                                         </div>
                                     </div>
@@ -253,6 +386,37 @@ const submit = () => { form.post(route('application.store'), { preserveScroll: t
         </main>
         <Footer />
     </div>
+    <div v-if="showErrorModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    
+    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 m-4 relative">
+        
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-xl font-bold text-red-600 flex items-center" id="modal-title">
+                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                Submission Failed
+            </h3>
+            <button @click="showErrorModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+            </button>
+        </div>
+
+        <div class="mb-6 max-h-64 overflow-y-auto pr-2">
+            <p class="text-sm text-gray-700 mb-3">Please correct the following issues before continuing:</p>
+            <ul class="list-disc list-inside space-y-2">
+                <li v-for="(error, field) in form.errors" :key="field" class="text-sm text-red-500">
+                    {{ error }}
+                </li>
+            </ul>
+        </div>
+
+        <div class="flex justify-end border-t pt-4">
+            <button @click="showErrorModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 transition-colors">
+                Got it, let me fix them
+            </button>
+        </div>
+        
+    </div>
+</div>
 </template>
 
 <style scoped>

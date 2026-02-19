@@ -87,7 +87,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('application_id')->constrained()->onDelete('cascade');
             $table->foreignId('requirement_id')->constrained('evaluation_requirements');
-            $table->boolean('is_compliant')->default(false);
+            $table->boolean('is_compliant')->nullable()->default(null);
             $table->text('remarks')->nullable();
             $table->timestamps();
         });

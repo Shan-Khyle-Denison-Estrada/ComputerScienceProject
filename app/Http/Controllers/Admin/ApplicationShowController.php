@@ -81,6 +81,8 @@ class ApplicationShowController extends Controller
                     'unit_right_photo' => $unit->unit_right_photo ? asset('storage/'.$unit->unit_right_photo) : null,
                     // NEW: Added Franchise Certificate Photo
                     'franchise_certificate_photo' => $unit->franchise_certificate_photo ? asset('storage/' . $unit->franchise_certificate_photo) : null,
+                    'cr_photo' => $unit->cr_photo ? asset('storage/' . $unit->cr_photo) : null,
+                    'or_photo' => $unit->or_photo ? asset('storage/' . $unit->or_photo) : null,
                 ];
             });
         } 
