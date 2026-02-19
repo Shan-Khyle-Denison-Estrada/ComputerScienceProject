@@ -2,7 +2,6 @@
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -23,7 +22,7 @@ const activeTab = ref('evaluation');
 const showInspectionModal = ref(false);
 const showFranchiseModal = ref(false); 
 const showRequirementModal = ref(false);
-const showMediaModal = ref(false); // New state for viewing unit photos/docs
+const showMediaModal = ref(false); 
 
 const selectedItemIndex = ref(null);
 const selectedFranchise = ref(null);
@@ -31,6 +30,9 @@ const selectedRequirementIndex = ref(null);
 
 const mediaUrl = ref('');
 const mediaTitle = ref('');
+
+// Track parent modal to reopen when child modal closes
+const parentModal = ref(null);
 
 // Modal States
 const showCreateAccountModal = ref(false);
@@ -62,9 +64,18 @@ const isPdf = (path) => {
     return path.toLowerCase().endsWith('.pdf');
 };
 
-// --- ACTIONS: Media Viewer ---
+// --- ACTIONS: Media Viewer (Child Modal Logic) ---
 const viewMedia = (path, title) => {
     if (!path) return;
+    
+    // Check if Franchise Modal is currently open to set it as parent
+    if (showFranchiseModal.value) {
+        parentModal.value = 'franchise';
+        showFranchiseModal.value = false; // Hide parent modal
+    } else {
+        parentModal.value = null;
+    }
+
     // Ensure path has correct prefix if not an absolute URL
     mediaUrl.value = (path.startsWith('http') || path.startsWith('/storage')) ? path : '/storage/' + path;
     mediaTitle.value = title;
@@ -75,6 +86,15 @@ const closeMediaModal = () => {
     showMediaModal.value = false;
     mediaUrl.value = '';
     mediaTitle.value = '';
+
+    // Reopen parent modal if it exists
+    if (parentModal.value === 'franchise') {
+        // Slight delay to allow fade out of media modal before fading in parent
+        setTimeout(() => {
+            showFranchiseModal.value = true;
+            parentModal.value = null;
+        }, 200);
+    }
 };
 
 // --- COMPUTED PROPERTIES ---
@@ -310,9 +330,7 @@ const formatCurrency = (value) => {
                                  <p class="text-sm font-medium text-gray-800 font-mono">{{ application.applicant.tin_number }}</p>
                              </div>
 
-                             <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Address</p><p class="text-sm font-medium text-gray-800">{{ application.applicant.address }}</p></div>
-                             <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Civil Status</p><p class="text-sm font-medium text-gray-800">{{ application.applicant.civil_status }}</p></div>
-                             <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Date of Birth</p><p class="text-sm font-medium text-gray-800">{{ application.applicant.birthdate }}</p></div>
+                             <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Address</p><p class="text-sm font-medium text-gray-800">{{ application.applicant.street }}, {{ application.applicant.barangay_name }}, {{ application.applicant.city }}</p></div>
                         </div>
                     </div>
                 </div>
@@ -454,193 +472,190 @@ const formatCurrency = (value) => {
                 </div>
             </div>
 
-            <Modal :show="showRequirementModal" @close="closeRequirementModal" maxWidth="3xl">
-                <div class="p-6 h-[85vh] flex flex-col" v-if="selectedRequirement">
-                    <div class="flex-none flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900">{{ selectedRequirement.name }}</h2>
-                            <div class="flex items-center gap-2 mt-1">
-                                <span class="px-2 py-0.5 rounded text-xs font-bold uppercase" 
-                                    :class="{
-                                        'bg-green-100 text-green-700': selectedRequirement.status === 'Approved',
-                                        'bg-red-100 text-red-700': selectedRequirement.status === 'Rejected',
-                                        'bg-gray-100 text-gray-600': selectedRequirement.status === 'Pending'
-                                    }">
-                                    {{ selectedRequirement.status }}
-                                </span>
+            <Transition name="fade">
+                <div v-if="showRequirementModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeRequirementModal">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col" @click.stop>
+                        <div class="p-6 h-[85vh] flex flex-col" v-if="selectedRequirement">
+                            <div class="flex-none flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                                <div>
+                                    <h2 class="text-xl font-bold text-gray-900">{{ selectedRequirement.name }}</h2>
+                                    <div class="flex items-center gap-2 mt-1">
+                                        <span class="px-2 py-0.5 rounded text-xs font-bold uppercase" 
+                                            :class="{
+                                                'bg-green-100 text-green-700': selectedRequirement.status === 'Approved',
+                                                'bg-red-100 text-red-700': selectedRequirement.status === 'Rejected',
+                                                'bg-gray-100 text-gray-600': selectedRequirement.status === 'Pending'
+                                            }">
+                                            {{ selectedRequirement.status }}
+                                        </span>
+                                    </div>
+                                </div>
+                                <button @click="closeRequirementModal" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                            
+                            <div class="flex-1 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center mb-4 relative overflow-hidden">
+                                <iframe v-if="isPdf(selectedRequirement.file_url)" :src="selectedRequirement.file_url" class="w-full h-full border-0"></iframe>
+                                <img v-else-if="selectedRequirement.file_url && selectedRequirement.file_url !== '#'" :src="selectedRequirement.file_url" class="max-w-full max-h-full object-contain" />
+                                <div v-else class="text-center text-gray-400">
+                                    <svg class="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
+                                    <p class="text-sm font-medium">No Document Available</p>
+                                </div>
+                            </div>
+
+                            <div class="flex-none pt-4 border-t border-gray-100">
+                                <div class="mb-4">
+                                    <InputLabel for="req_remarks" value="Remarks (Required for Rejection)" />
+                                    <textarea id="req_remarks" v-model="requirementForm.remarks" rows="2" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="Provide reason if rejecting..."></textarea>
+                                </div>
+                                <div class="flex justify-between items-center">
+                                    <SecondaryButton @click="closeRequirementModal">Close</SecondaryButton>
+                                    <div class="flex gap-2">
+                                        <PrimaryButton @click="saveRequirementStatus('Rejected')" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                                            Reject
+                                        </PrimaryButton>
+                                        <PrimaryButton @click="saveRequirementStatus('Approved')" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
+                                            Approve
+                                        </PrimaryButton>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                        <button @click="closeRequirementModal" class="text-gray-400 hover:text-gray-600">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
                     </div>
-                    
-                    <div class="flex-1 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center mb-4 relative overflow-hidden">
-                        <iframe v-if="isPdf(selectedRequirement.file_url)" :src="selectedRequirement.file_url" class="w-full h-full border-0"></iframe>
-                        <img v-else-if="selectedRequirement.file_url && selectedRequirement.file_url !== '#'" :src="selectedRequirement.file_url" class="max-w-full max-h-full object-contain" />
-                        <div v-else class="text-center text-gray-400">
-                            <svg class="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
-                            <p class="text-sm font-medium">No Document Available</p>
-                        </div>
-                    </div>
+                </div>
+            </Transition>
 
-                    <div class="flex-none pt-4 border-t border-gray-100">
-                        <div class="mb-4">
-                            <InputLabel for="req_remarks" value="Remarks (Required for Rejection)" />
-                            <textarea id="req_remarks" v-model="requirementForm.remarks" rows="2" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="Provide reason if rejecting..."></textarea>
+            <Transition name="fade">
+                <div v-if="showMediaModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeMediaModal">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col" @click.stop>
+                        <div class="p-6 h-[85vh] flex flex-col">
+                            <div class="flex-none flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                                <h2 class="text-xl font-bold text-gray-900">{{ mediaTitle }}</h2>
+                                <button @click="closeMediaModal" class="text-gray-400 hover:text-gray-600">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                                </button>
+                            </div>
+                            
+                            <div class="flex-1 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center relative overflow-hidden">
+                                <iframe v-if="isPdf(mediaUrl)" :src="mediaUrl" class="w-full h-full border-0"></iframe>
+                                <img v-else-if="mediaUrl && mediaUrl !== '#'" :src="mediaUrl" class="max-w-full max-h-full object-contain" />
+                                <div v-else class="text-center text-gray-400">
+                                    <svg class="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                    <p class="text-sm font-medium">No Media Available</p>
+                                </div>
+                            </div>
+
+                            <div class="flex-none pt-4 flex justify-end mt-4">
+                                <SecondaryButton @click="closeMediaModal">Close Viewer</SecondaryButton>
+                            </div>
                         </div>
-                        <div class="flex justify-between items-center">
-                            <SecondaryButton @click="closeRequirementModal">Close</SecondaryButton>
-                            <div class="flex gap-2">
-                                <PrimaryButton @click="saveRequirementStatus('Rejected')" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
-                                    Reject
+                    </div>
+                </div>
+            </Transition>
+
+            <Transition name="fade">
+                <div v-if="showFranchiseModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeFranchiseModal">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col" @click.stop>
+                        <div class="p-6" v-if="selectedFranchise">
+                            <div class="flex justify-between items-center mb-6">
+                                <div>
+                                    <h2 class="text-lg font-bold text-gray-900">Franchise Details</h2>
+                                    <p class="text-sm text-gray-500">{{ selectedFranchise.zone_name }}</p>
+                                </div>
+                                <div class="text-right">
+                                    <span class="px-3 py-1 bg-blue-100 text-blue-800 font-mono font-bold rounded-lg text-sm">{{ selectedFranchise.plate_number || 'NO PLATE' }}</span>
+                                </div>
+                            </div>
+                            
+                            <div class="space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar pr-2">
+                                <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Unit Information</h3>
+                                    <div class="grid grid-cols-2 gap-4 text-sm">
+                                        <div><span class="block text-xs text-gray-500">Make</span><span class="font-medium text-gray-900">{{ selectedFranchise.make_name }}</span></div>
+                                        <div><span class="block text-xs text-gray-500">Model Year</span><span class="font-medium text-gray-900">{{ selectedFranchise.model_year }}</span></div>
+                                        <div><span class="block text-xs text-gray-500">Date Issued</span><span class="font-medium text-gray-900">{{ selectedFranchise.date_issued }}</span></div>
+                                        <div><span class="block text-xs text-gray-500">CR Number</span><span class="font-medium text-gray-900">{{ selectedFranchise.cr_number }}</span></div>
+                                    </div>
+                                </div>
+                                
+                                <div>
+                                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Technical Specifications</h3>
+                                    <div class="grid grid-cols-2 gap-4 text-sm bg-white border border-gray-200 p-4 rounded-lg">
+                                        <div><span class="block text-xs text-gray-500 uppercase">Motor Number</span><span class="font-mono text-gray-900">{{ selectedFranchise.motor_number }}</span></div>
+                                        <div><span class="block text-xs text-gray-500 uppercase">Chassis Number</span><span class="font-mono text-gray-900">{{ selectedFranchise.chassis_number }}</span></div>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Unit Photos</h3>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <SecondaryButton v-if="selectedFranchise.unit_front_photo" @click="viewMedia(selectedFranchise.unit_front_photo, 'Front Photo')" class="justify-center text-xs">View Front</SecondaryButton>
+                                        <SecondaryButton v-if="selectedFranchise.unit_back_photo" @click="viewMedia(selectedFranchise.unit_back_photo, 'Back Photo')" class="justify-center text-xs">View Back</SecondaryButton>
+                                        <SecondaryButton v-if="selectedFranchise.unit_left_photo" @click="viewMedia(selectedFranchise.unit_left_photo, 'Left Photo')" class="justify-center text-xs">View Left</SecondaryButton>
+                                        <SecondaryButton v-if="selectedFranchise.unit_right_photo" @click="viewMedia(selectedFranchise.unit_right_photo, 'Right Photo')" class="justify-center text-xs">View Right</SecondaryButton>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Attached Documents</h3>
+                                    <div class="grid grid-cols-2 gap-3">
+                                        <SecondaryButton v-if="selectedFranchise.cr_photo" @click="viewMedia(selectedFranchise.cr_photo, 'Certificate of Registration')" class="justify-center text-xs">View CR</SecondaryButton>
+                                        <SecondaryButton v-if="selectedFranchise.or_photo" @click="viewMedia(selectedFranchise.or_photo, 'Official Receipt')" class="justify-center text-xs">View OR</SecondaryButton>
+                                        <SecondaryButton v-if="selectedFranchise.franchise_certificate_photo" @click="viewMedia(selectedFranchise.franchise_certificate_photo, 'Franchise Certificate')" class="col-span-2 justify-center text-xs">View Franchise Certificate</SecondaryButton>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="flex justify-end mt-6 pt-4 border-t border-gray-100">
+                                <SecondaryButton @click="closeFranchiseModal">Close</SecondaryButton>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <Transition name="fade">
+                <div v-if="showReturnModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="showReturnModal = false">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col" @click.stop>
+                        <div class="p-6">
+                            <h2 class="text-lg font-medium text-gray-900 mb-4">Return Application</h2>
+                            <p class="text-sm text-gray-600 mb-4">Please provide a reason for returning this application. The applicant will be able to edit and resubmit.</p>
+                            <div class="mb-4">
+                                <InputLabel value="Remarks / Reason for Return" />
+                                <textarea v-model="returnForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500 rounded-md shadow-sm text-sm" placeholder="E.g., Missing back photo of the unit..."></textarea>
+                            </div>
+                            <div class="flex justify-end gap-3">
+                                <SecondaryButton @click="showReturnModal = false">Cancel</SecondaryButton>
+                                <PrimaryButton class="bg-amber-500 hover:bg-amber-600 focus:ring-amber-500" @click="confirmReturnApplication" :disabled="!returnForm.remarks">
+                                    Confirm Return
                                 </PrimaryButton>
-                                <PrimaryButton @click="saveRequirementStatus('Approved')" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
-                                    Approve
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <Transition name="fade">
+                <div v-if="showRejectModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="showRejectModal = false">
+                    <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col" @click.stop>
+                        <div class="p-6">
+                            <h2 class="text-lg font-medium text-red-600 mb-4">Reject Application</h2>
+                            <p class="text-sm text-gray-600 mb-4">Are you sure you want to permanently reject this application? This action cannot be undone.</p>
+                            <div class="mb-4">
+                                <InputLabel value="Reason for Rejection" />
+                                <textarea v-model="rejectForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="E.g., Applicant does not meet residency requirements..."></textarea>
+                            </div>
+                            <div class="flex justify-end gap-3">
+                                <SecondaryButton @click="showRejectModal = false">Cancel</SecondaryButton>
+                                <PrimaryButton class="bg-red-600 hover:bg-red-700 focus:ring-red-500" @click="confirmRejectApplication" :disabled="!rejectForm.remarks">
+                                    Confirm Rejection
                                 </PrimaryButton>
                             </div>
                         </div>
                     </div>
                 </div>
-            </Modal>
-
-            <Modal :show="showMediaModal" @close="closeMediaModal" maxWidth="3xl">
-                <div class="p-6 h-[85vh] flex flex-col">
-                    <div class="flex-none flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
-                        <h2 class="text-xl font-bold text-gray-900">{{ mediaTitle }}</h2>
-                        <button @click="closeMediaModal" class="text-gray-400 hover:text-gray-600">
-                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                        </button>
-                    </div>
-                    
-                    <div class="flex-1 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center relative overflow-hidden">
-                        <iframe v-if="isPdf(mediaUrl)" :src="mediaUrl" class="w-full h-full border-0"></iframe>
-                        <img v-else-if="mediaUrl && mediaUrl !== '#'" :src="mediaUrl" class="max-w-full max-h-full object-contain" />
-                        <div v-else class="text-center text-gray-400">
-                            <svg class="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                            <p class="text-sm font-medium">No Media Available</p>
-                        </div>
-                    </div>
-
-                    <div class="flex-none pt-4 flex justify-end mt-4">
-                        <SecondaryButton @click="closeMediaModal">Close Viewer</SecondaryButton>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal :show="showInspectionModal" @close="closeInspectionModal">
-                <div class="p-6">
-                    <h2 class="text-lg font-bold text-gray-900 mb-4">{{ inspectionForm.item }}</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <InputLabel value="Status" />
-                            <select v-model="inspectionForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                                <option value="" disabled>Select Status</option>
-                                <option v-for="opt in inspectionForm.options" :key="opt" :value="opt">{{ opt }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <InputLabel value="Remarks" />
-                            <textarea v-model="inspectionForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"></textarea>
-                        </div>
-                        <div class="flex justify-end gap-3 mt-6">
-                            <SecondaryButton @click="closeInspectionModal">Cancel</SecondaryButton>
-                            <PrimaryButton @click="saveInspection">Save</PrimaryButton>
-                        </div>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal :show="showFranchiseModal" @close="closeFranchiseModal">
-                <div class="p-6" v-if="selectedFranchise">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-lg font-bold text-gray-900">Franchise Details</h2>
-                            <p class="text-sm text-gray-500">{{ selectedFranchise.zone_name }}</p>
-                        </div>
-                        <div class="text-right">
-                            <span class="px-3 py-1 bg-blue-100 text-blue-800 font-mono font-bold rounded-lg text-sm">{{ selectedFranchise.plate_number || 'NO PLATE' }}</span>
-                        </div>
-                    </div>
-                    
-                    <div class="space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar pr-2">
-                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Unit Information</h3>
-                            <div class="grid grid-cols-2 gap-4 text-sm">
-                                <div><span class="block text-xs text-gray-500">Make</span><span class="font-medium text-gray-900">{{ selectedFranchise.make_name }}</span></div>
-                                <div><span class="block text-xs text-gray-500">Model Year</span><span class="font-medium text-gray-900">{{ selectedFranchise.model_year }}</span></div>
-                                <div><span class="block text-xs text-gray-500">Date Issued</span><span class="font-medium text-gray-900">{{ selectedFranchise.date_issued }}</span></div>
-                                <div><span class="block text-xs text-gray-500">CR Number</span><span class="font-medium text-gray-900">{{ selectedFranchise.cr_number }}</span></div>
-                            </div>
-                        </div>
-                        
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Technical Specifications</h3>
-                            <div class="grid grid-cols-2 gap-4 text-sm bg-white border border-gray-200 p-4 rounded-lg">
-                                <div><span class="block text-xs text-gray-500 uppercase">Motor Number</span><span class="font-mono text-gray-900">{{ selectedFranchise.motor_number }}</span></div>
-                                <div><span class="block text-xs text-gray-500 uppercase">Chassis Number</span><span class="font-mono text-gray-900">{{ selectedFranchise.chassis_number }}</span></div>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Unit Photos</h3>
-                            <div class="grid grid-cols-2 gap-3">
-                                <SecondaryButton v-if="selectedFranchise.unit_front_photo" @click="viewMedia(selectedFranchise.unit_front_photo, 'Front Photo')" class="justify-center text-xs">View Front</SecondaryButton>
-                                <SecondaryButton v-if="selectedFranchise.unit_back_photo" @click="viewMedia(selectedFranchise.unit_back_photo, 'Back Photo')" class="justify-center text-xs">View Back</SecondaryButton>
-                                <SecondaryButton v-if="selectedFranchise.unit_left_photo" @click="viewMedia(selectedFranchise.unit_left_photo, 'Left Photo')" class="justify-center text-xs">View Left</SecondaryButton>
-                                <SecondaryButton v-if="selectedFranchise.unit_right_photo" @click="viewMedia(selectedFranchise.unit_right_photo, 'Right Photo')" class="justify-center text-xs">View Right</SecondaryButton>
-                            </div>
-                        </div>
-
-                        <div>
-                            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wide mb-3">Attached Documents</h3>
-                            <div class="grid grid-cols-2 gap-3">
-                                <SecondaryButton v-if="selectedFranchise.cr_photo" @click="viewMedia(selectedFranchise.cr_photo, 'Certificate of Registration')" class="justify-center text-xs">View CR</SecondaryButton>
-                                <SecondaryButton v-if="selectedFranchise.or_photo" @click="viewMedia(selectedFranchise.or_photo, 'Official Receipt')" class="justify-center text-xs">View OR</SecondaryButton>
-                                <SecondaryButton v-if="selectedFranchise.franchise_certificate_photo" @click="viewMedia(selectedFranchise.franchise_certificate_photo, 'Franchise Certificate')" class="col-span-2 justify-center text-xs">View Franchise Certificate</SecondaryButton>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex justify-end mt-6 pt-4 border-t border-gray-100">
-                        <SecondaryButton @click="closeFranchiseModal">Close</SecondaryButton>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal :show="showReturnModal" @close="showReturnModal = false" maxWidth="md">
-                <div class="p-6">
-                    <h2 class="text-lg font-medium text-gray-900 mb-4">Return Application</h2>
-                    <p class="text-sm text-gray-600 mb-4">Please provide a reason for returning this application. The applicant will be able to edit and resubmit.</p>
-                    <div class="mb-4">
-                        <InputLabel value="Remarks / Reason for Return" />
-                        <textarea v-model="returnForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 focus:border-amber-500 focus:ring-amber-500 rounded-md shadow-sm text-sm" placeholder="E.g., Missing back photo of the unit..."></textarea>
-                    </div>
-                    <div class="flex justify-end gap-3">
-                        <SecondaryButton @click="showReturnModal = false">Cancel</SecondaryButton>
-                        <PrimaryButton class="bg-amber-500 hover:bg-amber-600 focus:ring-amber-500" @click="confirmReturnApplication" :disabled="!returnForm.remarks">
-                            Confirm Return
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </Modal>
-
-            <Modal :show="showRejectModal" @close="showRejectModal = false" maxWidth="md">
-                <div class="p-6">
-                    <h2 class="text-lg font-medium text-red-600 mb-4">Reject Application</h2>
-                    <p class="text-sm text-gray-600 mb-4">Are you sure you want to permanently reject this application? This action cannot be undone.</p>
-                    <div class="mb-4">
-                        <InputLabel value="Reason for Rejection" />
-                        <textarea v-model="rejectForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="E.g., Applicant does not meet residency requirements..."></textarea>
-                    </div>
-                    <div class="flex justify-end gap-3">
-                        <SecondaryButton @click="showRejectModal = false">Cancel</SecondaryButton>
-                        <PrimaryButton class="bg-red-600 hover:bg-red-700 focus:ring-red-500" @click="confirmRejectApplication" :disabled="!rejectForm.remarks">
-                            Confirm Rejection
-                        </PrimaryButton>
-                    </div>
-                </div>
-            </Modal>
+            </Transition>
 
             <CreateFranchiseAccountModal 
                 :show="showCreateAccountModal" 
@@ -660,4 +675,14 @@ const formatCurrency = (value) => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+
+/* Transition styles for modals */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 </style>
