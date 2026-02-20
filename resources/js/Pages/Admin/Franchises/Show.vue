@@ -238,9 +238,8 @@ const getDriverName = (driver) => {
                                 </div>
                                 <div>
                                     <div class="text-lg font-bold text-gray-900 leading-tight">
-                                        {{ currentOwner.user.last_name }}
+                                        {{ currentOwner.user.last_name }}, {{ currentOwner.user.first_name }}
                                     </div>
-                                    <div class="text-sm text-gray-600">{{ currentOwner.user.first_name }}</div>
                                 </div>
                             </div>
                             <div class="space-y-3 text-sm border-t border-gray-100 pt-4">

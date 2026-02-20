@@ -123,7 +123,7 @@ class FranchiseController extends Controller
         return redirect()->route('admin.franchises.index')->with('success', 'Franchise created and QR code generated successfully.');
     }
 
-public function show(Franchise $franchise)
+    public function show(Franchise $franchise)
     {
         // Load all necessary relationships, including the new 'driverLogs'
         $franchise->load([

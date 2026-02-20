@@ -305,6 +305,8 @@ public function finalizeAccount(Request $request, $id)
             // B. Create Operator Record
             $operator = Operator::create([
                 'user_id' => $user->id,
+                'tin_number' => $validated['tin_number'],
+
             ]);
 
             // C. Loop through Franchises
