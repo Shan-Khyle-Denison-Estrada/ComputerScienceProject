@@ -243,6 +243,7 @@ const deleteRequirement = (id) => {
                                 <option value="Approved">Approved</option>
                                 <option value="Rejected">Rejected</option>
                                 <option value="Returned">Returned</option>
+                                <option value="Processed">Processed</option>
                             </select>
                         </div>
                     </div>
