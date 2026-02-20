@@ -98,4 +98,13 @@ class Franchise extends Model
     {
         return $this->hasOne(DriverAssignment::class)->where('is_active', true);
     }
+        public function complaints() 
+    { 
+        return $this->hasMany(Complaint::class)->latest(); 
+    }
+    
+    public function redFlags() 
+    { 
+        return $this->hasMany(RedFlag::class)->latest(); 
+    }
 }

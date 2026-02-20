@@ -14,6 +14,10 @@ const props = defineProps({
     inspectionItems: {
         type: Array,
         default: () => []
+    },
+    unitMakes: {
+        type: Array,
+        default: () => []
     }
 });
 
@@ -31,12 +35,22 @@ const showInspectionModal = ref(false);
 const selectedInspectionIndex = ref(null);
 const inspectionForm = reactive({ status: '', remarks: '' });
 
-// Application Rejection/Return State
+// Application Rejection/Return/Approve State
 const showRejectModal = ref(false);
 const rejectForm = reactive({ remarks: '', processing: false });
 
 const showReturnModal = ref(false);
 const returnForm = reactive({ remarks: '', processing: false });
+
+const showApproveModal = ref(false);
+const approveProcessing = ref(false);
+
+const unitViews = [
+    { key: 'front', label: 'Front View' },
+    { key: 'back', label: 'Back View' },
+    { key: 'left', label: 'Left Side View' },
+    { key: 'right', label: 'Right Side View' }
+];
 
 // --- COMPUTED PROPERTIES (Mapped to Database) ---
 const application = computed(() => {
@@ -93,25 +107,48 @@ const application = computed(() => {
         },
         
         franchise_details: {
+            id: franchise.id,
             zone: franchise.zone?.description || app.zone?.description || 'N/A',
             date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
             status: franchise.status || 'N/A',
         },
         
+        // Mapped Current Unit Details & Photos (Checks BOTH column naming conventions)
         current_unit: {
             make: currentMake.name || 'Not specified',
             motor_no: currentUnitData.motor_number || 'Not specified',
             chassis_no: currentUnitData.chassis_number || 'Not specified',
             plate_no: currentUnitData.plate_number || franchise.plate_number || 'N/A',
             year: currentUnitData.model_year || 'Not specified',
+            front_photo: currentUnitData.unit_front_photo ? `/storage/${currentUnitData.unit_front_photo}` : (currentUnitData.front_photo ? `/storage/${currentUnitData.front_photo}` : null),
+            back_photo: currentUnitData.unit_back_photo ? `/storage/${currentUnitData.unit_back_photo}` : (currentUnitData.back_photo ? `/storage/${currentUnitData.back_photo}` : null),
+            left_photo: currentUnitData.unit_left_photo ? `/storage/${currentUnitData.unit_left_photo}` : (currentUnitData.left_photo ? `/storage/${currentUnitData.left_photo}` : null),
+            right_photo: currentUnitData.unit_right_photo ? `/storage/${currentUnitData.unit_right_photo}` : (currentUnitData.right_photo ? `/storage/${currentUnitData.right_photo}` : null),
         },
         
+        // Mapped Proposed Unit Details & Photos
         proposed_unit: {
             make: proposedMake.name || 'N/A',
             motor_no: proposedUnit.motor_number || 'N/A',
             chassis_no: proposedUnit.chassis_number || 'N/A',
             plate_no: proposedUnit.plate_number || 'N/A',
             year: proposedUnit.model_year || 'N/A',
+            front_photo: proposedUnit.unit_front_photo ? `/storage/${proposedUnit.unit_front_photo}` : null,
+            back_photo: proposedUnit.unit_back_photo ? `/storage/${proposedUnit.unit_back_photo}` : null,
+            left_photo: proposedUnit.unit_left_photo ? `/storage/${proposedUnit.unit_left_photo}` : null,
+            right_photo: proposedUnit.unit_right_photo ? `/storage/${proposedUnit.unit_right_photo}` : null,
+        },
+
+        raw_proposed_unit: {
+            make_id: proposedUnit.make_id || '',
+            model_year: proposedUnit.model_year || '',
+            plate_number: proposedUnit.plate_number || '',
+            motor_number: proposedUnit.motor_number || '',
+            chassis_number: proposedUnit.chassis_number || '',
+            front_photo: proposedUnit.unit_front_photo ? `/storage/${proposedUnit.unit_front_photo}` : null,
+            back_photo: proposedUnit.unit_back_photo ? `/storage/${proposedUnit.unit_back_photo}` : null,
+            left_photo: proposedUnit.unit_left_photo ? `/storage/${proposedUnit.unit_left_photo}` : null,
+            right_photo: proposedUnit.unit_right_photo ? `/storage/${proposedUnit.unit_right_photo}` : null,
         },
 
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
@@ -157,9 +194,25 @@ const selectedInspection = computed(() => {
 
 
 // --- ACTIONS ---
-const confirmApproveApplication = () => {
-    if (!confirm("Approve Change of Unit?")) return;
-    router.post(route('admin.applications.change-of-unit.approve', application.value.id));
+const openApproveModal = () => {
+    showApproveModal.value = true;
+};
+
+const closeApproveModal = () => {
+    showApproveModal.value = false;
+};
+
+const submitApproval = () => {
+    approveProcessing.value = true;
+    router.post(route('admin.applications.change-of-unit.approve', application.value.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeApproveModal();
+        },
+        onFinish: () => {
+            approveProcessing.value = false;
+        }
+    });
 };
 
 const openReturnModal = () => {
@@ -310,7 +363,13 @@ const saveInspectionStatus = () => {
                 </div>
 
                 <div class="flex gap-2">
-                    <template v-if="application.status === 'Approved'">
+                    <template v-if="application.status === 'Completed'">
+                        <span class="px-4 py-2 bg-green-100 text-green-800 text-xs font-bold uppercase rounded-lg flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                            Application Finalized
+                        </span>
+                    </template>
+                    <template v-else-if="application.status === 'Approved'">
                         <PrimaryButton @click="showChangeUnitModal = true" class="flex items-center gap-2">
                             Finalize Unit Change
                         </PrimaryButton>
@@ -318,7 +377,7 @@ const saveInspectionStatus = () => {
                     <template v-else-if="!['Rejected', 'Returned'].includes(application.status)">
                         <button @click="openReturnModal" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
                         <button @click="openRejectModal" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Reject</button>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Approve</button>
+                        <button @click="openApproveModal" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Approve</button>
                     </template>
                 </div>
             </div>
@@ -396,13 +455,13 @@ const saveInspectionStatus = () => {
                     <div class="flex-1 overflow-y-auto bg-gray-50/50 p-6 custom-scrollbar">
                         
                         <div v-if="activeTab === 'unit_comparison'" class="space-y-6">
+                            
                             <div class="bg-blue-50 border border-blue-100 rounded-lg p-6">
                                 <h3 class="font-bold text-blue-900 mb-6 flex items-center gap-2 text-lg">
                                     <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                                     Change of Unit Request Overview
                                 </h3>
                                 <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 relative">
-                                    
                                     <div class="bg-white p-5 rounded border border-gray-200 shadow-sm">
                                         <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b pb-2">Current Unit</div>
                                         <div class="space-y-3">
@@ -425,6 +484,54 @@ const saveInspectionStatus = () => {
                                     </div>
                                 </div>
                             </div>
+
+                            <div class="mt-8 border-t border-blue-100 pt-6">
+                                <h4 class="font-bold text-blue-900 mb-6 flex items-center gap-2 text-md">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                    </svg>
+                                    Visual Comparison
+                                </h4>
+                                
+                                <div class="space-y-8">
+                                    <div v-for="(view, idx) in unitViews" :key="idx">
+                                        <h5 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">{{ view.label }}</h5>
+                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            
+                                            <div class="bg-white p-3 border border-gray-200 rounded-lg shadow-sm">
+                                                <div class="text-[10px] text-gray-400 uppercase tracking-wider mb-2 font-bold flex justify-between">
+                                                    <span>Current Unit</span>
+                                                </div>
+                                                <div class="bg-gray-50 rounded border border-gray-100 h-56 flex items-center justify-center overflow-hidden">
+                                                    <img v-if="application.current_unit[`${view.key}_photo`]" 
+                                                         :src="application.current_unit[`${view.key}_photo`]" 
+                                                         class="w-full h-full object-contain" />
+                                                    <div v-else class="text-center text-gray-400">
+                                                        <svg class="w-8 h-8 mx-auto mb-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        <span class="text-xs italic">No image available</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="bg-blue-50 p-3 border border-blue-200 rounded-lg shadow-sm relative">
+                                                <div class="absolute top-0 right-0 bg-blue-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-bl-lg rounded-tr-lg tracking-wider">PROPOSED</div>
+                                                <div class="text-[10px] text-blue-600 uppercase tracking-wider mb-2 font-bold">New Unit</div>
+                                                <div class="bg-white rounded border border-blue-100 h-56 flex items-center justify-center overflow-hidden">
+                                                    <img v-if="application.proposed_unit[`${view.key}_photo`]" 
+                                                         :src="application.proposed_unit[`${view.key}_photo`]" 
+                                                         class="w-full h-full object-contain" />
+                                                    <div v-else class="text-center text-blue-300">
+                                                        <svg class="w-8 h-8 mx-auto mb-1 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                                        <span class="text-xs italic">No image available</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
 
                         <div v-if="activeTab === 'evaluation'" class="space-y-4">
@@ -581,6 +688,38 @@ const saveInspectionStatus = () => {
                 </div>
             </div>
         </div>
+
+        <Transition name="fade">
+            <div v-if="showApproveModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeApproveModal">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden flex flex-col" @click.stop>
+                    <div class="p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                            <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <svg class="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Confirm Approval
+                            </h2>
+                            <button @click="closeApproveModal" class="text-gray-400 hover:text-gray-600 mb-auto">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-5">
+                            <p class="text-sm text-gray-600">Are you sure you want to approve this application? Approving it confirms that all requirements, inspections, and payments are compliant and finalized.</p>
+                            <p class="text-sm text-gray-500 italic">Note: After approving, you will still need to click "Finalize Unit Change" to officially update the franchise's database records.</p>
+                        </div>
+
+                        <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                            <SecondaryButton @click="closeApproveModal" :disabled="approveProcessing">Cancel</SecondaryButton>
+                            <PrimaryButton @click="submitApproval" class="bg-green-600 hover:bg-green-700 focus:ring-green-500" :disabled="approveProcessing">
+                                {{ approveProcessing ? 'Approving...' : 'Yes, Approve Application' }}
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
 
         <Transition name="fade">
             <div v-if="showRequirementModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeRequirementModal">
@@ -749,7 +888,12 @@ const saveInspectionStatus = () => {
             </div>
         </Transition>
 
-        <ChangeOfUnitModal :show="showChangeUnitModal" :application="application" @close="showChangeUnitModal = false" />
+        <ChangeOfUnitModal 
+            :show="showChangeUnitModal" 
+            :application="application" 
+            :unitMakes="unitMakes"
+            @close="showChangeUnitModal = false" 
+        />
 
     </AuthenticatedLayout>
 </template>

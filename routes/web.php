@@ -170,6 +170,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
         ->name('admin.applications.change-of-unit.reject');
     Route::post('/applications/change-of-unit/{application}/return', [ApplicationChangeOfUnitShowController::class, 'returnApplication'])
         ->name('admin.applications.change-of-unit.return');
+    Route::post('/applications/change-of-unit/{application}/finalize', [ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])
+    ->name('admin.applications.change-of-unit.finalize');
 
 Route::get('/franchise-owner', function () {
     return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
