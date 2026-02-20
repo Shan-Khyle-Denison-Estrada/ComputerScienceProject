@@ -31,10 +31,12 @@ const showInspectionModal = ref(false);
 const selectedInspectionIndex = ref(null);
 const inspectionForm = reactive({ status: '', remarks: '' });
 
-// Application Rejection State
+// Application Rejection/Return State
 const showRejectModal = ref(false);
 const rejectForm = reactive({ remarks: '', processing: false });
 
+const showReturnModal = ref(false);
+const returnForm = reactive({ remarks: '', processing: false });
 
 // --- COMPUTED PROPERTIES (Mapped to Database) ---
 const application = computed(() => {
@@ -160,9 +162,31 @@ const confirmApproveApplication = () => {
     router.post(route('admin.applications.change-of-unit.approve', application.value.id));
 };
 
-const confirmReturnApplication = () => {
-    if (!confirm("Return Application to Franchise Owner for edits?")) return;
-    router.post(route('admin.applications.change-of-unit.return', application.value.id));
+const openReturnModal = () => {
+    returnForm.remarks = '';
+    returnForm.processing = false;
+    showReturnModal.value = true;
+};
+
+const closeReturnModal = () => {
+    showReturnModal.value = false;
+};
+
+const submitReturn = () => {
+    if (!returnForm.remarks.trim()) return; 
+    
+    returnForm.processing = true;
+    router.post(route('admin.applications.change-of-unit.return', application.value.id), {
+        remarks: returnForm.remarks
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeReturnModal();
+        },
+        onFinish: () => {
+            returnForm.processing = false;
+        }
+    });
 };
 
 const openRejectModal = () => {
@@ -291,8 +315,8 @@ const saveInspectionStatus = () => {
                             Finalize Unit Change
                         </PrimaryButton>
                     </template>
-                    <template v-else-if="application.status !== 'Rejected'">
-                        <button @click="confirmReturnApplication" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
+                    <template v-else-if="!['Rejected', 'Returned'].includes(application.status)">
+                        <button @click="openReturnModal" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
                         <button @click="openRejectModal" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Reject</button>
                         <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Approve</button>
                     </template>
@@ -308,8 +332,10 @@ const saveInspectionStatus = () => {
                                 <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-blue-100 text-blue-800">{{ application.status }}</span>
                                 <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{{ application.type }}</span>
                             </div>
-                            <div v-if="application.status === 'Rejected' && application.remarks" class="bg-red-50 border-l-4 border-red-500 p-2 mt-2">
-                                <p class="text-xs text-red-800 font-medium">Reason: {{ application.remarks }}</p>
+                            <div v-if="['Rejected', 'Returned'].includes(application.status) && application.remarks" 
+                                class="p-2 mt-2"
+                                :class="application.status === 'Rejected' ? 'bg-red-50 border-l-4 border-red-500 text-red-800' : 'bg-yellow-50 border-l-4 border-yellow-500 text-yellow-800'">
+                                <p class="text-xs font-medium">Reason: {{ application.remarks }}</p>
                             </div>
                         </div>
                     </div>
@@ -672,7 +698,7 @@ const saveInspectionStatus = () => {
                         </div>
 
                         <div class="space-y-5">
-                            <p class="text-sm text-gray-600">Please provide a reason for rejecting this Change of Unit application. The applicant will be able to see this feedback.</p>
+                            <p class="text-sm text-gray-600">Please provide a reason for rejecting this application permanently.</p>
                             <div>
                                 <InputLabel for="app_reject_remarks" value="Rejection Reason" />
                                 <textarea id="app_reject_remarks" v-model="rejectForm.remarks" rows="4" required class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="State exactly what is missing or incorrect..."></textarea>
@@ -683,6 +709,39 @@ const saveInspectionStatus = () => {
                             <SecondaryButton @click="closeRejectModal" :disabled="rejectForm.processing">Cancel</SecondaryButton>
                             <PrimaryButton @click="submitRejection" class="bg-red-600 hover:bg-red-700 focus:ring-red-500" :disabled="!rejectForm.remarks.trim() || rejectForm.processing">
                                 Confirm Rejection
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
+        <Transition name="fade">
+            <div v-if="showReturnModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeReturnModal">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" @click.stop>
+                    <div class="p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                            <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <svg class="w-6 h-6 text-yellow-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" /></svg>
+                                Return Application
+                            </h2>
+                            <button @click="closeReturnModal" class="text-gray-400 hover:text-gray-600 mb-auto">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-5">
+                            <p class="text-sm text-gray-600">Return this application to the Franchise Owner so they can comply with missing or incorrect requirements.</p>
+                            <div>
+                                <InputLabel for="app_return_remarks" value="Return Notes / Instructions" />
+                                <textarea id="app_return_remarks" v-model="returnForm.remarks" rows="4" required class="mt-1 block w-full border-gray-300 focus:border-yellow-500 focus:ring-yellow-500 rounded-md shadow-sm text-sm" placeholder="E.g. Please re-upload a clearer picture of the OR/CR..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                            <SecondaryButton @click="closeReturnModal" :disabled="returnForm.processing">Cancel</SecondaryButton>
+                            <PrimaryButton @click="submitReturn" class="bg-yellow-500 hover:bg-yellow-600 focus:ring-yellow-500 text-white" :disabled="!returnForm.remarks.trim() || returnForm.processing">
+                                Confirm Return
                             </PrimaryButton>
                         </div>
                     </div>

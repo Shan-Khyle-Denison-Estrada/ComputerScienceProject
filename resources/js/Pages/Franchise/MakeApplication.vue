@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import MakeApplicationModal from '@/Components/Modals/MakeApplicationModal.vue';
-import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.vue';
+import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.vue'; // The new modal
 import { Head } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
@@ -30,7 +30,6 @@ const props = defineProps({
         type: Array, 
         default: () => [] 
     },
-    // Added applications prop fetched from the backend
     applications: {
         type: Array,
         default: () => []
@@ -45,7 +44,6 @@ const showNewAppModal = ref(false);
 const showComplyModal = ref(false);
 const selectedReturnedApp = ref(null); 
 
-// Filter fetched applications instead of dummy data
 const activeApplications = computed(() => props.applications.filter(app => app.is_active));
 const pastApplications = computed(() => props.applications.filter(app => !app.is_active));
 
@@ -58,13 +56,10 @@ const handleCardClick = (app) => {
 };
 
 const handleNewApplicationSubmit = () => {
-    // The modal now handles the actual Inertia post natively. 
-    // On success, Inertia reloads the page with updated props.
     showNewAppModal.value = false;
 };
 
 const handleComplianceSubmit = () => {
-    // Similarly, rely on Inertia page visits to sync data
     showComplyModal.value = false;
     selectedReturnedApp.value = null;
 };

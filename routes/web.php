@@ -157,7 +157,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
     Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
-    // NEW CHANGE OF UNIT SHOW ROUTES
+    // CHANGE OF UNIT SHOW ROUTES
     Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])
         ->name('admin.applications.show-change-of-unit');
     Route::post('/applications/change-of-unit/{application}/evaluate', [ApplicationChangeOfUnitShowController::class, 'updateEvaluation'])
@@ -198,8 +198,13 @@ Route::get('/change-of-owner', function () {
 Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     Route::get('/franchise/dashboard', [DashboardController::class, 'index'])->name('franchise.dashboard');
     Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])->name('franchise.set-driver');
+    
+    // Applications
     Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');
     Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])->name('franchise.applications.store-change-unit');
+    
+    // NEW: Application Resubmit/Comply Route
+    Route::post('/franchise/applications/{application}/resubmit', [FranchiseApplicationController::class, 'resubmitApplication'])->name('franchise.applications.resubmit');
 });
 
 // --- PROFILE MANAGEMENT ---

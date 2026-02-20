@@ -24,8 +24,8 @@ class ApplicationChangeOfUnitShowController extends Controller
             'proposedUnits.make', 
             'proposedUnits.unitInspections',
             'evaluations.requirement',
-            'assessment.particulars', // <-- Load assessment and fees
-            'assessment.payments'     // <-- Load any existing payments
+            'assessment.particulars',
+            'assessment.payments'
         ]);
 
         $inspectionItems = InspectionItem::all();
@@ -106,9 +106,17 @@ class ApplicationChangeOfUnitShowController extends Controller
         return redirect()->back()->with('success', 'Application rejected.');
     }
 
-    public function returnApplication(Application $application)
+    public function returnApplication(Request $request, Application $application)
     {
-        $application->update(['status' => 'Returned']);
-        return redirect()->back()->with('success', 'Application returned.');
+        $request->validate([
+            'remarks' => 'required|string|max:1000'
+        ]);
+
+        $application->update([
+            'status' => 'Returned',
+            'remarks' => $request->remarks
+        ]);
+        
+        return redirect()->back()->with('success', 'Application returned for compliance.');
     }
 }

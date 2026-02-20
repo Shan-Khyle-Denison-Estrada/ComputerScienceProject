@@ -36,7 +36,7 @@ class ApplicationController extends Controller
                 'unitMakes' => [],
                 'operators' => [],
                 'units' => [],
-                'applications' => [] // Return empty array if no operator
+                'applications' => [] 
             ]);
         }
 
@@ -45,11 +45,9 @@ class ApplicationController extends Controller
             ->groupBy('group');
 
         // --- STRAIGHTFORWARD FETCHING ---
-        // 1. Barangays & Makes
         $barangays = Barangay::select('id', 'name')->orderBy('name', 'asc')->get();
         $unitMakes = UnitMake::select('id', 'name')->orderBy('name', 'asc')->get();
         
-        // 2. Operators (Mapped to simple array)
         $operators = Operator::with('user')->get()->map(function($op) {
             return [
                 'id' => $op->id,
@@ -58,7 +56,6 @@ class ApplicationController extends Controller
             ];
         });
 
-        // 3. Units (Mapped to simple array)
         $units = Unit::with('make')->get()->map(function($unit) {
             return [
                 'id' => $unit->id,
@@ -68,7 +65,6 @@ class ApplicationController extends Controller
             ];
         });
 
-        // 4. Franchises
         $franchises = Franchise::whereHas('currentOwnership', function ($query) use ($operator) {
             $query->where('new_operator_id', $operator->id);
         })
@@ -114,12 +110,12 @@ class ApplicationController extends Controller
             return $franchise;
         });
 
-        // 5. Fetch Applications for the current user
+        // Eager load evaluations.requirement so frontend can see what was rejected
         $applicationsData = Application::where('user_id', $user->id)
+            ->with('evaluations.requirement')
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($app) {
-                // Determine application progress step based on status
                 $step = 1;
                 $status = $app->status ?? 'Pending';
                 
@@ -137,6 +133,16 @@ class ApplicationController extends Controller
                     'current_step' => $step,
                     'remarks' => $app->remarks ?? 'No remarks provided.',
                     'is_active' => !in_array($status, ['Approved', 'Rejected', 'Cancelled']),
+                    'evaluations' => $app->evaluations->map(function($eval) {
+                        return [
+                            'id' => $eval->id,
+                            'requirement_id' => $eval->requirement_id,
+                            'name' => $eval->requirement->name ?? 'Document',
+                            'is_compliant' => $eval->is_compliant,
+                            'status' => $eval->is_compliant === 1 ? 'Approved' : ($eval->is_compliant === 0 ? 'Rejected' : 'Pending'),
+                            'remarks' => $eval->remarks,
+                        ];
+                    })
                 ];
             });
 
@@ -149,11 +155,11 @@ class ApplicationController extends Controller
             'unitMakes' => $unitMakes,
             'operators' => $operators,
             'units' => $units,
-            'applications' => $applicationsData // Pass the mapped array here
+            'applications' => $applicationsData 
         ]);
     }
 
-public function storeChangeOfUnit(Request $request)
+    public function storeChangeOfUnit(Request $request)
     {
         $request->validate([
             'selected_franchise_id' => 'required|exists:franchises,id',
@@ -174,7 +180,6 @@ public function storeChangeOfUnit(Request $request)
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
 
-        // 1. Create the base Application
         $application = Application::create([
             'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
             'user_id'          => $user->id,
@@ -185,7 +190,6 @@ public function storeChangeOfUnit(Request $request)
             'remarks'          => 'Application submitted. Waiting for initial review.',
             'submitted_at'     => now(),
             
-            // --- Auto-fill Applicant (Operator) Information securely ---
             'first_name'       => $user->first_name,
             'middle_name'      => $user->middle_name,
             'last_name'        => $user->last_name,
@@ -197,13 +201,11 @@ public function storeChangeOfUnit(Request $request)
             'city'             => $user->city ?? 'Zamboanga City',
         ]);
 
-        // 2. Upload unit photos to storage
         $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
         $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
         $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
         $rightPath = $request->file('unit_right_photo')->store('units/photos', 'public');
 
-        // 3. Create the Proposed Unit
         ProposedUnit::create([
             'application_id'   => $application->id,
             'make_id'          => $request->make_id, 
@@ -218,7 +220,6 @@ public function storeChangeOfUnit(Request $request)
             'unit_right_photo' => $rightPath,
         ]);
 
-        // 4. Upload and attach Evaluation Requirement Documents
         if ($request->hasFile('documents')) {
             foreach ($request->file('documents') as $requirementId => $file) {
                 $filePath = $file->store('applications/documents', 'public');
@@ -233,14 +234,13 @@ public function storeChangeOfUnit(Request $request)
             }
         }
 
-        // 5. Generate Assessment for Change of Unit
-        $particulars = Particular::where('group', 'change_of_unit')->get();
+        $particulars = Particular::where('group', 'Change of Unit')->get();
         
         if ($particulars->isNotEmpty()) {
             $totalAmountDue = $particulars->sum('amount');
             
             $assessment = Assessment::create([
-                'application_id'    => $application->id, // <-- UPDATE THIS LINE
+                'application_id'    => $application->id,
                 'assessment_date'   => now(),
                 'assessment_due'    => now()->addDays(7), 
                 'total_amount_due'  => $totalAmountDue,
@@ -248,7 +248,6 @@ public function storeChangeOfUnit(Request $request)
                 'remarks'           => 'Auto-generated assessment for Change of Unit Application: ' . $application->reference_number,
             ]);
 
-            // Attach particulars to the pivot table
             foreach ($particulars as $particular) {
                 $assessment->particulars()->attach($particular->id, [
                     'quantity' => 1,
@@ -258,5 +257,36 @@ public function storeChangeOfUnit(Request $request)
         }
 
         return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
+    }
+
+    public function resubmitApplication(Request $request, Application $application)
+    {
+        abort_if($application->user_id !== Auth::id(), 403);
+
+        $request->validate([
+            'documents' => 'required|array',
+            'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $evaluationId => $file) {
+                $filePath = $file->store('applications/documents', 'public');
+
+                ApplicationEvaluation::where('id', $evaluationId)
+                    ->where('application_id', $application->id)
+                    ->update([
+                        'file_path' => $filePath,
+                        'is_compliant' => null, // Reset to pending
+                        'remarks' => 'Resubmitted by applicant.'
+                    ]);
+            }
+        }
+
+        $application->update([
+            'status' => 'Pending',
+            'remarks' => 'Application compliance submitted. Waiting for re-evaluation.'
+        ]);
+
+        return redirect()->back()->with('success', 'Compliance submitted successfully!');
     }
 }
