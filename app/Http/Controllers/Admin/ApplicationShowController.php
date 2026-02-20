@@ -132,7 +132,7 @@ class ApplicationShowController extends Controller
                 'street' => $application->street_address,
                 'barangay' => $application->barangay,
                 'city' => $application->city,
-// [!code focus] PASS THE RESOLVED ID
+                // [!code focus] PASS THE RESOLVED ID
                 'barangay_id' => $barangayId, 
                 
                 // Keep name for fallback display if needed
@@ -224,177 +224,177 @@ class ApplicationShowController extends Controller
         return back()->with('success', 'Application approved. You can now finalize the franchise account.');
     }
 
-public function finalizeAccount(Request $request, $id)
-{
-    $application = Application::findOrFail($id);
+    public function finalizeAccount(Request $request, $id)
+    {
+        $application = Application::findOrFail($id);
 
-    // 1. VALIDATE INPUT (Rules Only)
-    $validated = $request->validate([
-        // Personal Info
-        'first_name' => 'required|string|max:255',
-        'middle_name' => 'nullable|string|max:255',
-        'last_name' => 'required|string|max:255',
-        'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
-        'contact_number' => 'required|string|max:20',
-        'street_address' => 'required|string|max:255',
-        
-        // [!code focus] CORRECT: Validate that the ID exists, don't fetch name yet
-        'barangay_id' => 'required|exists:barangays,id', 
-        
-        'city' => 'required|string|max:255',
-        'tin_number' => 'nullable|string|max:50',
-        'password' => 'required|string|min:8|confirmed',
-
-        // Franchise / Unit Info
-        'franchises' => 'required|array|min:1',
-        'franchises.*.zone_id' => 'required|exists:zones,id',
-        'franchises.*.date_issued' => 'required|date',
-        'franchises.*.make_id' => 'required|exists:unit_makes,id',
-        'franchises.*.plate_number' => 'required|string|unique:units,plate_number',
-        'franchises.*.motor_number' => 'required|string|unique:units,motor_number',
-        'franchises.*.chassis_number' => 'required|string|unique:units,chassis_number',
-        'franchises.*.cr_number' => 'nullable|string',
-        'franchises.*.model_year' => 'nullable|integer|digits:4',
-
-        'owner_photo_path' => 'nullable|string', // [!code ++] Allow path string
-        'franchises.*.unit_front_photo_path' => 'nullable|string', // [!code ++]
-        'franchises.*.unit_back_photo_path' => 'nullable|string',
-        'franchises.*.unit_left_photo_path' => 'nullable|string',
-        'franchises.*.unit_right_photo_path' => 'nullable|string',
-    ]);
-
-    try {
-        DB::transaction(function () use ($validated, $application, $request) {
+        // 1. VALIDATE INPUT (Rules Only)
+        $validated = $request->validate([
+            // Personal Info
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'contact_number' => 'required|string|max:20',
+            'street_address' => 'required|string|max:255',
             
-            // [!code focus] FETCH BARANGAY NAME HERE (Inside the logic block)
-            // If your users table stores the name (string), fetch it now:
-            $barangayName = Barangay::find($validated['barangay_id'])->name;
+            // [!code focus] CORRECT: Validate that the ID exists, don't fetch name yet
+            'barangay_id' => 'required|exists:barangays,id', 
+            
+            'city' => 'required|string|max:255',
+            'tin_number' => 'nullable|string|max:50',
+            'password' => 'required|string|min:8|confirmed',
 
-            // A. HANDLE USER PHOTO
-            $userPhotoPath = null;
-            if (!empty($request->owner_photo_path)) {
-                // Ensure the file actually exists before trying to copy
-                if (Storage::disk('public')->exists($request->owner_photo_path)) {
-                    $ext = pathinfo($request->owner_photo_path, PATHINFO_EXTENSION);
-                    $newPath = 'profile-photos/' . uniqid() . '.' . $ext;
-                    
-                    Storage::disk('public')->copy($request->owner_photo_path, $newPath);
-                    $userPhotoPath = $newPath;
-                }
-            }
+            // Franchise / Unit Info
+            'franchises' => 'required|array|min:1',
+            'franchises.*.zone_id' => 'required|exists:zones,id',
+            'franchises.*.date_issued' => 'required|date',
+            'franchises.*.make_id' => 'required|exists:unit_makes,id',
+            'franchises.*.plate_number' => 'required|string|unique:units,plate_number',
+            'franchises.*.motor_number' => 'required|string|unique:units,motor_number',
+            'franchises.*.chassis_number' => 'required|string|unique:units,chassis_number',
+            'franchises.*.cr_number' => 'nullable|string',
+            'franchises.*.model_year' => 'nullable|integer|digits:4',
 
-            // A. Create User (Franchise Owner)
-            $user = User::create([
-                'user_photo' => $userPhotoPath, // Save the NEW path
-                'first_name' => $validated['first_name'],
-                'middle_name' => $validated['middle_name'],
-                'last_name' => $validated['last_name'],
-                'email' => $validated['email'],
-                'password' => Hash::make($validated['password']),
-                'contact_number' => $validated['contact_number'],
-                'street_address' => $validated['street_address'],
+            'owner_photo_path' => 'nullable|string', // [!code ++] Allow path string
+            'franchises.*.unit_front_photo_path' => 'nullable|string', // [!code ++]
+            'franchises.*.unit_back_photo_path' => 'nullable|string',
+            'franchises.*.unit_left_photo_path' => 'nullable|string',
+            'franchises.*.unit_right_photo_path' => 'nullable|string',
+        ]);
+
+        try {
+            DB::transaction(function () use ($validated, $application, $request) {
                 
-                // [!code focus] SAVE THE NAME STRING
-                'barangay' => $barangayName, 
-                
-                'city' => $validated['city'],
-                'role' => 'franchise_owner', 
-                'status' => 'active',
-            ]);
+                // [!code focus] FETCH BARANGAY NAME HERE (Inside the logic block)
+                // If your users table stores the name (string), fetch it now:
+                $barangayName = Barangay::find($validated['barangay_id'])->name;
 
-            // B. Create Operator Record
-            $operator = Operator::create([
-                'user_id' => $user->id,
-                'tin_number' => $validated['tin_number'],
-
-            ]);
-
-            // C. Loop through Franchises
-            foreach ($validated['franchises'] as $franchiseData) {
-                // B. COPY UNIT PHOTOS
-                $unitPhotos = [];
-                $photoMap = [
-                    'unit_front_photo_path' => 'unit_front_photo',
-                    'unit_back_photo_path'  => 'unit_back_photo',
-                    'unit_left_photo_path'  => 'unit_left_photo',
-                    'unit_right_photo_path' => 'unit_right_photo',
-                ];
-                foreach ($photoMap as $inputKey => $dbColumn) {
-                    if (!empty($franchiseData[$inputKey])) {
-                        $originalPath = $franchiseData[$inputKey];
+                // A. HANDLE USER PHOTO
+                $userPhotoPath = null;
+                if (!empty($request->owner_photo_path)) {
+                    // Ensure the file actually exists before trying to copy
+                    if (Storage::disk('public')->exists($request->owner_photo_path)) {
+                        $ext = pathinfo($request->owner_photo_path, PATHINFO_EXTENSION);
+                        $newPath = 'profile-photos/' . uniqid() . '.' . $ext;
                         
-                        if (Storage::disk('public')->exists($originalPath)) {
-                            $ext = pathinfo($originalPath, PATHINFO_EXTENSION);
-                            $newUnitPath = 'units/' . uniqid() . '_' . $dbColumn . '.' . $ext;
-                            
-                            Storage::disk('public')->copy($originalPath, $newUnitPath);
-                            $unitPhotos[$dbColumn] = $newUnitPath;
-                        }
+                        Storage::disk('public')->copy($request->owner_photo_path, $newPath);
+                        $userPhotoPath = $newPath;
                     }
                 }
-                // Create Unit
-                $unit = Unit::create(array_merge([
-                    'make_id' => $franchiseData['make_id'],
-                    'plate_number' => $franchiseData['plate_number'],
-                    'motor_number' => $franchiseData['motor_number'],
-                    'chassis_number' => $franchiseData['chassis_number'],
-                    'cr_number' => $franchiseData['cr_number'] ?? null,
-                    'model_year' => $franchiseData['model_year'] ?? date('Y'),
-                    'condition' => 'Good',
-                ], $unitPhotos)); // [!code focus] Merge photos into creation array
 
-                // 2. Create Franchise
-                $franchiseNumber = 'FR-' . strtoupper(uniqid()); 
-                
-                $franchise = Franchise::create([
-                    'franchise_number' => $franchiseNumber,
-                    'zone_id' => $franchiseData['zone_id'],
-                    'status' => 'active', 
-                    'date_issued' => $franchiseData['date_issued'],
-                    'expiry_date' => now()->addYear(), 
+                // A. Create User (Franchise Owner)
+                $user = User::create([
+                    'user_photo' => $userPhotoPath, // Save the NEW path
+                    'first_name' => $validated['first_name'],
+                    'middle_name' => $validated['middle_name'],
+                    'last_name' => $validated['last_name'],
+                    'email' => $validated['email'],
+                    'password' => Hash::make($validated['password']),
+                    'contact_number' => $validated['contact_number'],
+                    'street_address' => $validated['street_address'],
+                    
+                    // [!code focus] SAVE THE NAME STRING
+                    'barangay' => $barangayName, 
+                    
+                    'city' => $validated['city'],
+                    'role' => 'franchise_owner', 
+                    'status' => 'active',
                 ]);
 
-                // 3. Create Ownership Record
-                $ownership = Ownership::create([
-                    'franchise_id' => $franchise->id,
-                    'new_operator_id' => $operator->id,
-                    'date_transferred' => now(),
-                    'remarks' => 'Initial Ownership from Application',
+                // B. Create Operator Record
+                $operator = Operator::create([
+                    'user_id' => $user->id,
+                    'tin_number' => $validated['tin_number'],
+
                 ]);
 
-                // 4. Update Franchise Current Ownership
-                $franchise->update(['ownership_id' => $ownership->id]);
+                // C. Loop through Franchises
+                foreach ($validated['franchises'] as $franchiseData) {
+                    // B. COPY UNIT PHOTOS
+                    $unitPhotos = [];
+                    $photoMap = [
+                        'unit_front_photo_path' => 'unit_front_photo',
+                        'unit_back_photo_path'  => 'unit_back_photo',
+                        'unit_left_photo_path'  => 'unit_left_photo',
+                        'unit_right_photo_path' => 'unit_right_photo',
+                    ];
+                    foreach ($photoMap as $inputKey => $dbColumn) {
+                        if (!empty($franchiseData[$inputKey])) {
+                            $originalPath = $franchiseData[$inputKey];
+                            
+                            if (Storage::disk('public')->exists($originalPath)) {
+                                $ext = pathinfo($originalPath, PATHINFO_EXTENSION);
+                                $newUnitPath = 'units/' . uniqid() . '_' . $dbColumn . '.' . $ext;
+                                
+                                Storage::disk('public')->copy($originalPath, $newUnitPath);
+                                $unitPhotos[$dbColumn] = $newUnitPath;
+                            }
+                        }
+                    }
+                    // Create Unit
+                    $unit = Unit::create(array_merge([
+                        'make_id' => $franchiseData['make_id'],
+                        'plate_number' => $franchiseData['plate_number'],
+                        'motor_number' => $franchiseData['motor_number'],
+                        'chassis_number' => $franchiseData['chassis_number'],
+                        'cr_number' => $franchiseData['cr_number'] ?? null,
+                        'model_year' => $franchiseData['model_year'] ?? date('Y'),
+                        'condition' => 'Good',
+                    ], $unitPhotos)); // [!code focus] Merge photos into creation array
 
-                // 5. Create Active Unit Record
-                $activeUnit = ActiveUnit::create([
-                    'franchise_id' => $franchise->id,
-                    'new_unit_id' => $unit->id,
-                    'date_changed' => now(),
-                    'remarks' => 'Initial Unit',
+                    // 2. Create Franchise
+                    $franchiseNumber = 'FR-' . strtoupper(uniqid()); 
+                    
+                    $franchise = Franchise::create([
+                        'franchise_number' => $franchiseNumber,
+                        'zone_id' => $franchiseData['zone_id'],
+                        'status' => 'active', 
+                        'date_issued' => $franchiseData['date_issued'],
+                        'expiry_date' => now()->addYear(), 
+                    ]);
+
+                    // 3. Create Ownership Record
+                    $ownership = Ownership::create([
+                        'franchise_id' => $franchise->id,
+                        'new_operator_id' => $operator->id,
+                        'date_transferred' => now(),
+                        'remarks' => 'Initial Ownership from Application',
+                    ]);
+
+                    // 4. Update Franchise Current Ownership
+                    $franchise->update(['ownership_id' => $ownership->id]);
+
+                    // 5. Create Active Unit Record
+                    $activeUnit = ActiveUnit::create([
+                        'franchise_id' => $franchise->id,
+                        'new_unit_id' => $unit->id,
+                        'date_changed' => now(),
+                        'remarks' => 'Initial Unit',
+                    ]);
+
+                    // 6. Update Franchise Current Unit
+                    $franchise->update(['active_unit_id' => $activeUnit->id]);
+
+                    $qrContent = route('franchises.public_show', $franchise->id);
+                    $qrImage = QrCode::format('svg')->size(300)->generate($qrContent);
+                    $filename = 'qr-' . $franchise->id . '.svg';
+                    Storage::disk('public')->put('qrcodes/' . $filename, $qrImage);
+                    $franchise->update(['qr_code'        => $filename]);
+                }
+
+                // D. Finalize Application
+                $application->update([
+                    'status' => 'processed', 
+                    'franchise_id' => isset($franchise) ? $franchise->id : null,
                 ]);
 
-                // 6. Update Franchise Current Unit
-                $franchise->update(['active_unit_id' => $activeUnit->id]);
+            });
 
-                $qrContent = route('franchises.public_show', $franchise->id);
-                $qrImage = QrCode::format('svg')->size(300)->generate($qrContent);
-                $filename = 'qr-' . $franchise->id . '.svg';
-                Storage::disk('public')->put('qrcodes/' . $filename, $qrImage);
-                $franchise->update(['qr_code'        => $filename]);
-            }
+            return redirect()->back()->with('success', 'Franchise Account created successfully!');
 
-            // D. Finalize Application
-            $application->update([
-                'status' => 'approved', 
-                'franchise_id' => isset($franchise) ? $franchise->id : null, 
-            ]);
-
-        });
-
-        return redirect()->back()->with('success', 'Franchise Account created successfully!');
-
-    } catch (\Exception $e) {
-        return redirect()->back()->withErrors(['error' => 'Transaction Failed: ' . $e->getMessage()]);
+        } catch (\Exception $e) {
+            return redirect()->back()->withErrors(['error' => 'Transaction Failed: ' . $e->getMessage()]);
+        }
     }
-}
 }
