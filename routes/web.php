@@ -190,9 +190,6 @@ Route::get('/change-of-owner', function () {
 });
 
 
-
-
-
 });
 
 // --- FRANCHISE OWNER ROUTES ---

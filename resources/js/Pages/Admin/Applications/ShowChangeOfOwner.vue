@@ -21,7 +21,7 @@ const application = computed(() => {
     return {
         ...app,
         type: 'Change of Owner',
-        status: app.status || 'Approved', // Defaulted to Approved so you can see finalize
+        status: app.status || 'Pending', // Defaulted to Approved so you can see finalize
         reference_no: app.reference_no || 'COO-2026-015',
         applicant: app.applicant || {
             first_name: 'Andres', last_name: 'Bonifacio', email: 'andres@example.com',
@@ -75,12 +75,31 @@ const formatCurrency = (value) => {
                         </PrimaryButton>
                     </template>
                     <template v-else>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 text-white text-xs font-bold uppercase rounded-lg">Approve Transfer</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-yellow-500 text-white text-xs font-bold uppercase rounded-lg">Return</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-red-600 text-white text-xs font-bold uppercase rounded-lg">Reject</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 text-white text-xs font-bold uppercase rounded-lg">Approve</button>
                     </template>
                 </div>
             </div>
 
             <div class="flex-1 flex gap-4 h-full min-h-0">
+                <div class="w-80 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden shrink-0">
+                    <div class="bg-gray-50 border-b border-gray-100 p-4">
+                        <div class="flex items-center gap-3">
+                            <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-blue-100 text-blue-800">{{ application.status }}</span>
+                            <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{{ application.type }}</span>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 overflow-y-auto p-4">
+                         <div class="flex flex-col items-center text-center mb-6">
+                            <div class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-400 mb-3 overflow-hidden">
+                                <span>{{ application.applicant.first_name.charAt(0) }}</span>
+                            </div>
+                            <h2 class="text-lg font-bold">{{ application.applicant.first_name }} {{ application.applicant.last_name }}</h2>
+                        </div>
+                    </div>
+                </div>
                 <div class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-w-0">
                     
                     <div class="flex items-center gap-6 border-b border-gray-100 px-6">

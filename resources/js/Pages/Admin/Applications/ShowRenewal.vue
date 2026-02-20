@@ -149,7 +149,7 @@ const formatCurrency = (value) => {
                     <template v-if="application.status !== 'Approved' && application.status !== 'Rejected'">
                         <button @click="showReturnModal = true" class="px-4 py-2 bg-amber-500 text-white text-xs font-bold uppercase rounded-lg">Return</button>
                         <button @click="showRejectModal = true" class="px-4 py-2 bg-red-600 text-white text-xs font-bold uppercase rounded-lg">Reject</button>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 text-white text-xs font-bold uppercase rounded-lg">Approve Renewal</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 text-white text-xs font-bold uppercase rounded-lg">Approve</button>
                     </template>
                 </div>
             </div>
