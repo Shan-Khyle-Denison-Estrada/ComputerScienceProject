@@ -22,6 +22,10 @@ class Application extends Model
     public function zone() { return $this->belongsTo(Zone::class); }
     public function proposedUnits() { return $this->hasMany(ProposedUnit::class); }
     public function evaluations() { return $this->hasMany(ApplicationEvaluation::class); }
+    public function assessment() 
+    { 
+        return $this->hasOne(Assessment::class); 
+    }
 
     // Helper for Full Name
     public function getApplicantNameAttribute()

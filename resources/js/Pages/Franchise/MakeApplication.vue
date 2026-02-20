@@ -14,7 +14,6 @@ const props = defineProps({
         type: Object,
         default: () => ({})
     },
-    // The flat arrays mapped from the ApplicationController
     barangays: { 
         type: Array, 
         default: () => [] 
@@ -30,20 +29,13 @@ const props = defineProps({
     units: { 
         type: Array, 
         default: () => [] 
+    },
+    // Added applications prop fetched from the backend
+    applications: {
+        type: Array,
+        default: () => []
     }
 });
-
-// --- DATA STATE ---
-const allApplications = ref([
-    { id: 101, ref_no: 'APP-2024-055', type: 'Renewal', date: '2024-11-12', status: 'Pending', current_step: 1, remarks: 'Application submitted. Waiting for initial review.', is_active: true },
-    { id: 102, ref_no: 'APP-2024-048', type: 'Change of Owner', date: '2024-11-10', status: 'Under Review', current_step: 2, remarks: 'Legal office verifying Deed of Sale authenticity.', is_active: true },
-    { id: 103, ref_no: 'APP-2024-042', type: 'Change of Unit', date: '2024-11-05', status: 'Returned', current_step: 2, remarks: 'ACTION REQUIRED: Uploaded OR/CR is blurred. Please re-upload clear copy.', is_active: true },
-    { id: 104, ref_no: 'APP-2024-039', type: 'Change of Unit', date: '2024-10-28', status: 'Inspection', current_step: 3, remarks: 'Unit scheduled for physical inspection on Nov 15, 2:00 PM.', is_active: true },
-    { id: 105, ref_no: 'APP-2024-035', type: 'Renewal', date: '2024-10-25', status: 'For Payment', current_step: 3, remarks: 'Assessment approved. Please proceed to payment.', is_active: true },
-    { id: 106, ref_no: 'APP-2024-030', type: 'Change of Owner', date: '2024-10-20', status: 'Processing', current_step: 4, remarks: 'Finalizing franchise amendment printing.', is_active: true },
-    { id: 99, ref_no: 'APP-2024-001', type: 'Renewal', date: '2024-01-15', status: 'Approved', current_step: 4, remarks: 'Renewal successful.', is_active: false },
-    { id: 98, ref_no: 'APP-2023-089', type: 'Change of Unit', date: '2023-12-10', status: 'Rejected', current_step: 2, remarks: 'Unit age exceeds limit (15 years).', is_active: false },
-]);
 
 const processSteps = [{ id: 1, label: 'Sub' }, { id: 2, label: 'Rev' }, { id: 3, label: 'Insp/Pay' }, { id: 4, label: 'Done' }];
 
@@ -53,8 +45,9 @@ const showNewAppModal = ref(false);
 const showComplyModal = ref(false);
 const selectedReturnedApp = ref(null); 
 
-const activeApplications = computed(() => allApplications.value.filter(app => app.is_active));
-const pastApplications = computed(() => allApplications.value.filter(app => !app.is_active));
+// Filter fetched applications instead of dummy data
+const activeApplications = computed(() => props.applications.filter(app => app.is_active));
+const pastApplications = computed(() => props.applications.filter(app => !app.is_active));
 
 // --- ACTIONS ---
 const handleCardClick = (app) => {
@@ -64,18 +57,16 @@ const handleCardClick = (app) => {
     }
 };
 
-const handleNewApplicationSubmit = (newAppPayload) => {
-    allApplications.value.unshift(newAppPayload);
-    alert("Application Submitted!");
+const handleNewApplicationSubmit = () => {
+    // The modal now handles the actual Inertia post natively. 
+    // On success, Inertia reloads the page with updated props.
+    showNewAppModal.value = false;
 };
 
-const handleComplianceSubmit = (payload) => {
-    const index = allApplications.value.findIndex(a => a.id === payload.appId);
-    if (index !== -1) {
-        allApplications.value[index].status = 'Under Review'; 
-        allApplications.value[index].remarks = 'Resubmitted: ' + (payload.remarks || 'Compliance documents uploaded.');
-    }
-    alert("Compliance submitted successfully!");
+const handleComplianceSubmit = () => {
+    // Similarly, rely on Inertia page visits to sync data
+    showComplyModal.value = false;
+    selectedReturnedApp.value = null;
 };
 
 const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 100;
@@ -173,6 +164,65 @@ const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 
                                         </button>
                                         <span v-else class="text-gray-300 text-xs">View</span>
                                     </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div v-if="activeTab === 'history'">
+                    <div v-if="pastApplications.length === 0" class="p-10 text-center text-gray-400">
+                        <svg class="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <p class="text-sm">No application history found.</p>
+                    </div>
+
+                    <div v-else class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200">
+                            <thead class="bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No. & Date</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Status</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Progress</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latest Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody class="bg-white divide-y divide-gray-200">
+                                <tr v-for="app in pastApplications" :key="app.id" class="hover:bg-gray-50 transition-colors">
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <div class="flex flex-col"><span class="text-sm font-bold text-gray-900 font-mono">{{ app.ref_no }}</span><span class="text-xs text-gray-500">{{ app.date }}</span></div>
+                                    </td>
+                                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-700">{{ app.type }}</div></td>
+                                    <td class="px-6 py-4 whitespace-nowrap">
+                                        <span class="px-2.5 py-1 inline-flex text-xs leading-4 font-bold rounded border"
+                                            :class="{
+                                                'bg-green-50 text-green-700 border-green-200': app.status === 'Approved',
+                                                'bg-red-50 text-red-700 border-red-200': app.status === 'Rejected',
+                                                'bg-gray-100 text-gray-600 border-gray-200': app.status === 'Cancelled'
+                                            }">
+                                            {{ app.status }}
+                                        </span>
+                                    </td>
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="w-full">
+                                            <div class="flex justify-between items-end mb-1">
+                                                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Final</span>
+                                                <span class="text-[10px] text-gray-400 font-mono">100%</span>
+                                            </div>
+                                            <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                                                <div class="h-1.5 rounded-full" 
+                                                    :class="{
+                                                        'bg-green-500': app.status === 'Approved',
+                                                        'bg-red-500': app.status === 'Rejected',
+                                                        'bg-gray-400': app.status === 'Cancelled'
+                                                    }"
+                                                    style="width: 100%"></div>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                 </tr>
                             </tbody>
                         </table>

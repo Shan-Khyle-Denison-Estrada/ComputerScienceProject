@@ -16,6 +16,8 @@ use App\Models\Barangay;
 use App\Models\UnitMake;
 use App\Models\Operator;
 use App\Models\Unit;
+use App\Models\Assessment;
+use App\Models\Particular;
 
 class ApplicationController extends Controller
 {
@@ -33,7 +35,8 @@ class ApplicationController extends Controller
                 'barangays' => [],
                 'unitMakes' => [],
                 'operators' => [],
-                'units' => []
+                'units' => [],
+                'applications' => [] // Return empty array if no operator
             ]);
         }
 
@@ -111,6 +114,32 @@ class ApplicationController extends Controller
             return $franchise;
         });
 
+        // 5. Fetch Applications for the current user
+        $applicationsData = Application::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($app) {
+                // Determine application progress step based on status
+                $step = 1;
+                $status = $app->status ?? 'Pending';
+                
+                if (in_array($status, ['Pending', 'Returned'])) $step = 1;
+                elseif ($status === 'Under Review') $step = 2;
+                elseif (in_array($status, ['Inspection', 'For Payment'])) $step = 3;
+                elseif (in_array($status, ['Processing', 'Approved', 'Rejected'])) $step = 4;
+
+                return [
+                    'id' => $app->id,
+                    'ref_no' => $app->reference_number,
+                    'type' => $app->application_type,
+                    'date' => $app->created_at ? $app->created_at->format('Y-m-d') : 'N/A',
+                    'status' => $status,
+                    'current_step' => $step,
+                    'remarks' => $app->remarks ?? 'No remarks provided.',
+                    'is_active' => !in_array($status, ['Approved', 'Rejected', 'Cancelled']),
+                ];
+            });
+
         return Inertia::render('Franchise/MakeApplication', [
             'hasFranchise' => true,
             'franchises' => $franchises,
@@ -119,11 +148,12 @@ class ApplicationController extends Controller
             'barangays' => $barangays,
             'unitMakes' => $unitMakes,
             'operators' => $operators,
-            'units' => $units
+            'units' => $units,
+            'applications' => $applicationsData // Pass the mapped array here
         ]);
     }
 
-    public function storeChangeOfUnit(Request $request)
+public function storeChangeOfUnit(Request $request)
     {
         $request->validate([
             'selected_franchise_id' => 'required|exists:franchises,id',
@@ -160,9 +190,9 @@ class ApplicationController extends Controller
             'middle_name'      => $user->middle_name,
             'last_name'        => $user->last_name,
             'contact_number'   => $user->contact_number,
-            'email'            => $user->email, // Or $operator->email if it's on the Operator model
+            'email'            => $user->email, 
             'tin_number'       => $user->tin_number,
-            'street_address'   => $user->street_address ?? $user->address, // Fallback to 'address' if that's your column
+            'street_address'   => $user->street_address ?? $user->address,
             'barangay'         => $user->barangay,
             'city'             => $user->city ?? 'Zamboanga City',
         ]);
@@ -195,10 +225,34 @@ class ApplicationController extends Controller
 
                 ApplicationEvaluation::create([
                     'application_id'            => $application->id,
-                    'requirement_id' => $requirementId,
+                    'requirement_id'            => $requirementId,
                     'file_path'                 => $filePath,
                     'is_compliant'              => null,
                     'remarks'                   => 'Uploaded upon submission.'
+                ]);
+            }
+        }
+
+        // 5. Generate Assessment for Change of Unit
+        $particulars = Particular::where('group', 'change_of_unit')->get();
+        
+        if ($particulars->isNotEmpty()) {
+            $totalAmountDue = $particulars->sum('amount');
+            
+            $assessment = Assessment::create([
+                'application_id'    => $application->id, // <-- UPDATE THIS LINE
+                'assessment_date'   => now(),
+                'assessment_due'    => now()->addDays(7), 
+                'total_amount_due'  => $totalAmountDue,
+                'assessment_status' => 'Pending',
+                'remarks'           => 'Auto-generated assessment for Change of Unit Application: ' . $application->reference_number,
+            ]);
+
+            // Attach particulars to the pivot table
+            foreach ($particulars as $particular) {
+                $assessment->particulars()->attach($particular->id, [
+                    'quantity' => 1,
+                    'subtotal' => $particular->amount
                 ]);
             }
         }

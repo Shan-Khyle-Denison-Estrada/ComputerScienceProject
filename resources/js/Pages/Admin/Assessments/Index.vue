@@ -202,7 +202,7 @@ const getGroupBadgeClass = (group) => {
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
                             <th class="px-6 py-4">ID</th>
-                            <th class="px-6 py-4">Franchise</th>
+                            <th class="px-6 py-4">Application</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Due Date</th>
                             <th class="px-6 py-4 text-right">Balance</th>
@@ -216,7 +216,7 @@ const getGroupBadgeClass = (group) => {
                                 <div v-if="assessment.remarks" class="text-xs text-gray-400 italic truncate max-w-[150px]">{{ assessment.remarks }}</div>
                             </td>
                             <td class="px-6 py-4 text-gray-600">
-                                {{ assessment.franchise_id ? `Franchise #${assessment.franchise_id}` : 'Unassigned' }}
+                                {{ assessment.application_id ? `Application #${assessment.application_id}` : 'Unassigned' }}
                             </td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium uppercase"

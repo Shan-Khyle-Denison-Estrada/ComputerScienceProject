@@ -31,14 +31,10 @@ const showInspectionModal = ref(false);
 const selectedInspectionIndex = ref(null);
 const inspectionForm = reactive({ status: '', remarks: '' });
 
-// Create a local reactive list mapping the fetched Inspection Items
-const inspectionsList = ref(props.inspectionItems.map(item => ({
-    id: item.id,
-    name: item.name,
-    options: item.rating_options || ['Pass', 'Fail'],
-    status: 'Pending',
-    remarks: ''
-})));
+// Application Rejection State
+const showRejectModal = ref(false);
+const rejectForm = reactive({ remarks: '', processing: false });
+
 
 // --- COMPUTED PROPERTIES (Mapped to Database) ---
 const application = computed(() => {
@@ -59,11 +55,32 @@ const application = computed(() => {
         : {};
     const proposedMake = proposedUnit.make || {};
 
+    // Map Assessment and Payments
+    const mappedAssessment = app.assessment ? {
+        id: app.assessment.id,
+        status: app.assessment.assessment_status || 'Pending',
+        total_due: app.assessment.total_amount_due || 0,
+        assessment_date: app.assessment.assessment_date ? new Date(app.assessment.assessment_date).toLocaleDateString() : 'N/A',
+        assessment_due: app.assessment.assessment_due ? new Date(app.assessment.assessment_due).toLocaleDateString() : 'N/A',
+        remarks: app.assessment.remarks || 'No remarks provided.',
+        particulars: (app.assessment.particulars || []).map(p => ({
+            name: p.name,
+            amount: p.pivot ? p.pivot.subtotal : p.amount
+        })),
+        payments: (app.assessment.payments || []).map(pay => ({
+            or_number: pay.id, 
+            amount_paid: pay.amount_paid,
+            date: new Date(pay.created_at).toLocaleDateString(),
+            payee: `${pay.payee_first_name} ${pay.payee_last_name}`.trim()
+        }))
+    } : null;
+
     return {
         id: app.id,
         type: app.application_type || 'Change of Unit',
         status: app.status || 'Pending', 
         reference_no: app.reference_number || 'N/A',
+        remarks: app.remarks || null,
         
         applicant: {
             first_name: app.first_name || '',
@@ -73,14 +90,12 @@ const application = computed(() => {
             address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
-        // Mapped appropriate franchise details
         franchise_details: {
             zone: franchise.zone?.description || app.zone?.description || 'N/A',
             date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
             status: franchise.status || 'N/A',
         },
         
-        // Mapped Current Unit Details
         current_unit: {
             make: currentMake.name || 'Not specified',
             motor_no: currentUnitData.motor_number || 'Not specified',
@@ -89,7 +104,6 @@ const application = computed(() => {
             year: currentUnitData.model_year || 'Not specified',
         },
         
-        // Mapped Proposed Unit Details
         proposed_unit: {
             make: proposedMake.name || 'N/A',
             motor_no: proposedUnit.motor_number || 'N/A',
@@ -98,7 +112,6 @@ const application = computed(() => {
             year: proposedUnit.model_year || 'N/A',
         },
 
-        // Map the evaluations from the database
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
             id: evalDoc.id,
             name: evalDoc.requirement ? evalDoc.requirement.name : 'Document', 
@@ -107,8 +120,27 @@ const application = computed(() => {
             file_url: evalDoc.file_path ? `/storage/${evalDoc.file_path}` : null,
         })),
 
-        receipt: { or_number: 'N/A', total_amount_due: 0 }
+        assessment: mappedAssessment
     };
+});
+
+const inspectionsList = computed(() => {
+    const proposedUnit = (props.application.proposed_units && props.application.proposed_units.length > 0) 
+        ? props.application.proposed_units[0] 
+        : { unit_inspections: [] };
+        
+    const existingInspections = proposedUnit.unit_inspections || [];
+    
+    return props.inspectionItems.map(item => {
+        const found = existingInspections.find(i => i.inspection_item_id === item.id);
+        return {
+            id: item.id,
+            name: item.name,
+            options: item.rating_options || ['Pass', 'Fail'],
+            status: found ? found.rating : 'Pending',
+            remarks: found ? found.remarks : ''
+        };
+    });
 });
 
 const selectedRequirement = computed(() => {
@@ -125,7 +157,39 @@ const selectedInspection = computed(() => {
 // --- ACTIONS ---
 const confirmApproveApplication = () => {
     if (!confirm("Approve Change of Unit?")) return;
-    router.post(route('admin.applications.approve', application.value.id));
+    router.post(route('admin.applications.change-of-unit.approve', application.value.id));
+};
+
+const confirmReturnApplication = () => {
+    if (!confirm("Return Application to Franchise Owner for edits?")) return;
+    router.post(route('admin.applications.change-of-unit.return', application.value.id));
+};
+
+const openRejectModal = () => {
+    rejectForm.remarks = '';
+    rejectForm.processing = false;
+    showRejectModal.value = true;
+};
+
+const closeRejectModal = () => {
+    showRejectModal.value = false;
+};
+
+const submitRejection = () => {
+    if (!rejectForm.remarks.trim()) return; 
+    
+    rejectForm.processing = true;
+    router.post(route('admin.applications.change-of-unit.reject', application.value.id), {
+        remarks: rejectForm.remarks
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeRejectModal();
+        },
+        onFinish: () => {
+            rejectForm.processing = false;
+        }
+    });
 };
 
 const formatCurrency = (value) => {
@@ -138,7 +202,6 @@ const isPdf = (url) => {
     return url.toLowerCase().endsWith('.pdf');
 };
 
-// Evaluations Modal Logic
 const openRequirementModal = (index) => {
     selectedRequirementIndex.value = index;
     requirementForm.remarks = application.value.evaluation_requirements[index].remarks;
@@ -155,14 +218,22 @@ const closeRequirementModal = () => {
 };
 
 const saveRequirementStatus = (status) => {
-    if (selectedRequirementIndex.value !== null) {
-        application.value.evaluation_requirements[selectedRequirementIndex.value].status = status;
-        application.value.evaluation_requirements[selectedRequirementIndex.value].remarks = requirementForm.remarks || 'Pending Review';
-    }
-    closeRequirementModal();
+    if (selectedRequirementIndex.value === null) return;
+    
+    const evaluation = application.value.evaluation_requirements[selectedRequirementIndex.value];
+    
+    router.post(route('admin.applications.change-of-unit.evaluate', application.value.id), {
+        evaluation_id: evaluation.id,
+        status: status,
+        remarks: requirementForm.remarks || 'Pending Review'
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeRequirementModal();
+        }
+    });
 };
 
-// Inspections Modal Logic
 const openInspectionModal = (index) => {
     selectedInspectionIndex.value = index;
     inspectionForm.status = inspectionsList.value[index].status === 'Pending' ? '' : inspectionsList.value[index].status;
@@ -180,11 +251,20 @@ const closeInspectionModal = () => {
 };
 
 const saveInspectionStatus = () => {
-    if (selectedInspectionIndex.value !== null) {
-        inspectionsList.value[selectedInspectionIndex.value].status = inspectionForm.status;
-        inspectionsList.value[selectedInspectionIndex.value].remarks = inspectionForm.remarks;
-    }
-    closeInspectionModal();
+    if (selectedInspectionIndex.value === null) return;
+    
+    const inspection = inspectionsList.value[selectedInspectionIndex.value];
+    
+    router.post(route('admin.applications.change-of-unit.inspect', application.value.id), {
+        inspection_item_id: inspection.id,
+        status: inspectionForm.status,
+        remarks: inspectionForm.remarks
+    }, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeInspectionModal();
+        }
+    });
 };
 </script>
 
@@ -211,9 +291,9 @@ const saveInspectionStatus = () => {
                             Finalize Unit Change
                         </PrimaryButton>
                     </template>
-                    <template v-else>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Reject</button>
+                    <template v-else-if="application.status !== 'Rejected'">
+                        <button @click="confirmReturnApplication" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
+                        <button @click="openRejectModal" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Reject</button>
                         <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Approve</button>
                     </template>
                 </div>
@@ -223,9 +303,14 @@ const saveInspectionStatus = () => {
                 
                 <div class="w-full md:w-80 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden shrink-0">
                     <div class="bg-gray-50 border-b border-gray-200 p-4">
-                        <div class="flex items-center gap-3">
-                            <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-blue-100 text-blue-800">{{ application.status }}</span>
-                            <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{{ application.type }}</span>
+                        <div class="flex flex-col gap-2">
+                            <div class="flex items-center gap-3">
+                                <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-blue-100 text-blue-800">{{ application.status }}</span>
+                                <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{{ application.type }}</span>
+                            </div>
+                            <div v-if="application.status === 'Rejected' && application.remarks" class="bg-red-50 border-l-4 border-red-500 p-2 mt-2">
+                                <p class="text-xs text-red-800 font-medium">Reason: {{ application.remarks }}</p>
+                            </div>
                         </div>
                     </div>
                     
@@ -364,20 +449,15 @@ const saveInspectionStatus = () => {
                                 class="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
                                 
                                 <div class="flex items-start gap-3">
-                                    <div class="mt-0.5">
-                                        <svg v-if="['Pass', 'Approved', 'Good', 'Excellent', '1'].includes(item.status)" class="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <svg v-else-if="item.status === 'Pending'" class="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                        <svg v-else class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    <div class="mt-0.5 text-gray-400">
+                                        <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                                        </svg>
                                     </div>
                                     <div>
                                         <h4 class="font-semibold text-gray-800 text-sm group-hover:text-blue-600 transition-colors">{{ item.name }}</h4>
                                         <div class="flex flex-wrap items-center gap-2 mt-1.5">
-                                            <span class="px-2.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide" 
-                                                :class="{
-                                                    'bg-green-100 text-green-800': ['Pass', 'Approved', 'Good', 'Excellent', '1'].includes(item.status),
-                                                    'bg-gray-100 text-gray-800': item.status === 'Pending',
-                                                    'bg-red-100 text-red-800': !['Pass', 'Approved', 'Good', 'Excellent', '1', 'Pending'].includes(item.status)
-                                                }">
+                                            <span class="px-2.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-gray-100 text-gray-800">
                                                 {{ item.status }}
                                             </span>
                                             <span v-if="item.remarks" class="text-[11px] text-gray-500 italic max-w-xs truncate">
@@ -392,13 +472,85 @@ const saveInspectionStatus = () => {
                             </div>
                         </div>
 
-                        <div v-if="activeTab === 'receipt'" class="bg-white p-6 border border-gray-200 rounded-lg shadow-sm">
-                            <h3 class="font-bold text-gray-800">OR #{{ application.receipt.or_number }}</h3>
-                            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between font-bold text-lg text-gray-900">
-                                <span>Total</span>
-                                <span>{{ formatCurrency(application.receipt.total_amount_due) }}</span>
+                        <div v-if="activeTab === 'receipt'">
+                            <div v-if="!application.assessment" class="bg-white p-10 border border-gray-200 rounded-lg shadow-sm text-center text-gray-500 italic">
+                                No assessment generated for this application yet.
+                            </div>
+                            <div v-else class="space-y-4">
+                                <div class="bg-white p-6 border border-gray-200 rounded-lg shadow-sm">
+                                    <div class="flex justify-between items-center mb-4 border-b pb-4">
+                                        <h3 class="font-bold text-gray-800 text-lg">Assessment Summary</h3>
+                                        <span class="px-3 py-1 text-[11px] font-bold rounded uppercase tracking-wide"
+                                            :class="application.assessment.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'">
+                                            {{ application.assessment.status }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div class="grid grid-cols-2 gap-4 mb-6 bg-gray-50 p-4 rounded-lg border border-gray-100">
+                                        <div>
+                                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Date Issued</p>
+                                            <p class="text-sm font-medium text-gray-900">{{ application.assessment.assessment_date }}</p>
+                                        </div>
+                                        <div>
+                                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Due Date</p>
+                                            <p class="text-sm font-medium text-gray-900">{{ application.assessment.assessment_due }}</p>
+                                        </div>
+                                        <div class="col-span-2">
+                                            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Remarks</p>
+                                            <p class="text-sm font-medium text-gray-900">{{ application.assessment.remarks }}</p>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="space-y-3 mb-6">
+                                        <div v-for="(item, index) in application.assessment.particulars" :key="index" class="flex justify-between text-sm">
+                                            <span class="text-gray-600">{{ item.name }}</span>
+                                            <span class="font-medium text-gray-900">{{ formatCurrency(item.amount) }}</span>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="pt-4 border-t border-gray-200 flex justify-between items-center font-bold text-lg text-gray-900">
+                                        <span>Total Amount Due</span>
+                                        <span>{{ formatCurrency(application.assessment.total_due) }}</span>
+                                    </div>
+                                </div>
+
+                                <div v-if="application.assessment.payments.length > 0" class="bg-white p-6 border border-gray-200 rounded-lg shadow-sm">
+                                    <h3 class="font-bold text-gray-800 mb-4 border-b pb-4">Payment Records</h3>
+                                    <div v-for="payment in application.assessment.payments" :key="payment.or_number" class="mb-4 last:mb-0 pb-4 last:pb-0 border-b last:border-0 border-gray-100">
+                                        <div class="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Ref ID</p>
+                                                <p class="text-sm font-medium text-gray-900">#{{ payment.or_number }}</p>
+                                            </div>
+                                            <div>
+                                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Date Paid</p>
+                                                <p class="text-sm font-medium text-gray-900">{{ payment.date }}</p>
+                                            </div>
+                                            <div class="col-span-2">
+                                                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Payee Name</p>
+                                                <p class="text-sm font-medium text-gray-900">{{ payment.payee }}</p>
+                                            </div>
+                                            <div class="col-span-2 pt-2">
+                                                <div class="flex justify-between items-center bg-green-50 p-3 rounded-lg border border-green-100">
+                                                    <span class="text-sm text-green-800 font-bold">Amount Paid</span>
+                                                    <span class="text-base font-bold text-green-700">{{ formatCurrency(payment.amount_paid) }}</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div v-else class="bg-yellow-50 border border-yellow-200 p-4 rounded-lg flex items-start gap-3">
+                                    <svg class="w-5 h-5 text-yellow-600 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <div>
+                                        <h4 class="text-sm font-bold text-yellow-800">Pending Payment</h4>
+                                        <p class="text-xs text-yellow-700 mt-1">This application's assessment has not yet been paid. The applicant must settle this balance to proceed.</p>
+                                    </div>
+                                </div>
                             </div>
                         </div>
+
                     </div>
                 </div>
             </div>
@@ -465,12 +617,7 @@ const saveInspectionStatus = () => {
                         <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
                             <div>
                                 <h2 class="text-xl font-bold text-gray-900">{{ selectedInspection.name }}</h2>
-                                <span class="px-2 py-0.5 mt-1 inline-block rounded text-xs font-bold uppercase tracking-wide"
-                                    :class="{
-                                        'bg-green-100 text-green-800': ['Pass', 'Approved', 'Good', 'Excellent', '1'].includes(selectedInspection.status),
-                                        'bg-gray-100 text-gray-800': selectedInspection.status === 'Pending',
-                                        'bg-red-100 text-red-800': !['Pass', 'Approved', 'Good', 'Excellent', '1', 'Pending'].includes(selectedInspection.status)
-                                    }">
+                                <span class="px-2 py-0.5 mt-1 inline-block rounded text-xs font-bold uppercase tracking-wide bg-gray-100 text-gray-800">
                                     {{ selectedInspection.status }}
                                 </span>
                             </div>
@@ -501,6 +648,41 @@ const saveInspectionStatus = () => {
                             <SecondaryButton @click="closeInspectionModal">Cancel</SecondaryButton>
                             <PrimaryButton @click="saveInspectionStatus" class="bg-blue-600 hover:bg-blue-700" :disabled="!inspectionForm.status">
                                 Save Rating
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
+        <Transition name="fade">
+            <div v-if="showRejectModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeRejectModal">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" @click.stop>
+                    <div class="p-6 flex flex-col">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                            <h2 class="text-xl font-bold text-gray-900 flex items-center gap-2">
+                                <svg class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                Reject Application
+                            </h2>
+                            <button @click="closeRejectModal" class="text-gray-400 hover:text-gray-600 mb-auto">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-5">
+                            <p class="text-sm text-gray-600">Please provide a reason for rejecting this Change of Unit application. The applicant will be able to see this feedback.</p>
+                            <div>
+                                <InputLabel for="app_reject_remarks" value="Rejection Reason" />
+                                <textarea id="app_reject_remarks" v-model="rejectForm.remarks" rows="4" required class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="State exactly what is missing or incorrect..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                            <SecondaryButton @click="closeRejectModal" :disabled="rejectForm.processing">Cancel</SecondaryButton>
+                            <PrimaryButton @click="submitRejection" class="bg-red-600 hover:bg-red-700 focus:ring-red-500" :disabled="!rejectForm.remarks.trim() || rejectForm.processing">
+                                Confirm Rejection
                             </PrimaryButton>
                         </div>
                     </div>

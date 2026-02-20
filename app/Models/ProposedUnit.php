@@ -19,4 +19,8 @@ class ProposedUnit extends Model
     public function application() { return $this->belongsTo(Application::class); }
     public function make() { return $this->belongsTo(UnitMake::class); }
     public function inspections() { return $this->hasMany(UnitInspection::class); }
+    public function unitInspections()
+    {
+        return $this->hasMany(UnitInspection::class, 'proposed_unit_id');
+    }
 }

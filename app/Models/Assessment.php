@@ -10,7 +10,7 @@ class Assessment extends Model
     use HasFactory;
 
     protected $fillable = [
-        'franchise_id',
+        'application_id',
         'assessment_date',
         'assessment_due',
         'total_amount_due',
@@ -19,9 +19,9 @@ class Assessment extends Model
         'date_approved'
     ];
 
-    public function franchise()
+public function application()
     {
-        return $this->belongsTo(Franchise::class);
+        return $this->belongsTo(Application::class); // <-- Changed from Franchise
     }
 
     public function particulars()

@@ -25,7 +25,6 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    // [!code ++] Fetch the count and pass it to the view
     return Inertia::render('Index', [
         'activeFranchisesCount' => Franchise::count()
     ]);
@@ -136,13 +135,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // 15. Red Flags Routes
     Route::get('/admin/red-flags', [RedFlagController::class, 'index'])->name('admin.red-flags.index');
-    Route::post('/admin/red-flags/nature', [RedFlagController::class, 'storeNature'])->name('admin.red-flags.nature.store'); // For Nature CRUD
+    Route::post('/admin/red-flags/nature', [RedFlagController::class, 'storeNature'])->name('admin.red-flags.nature.store');
     Route::delete('/admin/red-flags/nature/{nature}', [RedFlagController::class, 'destroyNature'])->name('admin.red-flags.nature.destroy');
-    
-    // Storing a Red Flag (usually from Franchise Show page)
     Route::post('/admin/franchises/{franchise}/red-flags', [RedFlagController::class, 'store'])->name('admin.franchises.red-flags.store');
-    
-    // resolving
     Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
 
     Route::post('/admin/complaints/nature', [ComplaintController::class, 'storeNature'])->name('admin.complaints.nature.store');
@@ -151,7 +146,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     // Application Index
     Route::get('/admin/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
 
-    // Requirements Management (Unified Route for both Evaluation & Inspection)
+    // Requirements Management
     Route::post('/admin/applications/requirements', [AdminApplicationController::class, 'storeRequirement'])->name('admin.requirements.store');
     Route::delete('/admin/applications/requirements/{type}/{id}', [AdminApplicationController::class, 'destroyRequirement'])->name('admin.requirements.destroy');
 
@@ -162,9 +157,19 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
     Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
-    // ADD THIS NEW ROUTE specifically for Change of Unit (Place it BEFORE the generic show route if the URL structure is similar, though here we use a distinct path to be safe)
+    // NEW CHANGE OF UNIT SHOW ROUTES
     Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])
         ->name('admin.applications.show-change-of-unit');
+    Route::post('/applications/change-of-unit/{application}/evaluate', [ApplicationChangeOfUnitShowController::class, 'updateEvaluation'])
+        ->name('admin.applications.change-of-unit.evaluate');
+    Route::post('/applications/change-of-unit/{application}/inspect', [ApplicationChangeOfUnitShowController::class, 'updateInspection'])
+        ->name('admin.applications.change-of-unit.inspect');
+    Route::post('/applications/change-of-unit/{application}/approve', [ApplicationChangeOfUnitShowController::class, 'approveApplication'])
+        ->name('admin.applications.change-of-unit.approve');
+    Route::post('/applications/change-of-unit/{application}/reject', [ApplicationChangeOfUnitShowController::class, 'rejectApplication'])
+        ->name('admin.applications.change-of-unit.reject');
+    Route::post('/applications/change-of-unit/{application}/return', [ApplicationChangeOfUnitShowController::class, 'returnApplication'])
+        ->name('admin.applications.change-of-unit.return');
 
 Route::get('/franchise-owner', function () {
     return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
@@ -187,25 +192,14 @@ Route::get('/change-of-owner', function () {
     ]);
 });
 
-
 });
 
 // --- FRANCHISE OWNER ROUTES ---
 Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
-    Route::get('/franchise/dashboard', function () {
-        return Inertia::render('Franchise/Dashboard');
-    })->name('franchise.dashboard');
-
     Route::get('/franchise/dashboard', [DashboardController::class, 'index'])->name('franchise.dashboard');
-
-    Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])
-        ->name('franchise.set-driver');
-
+    Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])->name('franchise.set-driver');
     Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');
-
-    // NEW: Post route for Change of Unit Application
-    Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])
-        ->name('franchise.applications.store-change-unit');
+    Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])->name('franchise.applications.store-change-unit');
 });
 
 // --- PROFILE MANAGEMENT ---

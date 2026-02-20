@@ -23,7 +23,17 @@ class Franchise extends Model
     public function zone() { return $this->belongsTo(Zone::class); }
     public function ownershipHistory() { return $this->hasMany(Ownership::class)->latest(); }
     public function unitHistory() { return $this->hasMany(ActiveUnit::class)->latest(); }
-    public function assessments() { return $this->hasMany(Assessment::class); }
+    
+    // UPDATED: Now fetches assessments THROUGH the Application model
+    public function assessments() 
+    { 
+        return $this->hasManyThrough(Assessment::class, Application::class); 
+    }
+
+    public function applications()
+    {
+        return $this->hasMany(Application::class);
+    }
 
     // Associative Entity Relationship
     public function driverAssignments() 
@@ -42,20 +52,9 @@ class Franchise extends Model
             ->latest('driver_assignments.created_at');
     }
 
-    public function complaints() 
-    { 
-        return $this->hasMany(Complaint::class)->latest(); 
-    }
-    
-    public function redFlags() 
-    { 
-        return $this->hasMany(RedFlag::class)->latest(); 
-    }
-
-    // --- Dynamic Status Logic ---
+    // --- Accessors & Mutators ---
     public function getStatusAttribute()
     {
-        // Define the 3-year cutoff
         $threeYearsAgo = Carbon::now()->subYears(3);
 
         // 1. Check for Termination (Unpaid Assessment > 3 Years)
