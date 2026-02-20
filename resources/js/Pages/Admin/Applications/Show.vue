@@ -275,7 +275,8 @@ const formatCurrency = (value) => {
                         </PrimaryButton>
                     </template>
                     <template v-else-if="application.status === 'Rejected'">
-                        </template>
+                        <p class="text-red-600 font-bold italic pr-4">Rejected</p>
+                    </template>
                     <template v-else>
                         <button @click="showReturnModal = true" class="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2">
                             Return

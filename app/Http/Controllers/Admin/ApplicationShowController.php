@@ -22,6 +22,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
+use SimpleSoftwareIO\QrCode\Facades\QrCode;
 
 class ApplicationShowController extends Controller
 {
@@ -208,20 +209,20 @@ class ApplicationShowController extends Controller
     }
 
     // [!code ++] Add this method to the controller
-public function approveApplication(Request $request, $id)
-{
-    $application = Application::findOrFail($id);
+    public function approveApplication(Request $request, $id)
+    {
+        $application = Application::findOrFail($id);
 
-    // Optional: Add validation to ensure it has required inspections/evaluations
-    // if ($application->evaluations()->where('is_compliant', false)->exists()) { ... }
+        // Optional: Add validation to ensure it has required inspections/evaluations
+        // if ($application->evaluations()->where('is_compliant', false)->exists()) { ... }
 
-    $application->update([
-        'status' => 'Approved',
-        'reviewed_at' => now()
-    ]);
+        $application->update([
+            'status' => 'Approved',
+            'reviewed_at' => now()
+        ]);
 
-    return back()->with('success', 'Application approved. You can now finalize the franchise account.');
-}
+        return back()->with('success', 'Application approved. You can now finalize the franchise account.');
+    }
 
 public function finalizeAccount(Request $request, $id)
 {
@@ -269,7 +270,7 @@ public function finalizeAccount(Request $request, $id)
             // If your users table stores the name (string), fetch it now:
             $barangayName = Barangay::find($validated['barangay_id'])->name;
 
-// A. HANDLE USER PHOTO
+            // A. HANDLE USER PHOTO
             $userPhotoPath = null;
             if (!empty($request->owner_photo_path)) {
                 // Ensure the file actually exists before trying to copy
@@ -309,14 +310,14 @@ public function finalizeAccount(Request $request, $id)
             // C. Loop through Franchises
             foreach ($validated['franchises'] as $franchiseData) {
                 // B. COPY UNIT PHOTOS
-$unitPhotos = [];
+                $unitPhotos = [];
                 $photoMap = [
                     'unit_front_photo_path' => 'unit_front_photo',
                     'unit_back_photo_path'  => 'unit_back_photo',
                     'unit_left_photo_path'  => 'unit_left_photo',
                     'unit_right_photo_path' => 'unit_right_photo',
                 ];
-foreach ($photoMap as $inputKey => $dbColumn) {
+                foreach ($photoMap as $inputKey => $dbColumn) {
                     if (!empty($franchiseData[$inputKey])) {
                         $originalPath = $franchiseData[$inputKey];
                         
@@ -329,7 +330,7 @@ foreach ($photoMap as $inputKey => $dbColumn) {
                         }
                     }
                 }
-// Create Unit
+                // Create Unit
                 $unit = Unit::create(array_merge([
                     'make_id' => $franchiseData['make_id'],
                     'plate_number' => $franchiseData['plate_number'],
@@ -372,6 +373,12 @@ foreach ($photoMap as $inputKey => $dbColumn) {
 
                 // 6. Update Franchise Current Unit
                 $franchise->update(['active_unit_id' => $activeUnit->id]);
+
+                $qrContent = route('franchises.public_show', $franchise->id);
+                $qrImage = QrCode::format('svg')->size(300)->generate($qrContent);
+                $filename = 'qr-' . $franchise->id . '.svg';
+                Storage::disk('public')->put('qrcodes/' . $filename, $qrImage);
+                $franchise->update(['qr_code'        => $filename]);
             }
 
             // D. Finalize Application
