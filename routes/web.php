@@ -18,6 +18,7 @@ use App\Http\Controllers\Admin\RedFlagController;
 use App\Http\Controllers\Public\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\ApplicationShowController;
+use App\Http\Controllers\Franchise\ApplicationController as FranchiseApplicationController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -203,9 +204,11 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])
         ->name('franchise.set-driver');
 
-    Route::get('/franchise/applications', function () {
-        return Inertia::render('Franchise/MakeApplication');
-    })->name('franchise.make-application');
+    Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');
+
+    // NEW: Post route for Change of Unit Application
+    Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])
+        ->name('franchise.applications.store-change-unit');
 });
 
 // --- PROFILE MANAGEMENT ---
