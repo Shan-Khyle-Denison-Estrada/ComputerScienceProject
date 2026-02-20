@@ -2,7 +2,6 @@
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
@@ -12,46 +11,116 @@ import ChangeOfUnitModal from '@/Components/Modals/ChangeOfUnitModal.vue';
 
 const props = defineProps({
     application: Object,
+    inspectionItems: {
+        type: Array,
+        default: () => []
+    }
 });
 
 // --- STATE ---
-const activeTab = ref('evaluation');
-const showInspectionModal = ref(false);
+const activeTab = ref('unit_comparison'); 
 const showChangeUnitModal = ref(false); 
+
+// Evaluation State
 const showRequirementModal = ref(false);
-
-const selectedItemIndex = ref(null);
 const selectedRequirementIndex = ref(null);
-
-const inspectionForm = reactive({ item: '', status: '', remarks: '', options: [] });
 const requirementForm = reactive({ remarks: '' });
 
-// --- COMPUTED PROPERTIES ---
+// Inspection State
+const showInspectionModal = ref(false);
+const selectedInspectionIndex = ref(null);
+const inspectionForm = reactive({ status: '', remarks: '' });
+
+// Create a local reactive list mapping the fetched Inspection Items
+const inspectionsList = ref(props.inspectionItems.map(item => ({
+    id: item.id,
+    name: item.name,
+    options: item.rating_options || ['Pass', 'Fail'],
+    status: 'Pending',
+    remarks: ''
+})));
+
+// --- COMPUTED PROPERTIES (Mapped to Database) ---
 const application = computed(() => {
     const app = props.application || {};
+    
+    // Safely extract relationships loaded from the controller
+    const franchise = app.franchise || {};
+    const zone = app.zone || {};
+    
+    // Extract CURRENT unit details from the franchise
+    const currentActiveUnit = franchise.current_active_unit || {};
+    const currentUnitData = currentActiveUnit.new_unit || {};
+    const currentMake = currentUnitData.make || {};
+    
+    // Assuming one proposed unit per application
+    const proposedUnit = (app.proposed_units && app.proposed_units.length > 0) 
+        ? app.proposed_units[0] 
+        : {};
+    const proposedMake = proposedUnit.make || {};
+
     return {
-        ...app,
-        type: 'Change of Unit',
-        status: app.status || 'Pending', // Defaulted to Approved so you can see the finalize button
-        reference_no: app.reference_no || 'COU-2026-042',
-        applicant: app.applicant || {
-            first_name: 'Jose', last_name: 'Rizal', email: 'pepe@example.com',
-            contact: '09123456789', address: 'Rizal St., Molave'
+        id: app.id,
+        type: app.application_type || 'Change of Unit',
+        status: app.status || 'Pending', 
+        reference_no: app.reference_number || 'N/A',
+        
+        applicant: {
+            first_name: app.first_name || '',
+            last_name: app.last_name || '',
+            email: app.email || 'N/A',
+            contact: app.contact_number || 'N/A',
+            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
-        evaluation_requirements: app.evaluation_requirements || [
-            { id: 1, name: 'Deed of Sale of New Unit', status: 'Approved', remarks: '' }
-        ],
-        // DUMMY DATA FOR CHANGE OF UNIT
-        inspection_requirements: app.inspection_requirements || [
-            { id: 1, name: 'Engine verification', status: 'Pass', remarks: 'Matches papers', options: 'Pass, Fail' },
-            { id: 2, name: 'Chassis verification', status: 'Pass', remarks: '', options: 'Pass, Fail' }
-        ],
-        receipt: app.receipt || {
-            or_number: 'OR-COU-912', date: '2026-02-18', total_amount_due: 1500,
-            particulars: [ { name: 'Change of Unit Fee', amount: 1200 }, { name: 'Inspection Fee', amount: 300 } ]
-        }
+        
+        // Mapped appropriate franchise details
+        franchise_details: {
+            zone: franchise.zone?.description || app.zone?.description || 'N/A',
+            date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
+            status: franchise.status || 'N/A',
+        },
+        
+        // Mapped Current Unit Details
+        current_unit: {
+            make: currentMake.name || 'Not specified',
+            motor_no: currentUnitData.motor_number || 'Not specified',
+            chassis_no: currentUnitData.chassis_number || 'Not specified',
+            plate_no: currentUnitData.plate_number || franchise.plate_number || 'N/A',
+            year: currentUnitData.model_year || 'Not specified',
+        },
+        
+        // Mapped Proposed Unit Details
+        proposed_unit: {
+            make: proposedMake.name || 'N/A',
+            motor_no: proposedUnit.motor_number || 'N/A',
+            chassis_no: proposedUnit.chassis_number || 'N/A',
+            plate_no: proposedUnit.plate_number || 'N/A',
+            year: proposedUnit.model_year || 'N/A',
+        },
+
+        // Map the evaluations from the database
+        evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
+            id: evalDoc.id,
+            name: evalDoc.requirement ? evalDoc.requirement.name : 'Document', 
+            status: evalDoc.is_compliant === 1 ? 'Approved' : (evalDoc.is_compliant === 0 ? 'Rejected' : 'Pending'),
+            remarks: evalDoc.remarks || 'Pending Review',
+            file_url: evalDoc.file_path ? `/storage/${evalDoc.file_path}` : null,
+        })),
+
+        receipt: { or_number: 'N/A', total_amount_due: 0 }
     };
 });
+
+const selectedRequirement = computed(() => {
+    if (selectedRequirementIndex.value === null) return null;
+    return application.value.evaluation_requirements[selectedRequirementIndex.value];
+});
+
+const selectedInspection = computed(() => {
+    if (selectedInspectionIndex.value === null) return null;
+    return inspectionsList.value[selectedInspectionIndex.value];
+});
+
 
 // --- ACTIONS ---
 const confirmApproveApplication = () => {
@@ -63,15 +132,69 @@ const formatCurrency = (value) => {
     if(!value) return '₱0.00';
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 };
+
+const isPdf = (url) => {
+    if (!url) return false;
+    return url.toLowerCase().endsWith('.pdf');
+};
+
+// Evaluations Modal Logic
+const openRequirementModal = (index) => {
+    selectedRequirementIndex.value = index;
+    requirementForm.remarks = application.value.evaluation_requirements[index].remarks;
+    if (requirementForm.remarks === 'Pending Review') requirementForm.remarks = ''; 
+    showRequirementModal.value = true;
+};
+
+const closeRequirementModal = () => {
+    showRequirementModal.value = false;
+    setTimeout(() => {
+        selectedRequirementIndex.value = null;
+        requirementForm.remarks = '';
+    }, 200);
+};
+
+const saveRequirementStatus = (status) => {
+    if (selectedRequirementIndex.value !== null) {
+        application.value.evaluation_requirements[selectedRequirementIndex.value].status = status;
+        application.value.evaluation_requirements[selectedRequirementIndex.value].remarks = requirementForm.remarks || 'Pending Review';
+    }
+    closeRequirementModal();
+};
+
+// Inspections Modal Logic
+const openInspectionModal = (index) => {
+    selectedInspectionIndex.value = index;
+    inspectionForm.status = inspectionsList.value[index].status === 'Pending' ? '' : inspectionsList.value[index].status;
+    inspectionForm.remarks = inspectionsList.value[index].remarks;
+    showInspectionModal.value = true;
+};
+
+const closeInspectionModal = () => {
+    showInspectionModal.value = false;
+    setTimeout(() => {
+        selectedInspectionIndex.value = null;
+        inspectionForm.status = '';
+        inspectionForm.remarks = '';
+    }, 200);
+};
+
+const saveInspectionStatus = () => {
+    if (selectedInspectionIndex.value !== null) {
+        inspectionsList.value[selectedInspectionIndex.value].status = inspectionForm.status;
+        inspectionsList.value[selectedInspectionIndex.value].remarks = inspectionForm.remarks;
+    }
+    closeInspectionModal();
+};
 </script>
 
 <template>
     <Head title="Application Details - Change of Unit" />
 
     <AuthenticatedLayout>
-        <div class="h-full flex flex-col overflow-hidden" :key="application.id">
+        <div class="h-[calc(100vh-100px)] flex flex-col overflow-hidden" :key="application.id">
             
-            <div class="flex-none mb-3 flex items-center justify-between">
+            <div class="flex-none mb-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <Link :href="route('admin.applications.index')" class="p-1.5 rounded-full hover:bg-gray-200 transition-colors">
                         <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
@@ -89,49 +212,189 @@ const formatCurrency = (value) => {
                         </PrimaryButton>
                     </template>
                     <template v-else>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-yellow-500 text-white text-xs font-bold uppercase rounded-lg">Return</button>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-red-600 text-white text-xs font-bold uppercase rounded-lg">Reject</button>
-                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 text-white text-xs font-bold uppercase rounded-lg">Approve</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Reject</button>
+                        <button @click="confirmApproveApplication" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Approve</button>
                     </template>
                 </div>
             </div>
 
-            <div class="flex-1 flex gap-4 h-full min-h-0">
-                <div class="w-80 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden shrink-0">
-                    <div class="bg-gray-50 border-b border-gray-100 p-4">
+            <div class="flex-1 flex flex-col md:flex-row gap-4 h-full min-h-0">
+                
+                <div class="w-full md:w-80 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden shrink-0">
+                    <div class="bg-gray-50 border-b border-gray-200 p-4">
                         <div class="flex items-center gap-3">
                             <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-blue-100 text-blue-800">{{ application.status }}</span>
                             <span class="text-xs font-bold text-gray-500 bg-gray-200 px-2 py-0.5 rounded">{{ application.type }}</span>
                         </div>
                     </div>
                     
-                    <div class="flex-1 overflow-y-auto p-4">
-                         <div class="flex flex-col items-center text-center mb-6">
-                            <div class="w-20 h-20 rounded-full bg-gray-200 flex items-center justify-center text-2xl font-bold text-gray-400 mb-3 overflow-hidden">
+                    <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                        <div class="flex flex-col items-center text-center mb-6">
+                            <div class="w-20 h-20 rounded-full bg-blue-100 flex items-center justify-center text-2xl font-bold text-blue-600 mb-3 overflow-hidden">
                                 <span>{{ application.applicant.first_name.charAt(0) }}</span>
                             </div>
-                            <h2 class="text-lg font-bold">{{ application.applicant.first_name }} {{ application.applicant.last_name }}</h2>
+                            <h2 class="text-lg font-bold text-gray-900 leading-tight">{{ application.applicant.first_name }} {{ application.applicant.last_name }}</h2>
+                        </div>
+
+                        <div class="space-y-5">
+                            <div>
+                                <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Applicant Details</h4>
+                                <div class="text-sm space-y-1.5">
+                                    <p class="flex justify-between"><span class="text-gray-500">Contact:</span> <span class="font-medium text-gray-900">{{ application.applicant.contact }}</span></p>
+                                    <p class="flex justify-between"><span class="text-gray-500">Email:</span> <span class="font-medium text-gray-900 truncate max-w-[120px]" :title="application.applicant.email">{{ application.applicant.email }}</span></p>
+                                    <p class="text-gray-500">Address:</p>
+                                    <p class="font-medium text-gray-900 leading-snug">{{ application.applicant.address }}</p>
+                                </div>
+                            </div>
+
+                            <hr class="border-gray-100">
+
+                            <div>
+                                <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Franchise Details</h4>
+                                <div class="text-sm space-y-1.5">
+                                    <p class="flex justify-between"><span class="text-gray-500">Zone:</span> <span class="font-medium text-gray-900">{{ application.franchise_details.zone }}</span></p>
+                                    <p class="flex justify-between"><span class="text-gray-500">Date Issued:</span> <span class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</span></p>
+                                    <div class="flex justify-between items-center mt-1">
+                                        <span class="text-gray-500">Status:</span> 
+                                        <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide"
+                                              :class="{
+                                                  'bg-green-100 text-green-800': application.franchise_details.status.toLowerCase() === 'renewed',
+                                                  'bg-yellow-100 text-yellow-800': application.franchise_details.status.toLowerCase() === 'pending renewal',
+                                                  'bg-red-100 text-red-800': application.franchise_details.status.toLowerCase() === 'terminated',
+                                                  'bg-gray-100 text-gray-800': !['renewed', 'pending renewal', 'terminated'].includes(application.franchise_details.status.toLowerCase())
+                                              }">
+                                            {{ application.franchise_details.status }}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <div class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden min-w-0">  
-                    <div class="flex items-center gap-6 border-b border-gray-100 px-6">
-                        <button @click="activeTab = 'evaluation'" :class="activeTab === 'evaluation' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Evaluation</button>
-                        <button @click="activeTab = 'inspection'" :class="activeTab === 'inspection' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Inspection</button>
-                        <button @click="activeTab = 'receipt'" :class="activeTab === 'receipt' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500'" class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm">Receipt & Payment</button>
+
+                <div class="flex-1 flex flex-col bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-w-0">  
+                    
+                    <div class="flex items-center border-b border-gray-200 px-2 pt-2 overflow-x-auto custom-scrollbar">
+                        <button @click="activeTab = 'unit_comparison'" :class="activeTab === 'unit_comparison' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">Unit Comparison</button>
+                        <button @click="activeTab = 'evaluation'" :class="activeTab === 'evaluation' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">Evaluation</button>
+                        <button @click="activeTab = 'inspection'" :class="activeTab === 'inspection' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">Inspection</button>
+                        <button @click="activeTab = 'receipt'" :class="activeTab === 'receipt' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'" class="whitespace-nowrap py-3 px-4 border-b-2 font-medium text-sm transition-colors">Receipt & Payment</button>
                     </div>
 
-                    <div class="flex-1 overflow-y-auto bg-gray-50/50 p-6">
-                        <div v-if="activeTab === 'inspection'" class="space-y-6">
-                             <div v-for="(item, index) in application.inspection_requirements" :key="item.id" class="p-4 bg-white border border-gray-200 rounded flex justify-between">
-                                <div><p class="font-bold">{{ item.name }}</p><p class="text-xs text-gray-500">{{ item.remarks }}</p></div>
-                                <span class="font-bold">{{ item.status }}</span>
+                    <div class="flex-1 overflow-y-auto bg-gray-50/50 p-6 custom-scrollbar">
+                        
+                        <div v-if="activeTab === 'unit_comparison'" class="space-y-6">
+                            <div class="bg-blue-50 border border-blue-100 rounded-lg p-6">
+                                <h3 class="font-bold text-blue-900 mb-6 flex items-center gap-2 text-lg">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                    Change of Unit Request Overview
+                                </h3>
+                                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 relative">
+                                    
+                                    <div class="bg-white p-5 rounded border border-gray-200 shadow-sm">
+                                        <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b pb-2">Current Unit</div>
+                                        <div class="space-y-3">
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Make/Model</span><span class="font-bold text-gray-900">{{ application.current_unit.make }} ({{ application.current_unit.year }})</span></div>
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Motor No.</span><span class="font-bold text-gray-900">{{ application.current_unit.motor_no }}</span></div>
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Chassis No.</span><span class="font-bold text-gray-900">{{ application.current_unit.chassis_no }}</span></div>
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Plate No.</span><span class="font-bold text-gray-900">{{ application.current_unit.plate_no }}</span></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-white p-5 rounded border-2 border-blue-300 shadow-sm relative overflow-hidden">
+                                        <div class="absolute top-0 right-0 bg-blue-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-lg tracking-wider">PROPOSED</div>
+                                        <div class="text-[11px] font-bold text-blue-600 uppercase tracking-wider mb-4 border-b border-blue-100 pb-2">New Unit</div>
+                                        <div class="space-y-3">
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Make/Model</span><span class="font-bold text-gray-900">{{ application.proposed_unit.make }} ({{ application.proposed_unit.year }})</span></div>
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Motor No.</span><span class="font-bold text-gray-900">{{ application.proposed_unit.motor_no }}</span></div>
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Chassis No.</span><span class="font-bold text-gray-900">{{ application.proposed_unit.chassis_no }}</span></div>
+                                            <div class="flex justify-between text-sm"><span class="text-gray-500">Plate No.</span><span class="font-bold text-gray-900">{{ application.proposed_unit.plate_no }}</span></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div v-if="activeTab === 'receipt'" class="bg-white p-6 border border-gray-200 rounded">
-                            <h3 class="font-bold">OR #{{ application.receipt.or_number }}</h3>
-                            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between font-bold">
+                        <div v-if="activeTab === 'evaluation'" class="space-y-4">
+                            <div v-if="application.evaluation_requirements.length === 0" class="text-center py-10 text-gray-500 italic bg-white border border-gray-200 rounded-lg">
+                                No documents uploaded for evaluation.
+                            </div>
+
+                            <div v-for="(req, index) in application.evaluation_requirements" :key="index" 
+                                @click="openRequirementModal(index)"
+                                class="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
+                                
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-0.5">
+                                        <svg v-if="req.status === 'Approved'" class="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg v-else-if="req.status === 'Rejected'" class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg v-else class="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 text-sm group-hover:text-blue-600 transition-colors">{{ req.name }}</h4>
+                                        <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                                            <span class="px-2.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide" 
+                                                :class="{
+                                                    'bg-green-100 text-green-800': req.status === 'Approved',
+                                                    'bg-red-100 text-red-800': req.status === 'Rejected',
+                                                    'bg-gray-100 text-gray-800': req.status === 'Pending'
+                                                }">
+                                                {{ req.status }}
+                                            </span>
+                                            <span v-if="req.remarks && req.remarks !== 'Pending Review'" class="text-[11px] text-gray-500 italic max-w-xs truncate">
+                                                - {{ req.remarks }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-gray-300 group-hover:text-blue-500 transition-colors px-2">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'inspection'" class="space-y-4">
+                            <div v-if="inspectionsList.length === 0" class="text-center py-10 bg-white border border-gray-200 rounded-lg text-gray-500 italic">
+                                No inspection items mapped to this database.
+                            </div>
+                            
+                            <div v-for="(item, index) in inspectionsList" :key="index" 
+                                @click="openInspectionModal(index)"
+                                class="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
+                                
+                                <div class="flex items-start gap-3">
+                                    <div class="mt-0.5">
+                                        <svg v-if="['Pass', 'Approved', 'Good', 'Excellent', '1'].includes(item.status)" class="w-6 h-6 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg v-else-if="item.status === 'Pending'" class="w-6 h-6 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                        <svg v-else class="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-semibold text-gray-800 text-sm group-hover:text-blue-600 transition-colors">{{ item.name }}</h4>
+                                        <div class="flex flex-wrap items-center gap-2 mt-1.5">
+                                            <span class="px-2.5 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide" 
+                                                :class="{
+                                                    'bg-green-100 text-green-800': ['Pass', 'Approved', 'Good', 'Excellent', '1'].includes(item.status),
+                                                    'bg-gray-100 text-gray-800': item.status === 'Pending',
+                                                    'bg-red-100 text-red-800': !['Pass', 'Approved', 'Good', 'Excellent', '1', 'Pending'].includes(item.status)
+                                                }">
+                                                {{ item.status }}
+                                            </span>
+                                            <span v-if="item.remarks" class="text-[11px] text-gray-500 italic max-w-xs truncate">
+                                                - {{ item.remarks }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="text-gray-300 group-hover:text-blue-500 transition-colors px-2">
+                                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="activeTab === 'receipt'" class="bg-white p-6 border border-gray-200 rounded-lg shadow-sm">
+                            <h3 class="font-bold text-gray-800">OR #{{ application.receipt.or_number }}</h3>
+                            <div class="mt-4 pt-4 border-t border-gray-200 flex justify-between font-bold text-lg text-gray-900">
                                 <span>Total</span>
                                 <span>{{ formatCurrency(application.receipt.total_amount_due) }}</span>
                             </div>
@@ -141,7 +404,121 @@ const formatCurrency = (value) => {
             </div>
         </div>
 
+        <Transition name="fade">
+            <div v-if="showRequirementModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeRequirementModal">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col" @click.stop>
+                    <div class="p-6 h-[85vh] flex flex-col" v-if="selectedRequirement">
+                        <div class="flex-none flex justify-between items-center mb-4 pb-4 border-b border-gray-100">
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900">{{ selectedRequirement.name }}</h2>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="px-2 py-0.5 rounded text-xs font-bold uppercase" 
+                                        :class="{
+                                            'bg-green-100 text-green-700': selectedRequirement.status === 'Approved',
+                                            'bg-red-100 text-red-700': selectedRequirement.status === 'Rejected',
+                                            'bg-gray-100 text-gray-600': selectedRequirement.status === 'Pending'
+                                        }">
+                                        {{ selectedRequirement.status }}
+                                    </span>
+                                </div>
+                            </div>
+                            <button @click="closeRequirementModal" class="text-gray-400 hover:text-gray-600">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        
+                        <div class="flex-1 bg-gray-50 rounded-xl border border-gray-100 flex items-center justify-center mb-4 relative overflow-hidden">
+                            <iframe v-if="isPdf(selectedRequirement.file_url)" :src="selectedRequirement.file_url" class="w-full h-full border-0"></iframe>
+                            <img v-else-if="selectedRequirement.file_url && selectedRequirement.file_url !== '#'" :src="selectedRequirement.file_url" class="max-w-full max-h-full object-contain" />
+                            <div v-else class="text-center text-gray-400">
+                                <svg class="w-16 h-16 mx-auto mb-2 opacity-50" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>
+                                <p class="text-sm font-medium">No Document Available</p>
+                            </div>
+                        </div>
+
+                        <div class="flex-none pt-4 border-t border-gray-100">
+                            <div class="mb-4">
+                                <InputLabel for="req_remarks" value="Remarks (Required for Rejection)" />
+                                <textarea id="req_remarks" v-model="requirementForm.remarks" rows="2" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="Provide reason if rejecting..."></textarea>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <SecondaryButton @click="closeRequirementModal">Close</SecondaryButton>
+                                <div class="flex gap-2">
+                                    <PrimaryButton @click="saveRequirementStatus('Rejected')" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
+                                        Reject
+                                    </PrimaryButton>
+                                    <PrimaryButton @click="saveRequirementStatus('Approved')" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
+                                        Approve
+                                    </PrimaryButton>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
+        <Transition name="fade">
+            <div v-if="showInspectionModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/50 backdrop-blur-sm" @click="closeInspectionModal">
+                <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col" @click.stop>
+                    <div class="p-6 flex flex-col" v-if="selectedInspection">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-gray-100">
+                            <div>
+                                <h2 class="text-xl font-bold text-gray-900">{{ selectedInspection.name }}</h2>
+                                <span class="px-2 py-0.5 mt-1 inline-block rounded text-xs font-bold uppercase tracking-wide"
+                                    :class="{
+                                        'bg-green-100 text-green-800': ['Pass', 'Approved', 'Good', 'Excellent', '1'].includes(selectedInspection.status),
+                                        'bg-gray-100 text-gray-800': selectedInspection.status === 'Pending',
+                                        'bg-red-100 text-red-800': !['Pass', 'Approved', 'Good', 'Excellent', '1', 'Pending'].includes(selectedInspection.status)
+                                    }">
+                                    {{ selectedInspection.status }}
+                                </span>
+                            </div>
+                            <button @click="closeInspectionModal" class="text-gray-400 hover:text-gray-600 mb-auto">
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+
+                        <div class="space-y-5">
+                            <div>
+                                <InputLabel value="Select Rating" />
+                                <div class="mt-2 flex flex-wrap gap-2">
+                                    <button v-for="option in selectedInspection.options" :key="option"
+                                        @click="inspectionForm.status = option"
+                                        :class="['px-4 py-2 border rounded-lg text-sm font-medium transition-colors', inspectionForm.status === option ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50']">
+                                        {{ option }}
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div>
+                                <InputLabel for="insp_remarks" value="Inspector Remarks / Notes" />
+                                <textarea id="insp_remarks" v-model="inspectionForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm" placeholder="Add specific observation details here..."></textarea>
+                            </div>
+                        </div>
+
+                        <div class="mt-6 flex justify-between items-center pt-4 border-t border-gray-100">
+                            <SecondaryButton @click="closeInspectionModal">Cancel</SecondaryButton>
+                            <PrimaryButton @click="saveInspectionStatus" class="bg-blue-600 hover:bg-blue-700" :disabled="!inspectionForm.status">
+                                Save Rating
+                            </PrimaryButton>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
         <ChangeOfUnitModal :show="showChangeUnitModal" :application="application" @close="showChangeUnitModal = false" />
 
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

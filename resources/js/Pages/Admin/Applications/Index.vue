@@ -136,6 +136,22 @@ const deleteRequirement = (id) => {
         });
     }
 };
+
+// This checks the type and returns the correct Laravel route
+const getApplicationShowRoute = (app) => {
+    // Assuming your DB stores it as 'application_type' or 'type'
+    const type = app.application_type || app.type; 
+    
+    if (type === 'Change of Unit') {
+        return route('admin.applications.show-change-of-unit', app.id);
+    }
+    
+    // Add more types here later (e.g., Change of Owner)
+    // if (type === 'Change of Owner') { return ... }
+    
+    // Fallback to the default show page
+    return route('admin.applications.show', app.id);
+};
 </script>
 
 <template>
@@ -206,8 +222,15 @@ const deleteRequirement = (id) => {
                                     {{ app.status.toUpperCase() }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-right">
-                                <Link :href="route('admin.applications.show', app.id)" class="text-gray-400 hover:text-blue-600 font-medium transition-colors">View</Link>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
+                                
+                                <Link 
+                                    :href="getApplicationShowRoute(app)" 
+                                    class="text-blue-600 hover:text-blue-900 font-bold uppercase text-xs"
+                                >
+                                    View
+                                </Link>
+
                             </td>
                         </tr>
                         <tr v-if="filteredApplications.length === 0">

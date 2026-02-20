@@ -19,6 +19,7 @@ use App\Http\Controllers\Public\ApplicationController;
 use App\Http\Controllers\Admin\ApplicationController as AdminApplicationController;
 use App\Http\Controllers\Admin\ApplicationShowController;
 use App\Http\Controllers\Franchise\ApplicationController as FranchiseApplicationController;
+use App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -161,7 +162,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
     Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
-
+    // ADD THIS NEW ROUTE specifically for Change of Unit (Place it BEFORE the generic show route if the URL structure is similar, though here we use a distinct path to be safe)
+    Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])
+        ->name('admin.applications.show-change-of-unit');
 
 Route::get('/franchise-owner', function () {
     return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
@@ -174,12 +177,6 @@ Route::get('/franchise-owner', function () {
 
 Route::get('/renewal', function () {
     return Inertia::render('Admin/Applications/ShowRenewal', [
-        'application' => null,
-    ]);
-});
-
-Route::get('/change-of-unit', function () {
-    return Inertia::render('Admin/Applications/ShowChangeOfUnit', [
         'application' => null,
     ]);
 });
