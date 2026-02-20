@@ -6,7 +6,6 @@ import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.v
 import { Head } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
-// Add defineProps somewhere in your <script setup>
 const props = defineProps({
     hasFranchise: Boolean,
     franchises: Array,
@@ -14,6 +13,23 @@ const props = defineProps({
     evaluationRequirements: {
         type: Object,
         default: () => ({})
+    },
+    // The flat arrays mapped from the ApplicationController
+    barangays: { 
+        type: Array, 
+        default: () => [] 
+    },
+    unitMakes: { 
+        type: Array, 
+        default: () => [] 
+    },
+    operators: { 
+        type: Array, 
+        default: () => [] 
+    },
+    units: { 
+        type: Array, 
+        default: () => [] 
     }
 });
 
@@ -169,6 +185,10 @@ const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 
             :show="showNewAppModal" 
             :evaluationRequirements="evaluationRequirements" 
             :franchises="franchises"
+            :barangays="barangays"
+            :unitMakes="unitMakes"
+            :operators="operators"
+            :units="units"
             @close="showNewAppModal = false"
             @submit="handleNewApplicationSubmit"
         />

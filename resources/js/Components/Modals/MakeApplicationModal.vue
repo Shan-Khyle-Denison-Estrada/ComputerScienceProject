@@ -7,19 +7,13 @@ import { useForm } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
 const props = defineProps({
-    show: {
-        type: Boolean,
-        required: true
-    },
-    evaluationRequirements: {
-        type: Object,
-        default: () => ({})
-    },
-    // Dynamically passed from the backend controller
-    franchises: {
-        type: Array,
-        default: () => []
-    }
+    show: { type: Boolean, required: true },
+    evaluationRequirements: { type: Object, default: () => ({}) },
+    franchises: { type: Array, default: () => [] },
+    barangays: { type: Array, default: () => [] },
+    unitMakes: { type: Array, default: () => [] },
+    operators: { type: Array, default: () => [] },
+    units: { type: Array, default: () => [] }
 });
 
 const emit = defineEmits(['close', 'submit']);
@@ -34,37 +28,36 @@ const showBarangayDropdown = ref(false);
 const docPreviews = ref({}); 
 const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); 
 
-// --- CONFIGURATION & DUMMY DATA ---
 const applicationTypes = [
     { id: 'renewal', name: 'Renewal', description: 'Renew franchise validity.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
     { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
     { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
 ];
 
-const dummyBarangays = [{ name: 'San Jose' }, { name: 'Tetuan' }, { name: 'Putik' }, { name: 'Tumaga' }, { name: 'Pasonanca' }];
-const dummyMakes = [{ id: 1, name: 'Honda' }, { id: 2, name: 'Kawasaki' }, { id: 3, name: 'Bajaj' }, { id: 4, name: 'Yamaha' }];
-const dummyOwners = [{ id: 1, name: 'Juan Dela Cruz', email: 'juan@example.com' }, { id: 2, name: 'Maria Santos', email: 'maria@example.com' }, { id: 3, name: 'Pedro Penduko', email: 'pedro@example.com' }];
-const dummyUnits = [{ id: 1, plate: 'ABC-123', make: 'Honda', motor: 'H123456', chassis: 'C123456' }, { id: 2, plate: 'XYZ-789', make: 'Kawasaki', motor: 'K987654', chassis: 'K987654' }, { id: 3, plate: 'DBP-001', make: 'Suzuki', motor: 'S112233', chassis: 'S445566' }];
-
 // --- FORMS ---
 const form = useForm({
-    type: 'renewal', selected_franchise_id: '', application_date: new Date().toISOString().split('T')[0], remarks: '',
+    type: 'renewal', 
+    selected_franchise_id: '', 
+    remarks: '',
+    
+    // Owner Fields
     existing_owner_id: '', first_name: '', middle_name: '', last_name: '', contact_number: '', email: '', street_address: '', barangay: '', city: 'Zamboanga City',
+    
+    // Unit Fields
     existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
     unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
+    
+    // Document uploads
     documents: {} 
 });
 
-// --- HELPERS & ACTIONS ---
-
-// Get active requirements based on the chosen application type
 const currentEvaluationRequirements = computed(() => {
     const typeObj = applicationTypes.find(t => t.id === selectedType.value);
     if (!typeObj) return [];
     return props.evaluationRequirements[typeObj.name] || [];
 });
 
-const filteredBarangays = computed(() => dummyBarangays.filter(b => b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())));
+const filteredBarangays = computed(() => props.barangays.filter(b => b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())));
 const isUnitRequired = computed(() => ['change_unit'].includes(selectedType.value));
 const isOwnerRequired = computed(() => ['change_owner'].includes(selectedType.value));
 const isFranchiseSelectRequired = computed(() => true); 
@@ -98,6 +91,7 @@ const isStep2Valid = computed(() => {
 
 const closeModal = () => { 
     form.reset();
+    form.clearErrors();
     currentStep.value = 1;
     docPreviews.value = {}; 
     unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
@@ -110,7 +104,6 @@ const selectType = (typeId) => {
     form.type = typeId; 
     currentStep.value = 2; 
     
-    // Wipe previous states to prevent backend contamination
     form.documents = {};
     docPreviews.value = {};
     form.unit_front_photo = null; form.unit_back_photo = null; form.unit_left_photo = null; form.unit_right_photo = null;
@@ -130,21 +123,18 @@ const handleUnitPhoto = (event, side) => {
 };
 
 const submit = () => {
-    const newAppPayload = {
-        id: Math.random(),
-        ref_no: `APP-2024-${Math.floor(Math.random() * 1000)}`,
-        type: applicationTypes.find(t => t.id === selectedType.value).name,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending',
-        current_step: 1,
-        remarks: 'New submission',
-        is_active: true
-    };
-    emit('submit', newAppPayload);
-    closeModal();
+    if (selectedType.value === 'change_unit') {
+        form.post(route('franchise.applications.store-change-unit'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('submit'); 
+                closeModal();
+            },
+        });
+    } else {
+        alert("The backend logic for this application type is not yet hooked up. Only Change of Unit is working.");
+    }
 };
-
-const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
 </script>
 
 <template>
@@ -161,9 +151,7 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                         <p class="text-xs text-gray-500 mt-0.5">Step {{ currentStep }} of 3</p>
                     </div>
                     <button @click="closeModal" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                        </svg>
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                 </div>
 
@@ -174,9 +162,7 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                             @click="selectType(type.id)"
                             class="flex items-center p-4 border rounded-xl hover:border-blue-500 hover:bg-blue-50 cursor-pointer transition-colors group">
                             <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-blue-600 mr-4 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="type.icon" />
-                                </svg>
+                                <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="type.icon" /></svg>
                             </div>
                             <div>
                                 <h3 class="font-bold text-gray-800">{{ type.name }}</h3>
@@ -196,6 +182,7 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                                     (Plate: {{ fran.current_active_unit?.new_unit?.plate_number || 'N/A' }})
                                 </option>
                             </select>
+                            <p v-if="form.errors.selected_franchise_id" class="text-red-500 text-xs mt-1">{{ form.errors.selected_franchise_id }}</p>
                         </div>
 
                         <div v-if="isOwnerRequired">
@@ -209,7 +196,7 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                                 <InputLabel value="Search / Select Existing Owner" />
                                 <select v-model="form.existing_owner_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
                                     <option value="">-- Select Owner --</option>
-                                    <option v-for="o in dummyOwners" :key="o.id" :value="o.id">{{ o.name }} ({{ o.email }})</option>
+                                    <option v-for="o in operators" :key="o.id" :value="o.id">{{ o.name }} ({{ o.email }})</option>
                                 </select>
                             </div>
 
@@ -227,11 +214,12 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                                     <div class="relative mt-1">
                                         <TextInput v-model="barangayQuery" @focus="showBarangayDropdown = true" placeholder="Search..." class="w-full text-sm py-1.5" />
                                         <div v-if="showBarangayDropdown" class="absolute z-10 w-full bg-white border mt-1 rounded shadow-lg max-h-32 overflow-y-auto">
-                                            <div v-for="brgy in filteredBarangays" :key="brgy.name" 
+                                            <div v-for="brgy in filteredBarangays" :key="brgy.id" 
                                                 @click="form.barangay = brgy.name; barangayQuery = brgy.name; showBarangayDropdown = false" 
                                                 class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer">
                                                 {{ brgy.name }}
                                             </div>
+                                            <div v-if="filteredBarangays.length === 0" class="px-3 py-2 text-sm text-gray-500 italic">No barangays found.</div>
                                         </div>
                                     </div>
                                 </div>
@@ -250,7 +238,7 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                                 <InputLabel value="Search / Select Existing Unit" />
                                 <select v-model="form.existing_unit_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
                                     <option value="">-- Select Unit --</option>
-                                    <option v-for="u in dummyUnits" :key="u.id" :value="u.id">{{ u.plate }} - {{ u.make }} (Motor: {{ u.motor }})</option>
+                                    <option v-for="u in units" :key="u.id" :value="u.id">{{ u.plate }} - {{ u.make }} (Motor: {{ u.motor }})</option>
                                 </select>
                             </div>
 
@@ -259,14 +247,26 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                                     <div>
                                         <InputLabel value="Make" />
                                         <select v-model="form.make_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1">
-                                            <option v-for="m in dummyMakes" :key="m.id" :value="m.id">{{ m.name }}</option>
+                                            <option value="">-- Select Make --</option>
+                                            <option v-for="m in unitMakes" :key="m.id" :value="m.id">{{ m.name }}</option>
                                         </select>
+                                        <p v-if="form.errors.make_id" class="text-red-500 text-xs mt-1">{{ form.errors.make_id }}</p>
                                     </div>
-                                    <div><InputLabel value="Model Year" /><TextInput type="number" v-model="form.model_year" class="w-full text-sm py-1.5 mt-1" placeholder="YYYY" /></div>
-                                    <div><InputLabel value="Plate No." /><TextInput v-model="form.plate_number" class="w-full text-sm py-1.5 mt-1" /></div>
-                                    <div><InputLabel value="Motor No." /><TextInput v-model="form.motor_number" class="w-full text-sm py-1.5 mt-1" /></div>
-                                    <div><InputLabel value="Chassis No." /><TextInput v-model="form.chassis_number" class="w-full text-sm py-1.5 mt-1" /></div>
-                                    <div><InputLabel value="CR No." /><TextInput v-model="form.cr_number" class="w-full text-sm py-1.5 mt-1" /></div>
+                                    <div><InputLabel value="Model Year" /><TextInput type="number" v-model="form.model_year" class="w-full text-sm py-1.5 mt-1" placeholder="YYYY" />
+                                        <p v-if="form.errors.model_year" class="text-red-500 text-xs mt-1">{{ form.errors.model_year }}</p>
+                                    </div>
+                                    <div><InputLabel value="Plate No." /><TextInput v-model="form.plate_number" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.plate_number" class="text-red-500 text-xs mt-1">{{ form.errors.plate_number }}</p>
+                                    </div>
+                                    <div><InputLabel value="Motor No." /><TextInput v-model="form.motor_number" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.motor_number" class="text-red-500 text-xs mt-1">{{ form.errors.motor_number }}</p>
+                                    </div>
+                                    <div><InputLabel value="Chassis No." /><TextInput v-model="form.chassis_number" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.chassis_number" class="text-red-500 text-xs mt-1">{{ form.errors.chassis_number }}</p>
+                                    </div>
+                                    <div><InputLabel value="CR No." /><TextInput v-model="form.cr_number" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.cr_number" class="text-red-500 text-xs mt-1">{{ form.errors.cr_number }}</p>
+                                    </div>
                                 </div>
 
                                 <div class="mt-2">
@@ -347,8 +347,8 @@ const getMakeName = (id) => dummyMakes.find(m => m.id === id)?.name || '-';
                         Next Review
                     </PrimaryButton>
                     
-                    <PrimaryButton v-else @click="submit" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
-                        Confirm Submission
+                    <PrimaryButton v-else @click="submit" :class="{ 'opacity-50': form.processing }" :disabled="form.processing" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
+                        {{ form.processing ? 'Submitting...' : 'Confirm Submission' }}
                     </PrimaryButton>
                 </div>
             </div>

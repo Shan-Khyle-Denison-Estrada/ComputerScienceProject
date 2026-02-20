@@ -5,9 +5,17 @@ namespace App\Http\Controllers\Franchise;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use App\Models\Franchise;
 use App\Models\EvaluationRequirement;
+use App\Models\Application;
+use App\Models\ProposedUnit;
+use App\Models\ApplicationEvaluation;
+use App\Models\Barangay;
+use App\Models\UnitMake;
+use App\Models\Operator;
+use App\Models\Unit;
 
 class ApplicationController extends Controller
 {
@@ -16,23 +24,48 @@ class ApplicationController extends Controller
         $user = Auth::user();
         $operator = $user->operator; 
 
-        // 1. Handle Non-Operator Users
         if (!$operator) {
             return Inertia::render('Franchise/MakeApplication', [
                 'hasFranchise' => false,
                 'franchises' => [],
                 'operator' => null,
-                'evaluationRequirements' => []
+                'evaluationRequirements' => [],
+                'barangays' => [],
+                'unitMakes' => [],
+                'operators' => [],
+                'units' => []
             ]);
         }
 
-        // 2. Fetch all active evaluation requirements grouped by the 'group' column 
-        // Example groups: 'Renewal', 'Change of Owner', 'Change of Unit'
         $evaluationRequirements = EvaluationRequirement::where('is_active', true)
             ->get()
             ->groupBy('group');
 
-        // 3. Find ALL Active Franchises for this Operator (Same as DashboardController)
+        // --- STRAIGHTFORWARD FETCHING ---
+        // 1. Barangays & Makes
+        $barangays = Barangay::select('id', 'name')->orderBy('name', 'asc')->get();
+        $unitMakes = UnitMake::select('id', 'name')->orderBy('name', 'asc')->get();
+        
+        // 2. Operators (Mapped to simple array)
+        $operators = Operator::with('user')->get()->map(function($op) {
+            return [
+                'id' => $op->id,
+                'name' => $op->user ? trim($op->user->first_name . ' ' . $op->user->last_name) : 'Unknown',
+                'email' => $op->user ? $op->user->email : 'N/A',
+            ];
+        });
+
+        // 3. Units (Mapped to simple array)
+        $units = Unit::with('make')->get()->map(function($unit) {
+            return [
+                'id' => $unit->id,
+                'plate' => $unit->plate_number,
+                'make' => $unit->make ? $unit->make->name : 'Unknown',
+                'motor' => $unit->motor_number,
+            ];
+        });
+
+        // 4. Franchises
         $franchises = Franchise::whereHas('currentOwnership', function ($query) use ($operator) {
             $query->where('new_operator_id', $operator->id);
         })
@@ -49,12 +82,9 @@ class ApplicationController extends Controller
         ])
         ->get();
 
-        // 4. Process each franchise to format nested data
         $franchises->transform(function ($franchise) {
-            
             $franchise->current_status = $franchise->status; 
 
-            // Flatten payments
             $franchise->payment_history = $franchise->assessments->flatMap(function($assessment) {
                 return $assessment->payments->map(function($payment) use ($assessment) {
                     $payment->assessment_id = $assessment->id;
@@ -66,16 +96,13 @@ class ApplicationController extends Controller
                 });
             })->sortByDesc('created_at')->values();
 
-            // Sort histories
             $franchise->unit_history = $franchise->unitHistory->sortByDesc('date_changed')->values();
             $franchise->ownership_history = $franchise->ownershipHistory->sortByDesc('date_transferred')->values();
             
-            // Sort drivers so the 'Active' one (is_active = true) is always at the top
             $franchise->driver_history = $franchise->driverAssignments
                 ->sortByDesc('is_active')
                 ->values();
 
-            // Helper to quickly identify active driver for the frontend card
             $franchise->active_driver = $franchise->driverAssignments
                 ->where('is_active', true)
                 ->first()
@@ -84,12 +111,98 @@ class ApplicationController extends Controller
             return $franchise;
         });
 
-        // Assuming your page view is named 'Franchise/MakeApplication'
         return Inertia::render('Franchise/MakeApplication', [
             'hasFranchise' => true,
             'franchises' => $franchises,
             'operator' => $operator->load('user'),
-            'evaluationRequirements' => $evaluationRequirements
+            'evaluationRequirements' => $evaluationRequirements,
+            'barangays' => $barangays,
+            'unitMakes' => $unitMakes,
+            'operators' => $operators,
+            'units' => $units
         ]);
+    }
+
+    public function storeChangeOfUnit(Request $request)
+    {
+        $request->validate([
+            'selected_franchise_id' => 'required|exists:franchises,id',
+            'make_id'               => 'required', 
+            'model_year'            => 'required|numeric',
+            'plate_number'          => 'required|string',
+            'motor_number'          => 'required|string',
+            'chassis_number'        => 'required|string',
+            'cr_number'             => 'required|string',
+            'unit_front_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'unit_back_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'unit_left_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'unit_right_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'documents'             => 'required|array',
+            'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $user = Auth::user();
+        $franchise = Franchise::findOrFail($request->selected_franchise_id);
+
+        // 1. Create the base Application
+        $application = Application::create([
+            'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
+            'user_id'          => $user->id,
+            'franchise_id'     => $franchise->id,
+            'zone_id'          => $franchise->zone_id,
+            'application_type' => 'Change of Unit',
+            'status'           => 'Pending',
+            'remarks'          => 'Application submitted. Waiting for initial review.',
+            'submitted_at'     => now(),
+            
+            // --- Auto-fill Applicant (Operator) Information securely ---
+            'first_name'       => $user->first_name,
+            'middle_name'      => $user->middle_name,
+            'last_name'        => $user->last_name,
+            'contact_number'   => $user->contact_number,
+            'email'            => $user->email, // Or $operator->email if it's on the Operator model
+            'tin_number'       => $user->tin_number,
+            'street_address'   => $user->street_address ?? $user->address, // Fallback to 'address' if that's your column
+            'barangay'         => $user->barangay,
+            'city'             => $user->city ?? 'Zamboanga City',
+        ]);
+
+        // 2. Upload unit photos to storage
+        $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
+        $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
+        $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
+        $rightPath = $request->file('unit_right_photo')->store('units/photos', 'public');
+
+        // 3. Create the Proposed Unit
+        ProposedUnit::create([
+            'application_id'   => $application->id,
+            'make_id'          => $request->make_id, 
+            'model_year'       => $request->model_year,
+            'plate_number'     => $request->plate_number,
+            'motor_number'     => $request->motor_number,
+            'chassis_number'   => $request->chassis_number,
+            'cr_number'        => $request->cr_number,
+            'unit_front_photo' => $frontPath,
+            'unit_back_photo'  => $backPath,
+            'unit_left_photo'  => $leftPath,
+            'unit_right_photo' => $rightPath,
+        ]);
+
+        // 4. Upload and attach Evaluation Requirement Documents
+        if ($request->hasFile('documents')) {
+            foreach ($request->file('documents') as $requirementId => $file) {
+                $filePath = $file->store('applications/documents', 'public');
+
+                ApplicationEvaluation::create([
+                    'application_id'            => $application->id,
+                    'requirement_id' => $requirementId,
+                    'file_path'                 => $filePath,
+                    'is_compliant'              => null,
+                    'remarks'                   => 'Uploaded upon submission.'
+                ]);
+            }
+        }
+
+        return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
     }
 }
