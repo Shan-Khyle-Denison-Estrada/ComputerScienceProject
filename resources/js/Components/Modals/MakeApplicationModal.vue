@@ -40,7 +40,7 @@ const form = useForm({
     selected_franchise_id: '', 
     remarks: '',
     
-    owner_mode: 'existing', // Added to pass to backend
+    owner_mode: 'existing', // Added to properly pass mode to backend
 
     // Owner Fields
     existing_operator_id: '', 
@@ -49,7 +49,7 @@ const form = useForm({
     new_owner_last_name: '', 
     new_owner_contact: '', 
     new_owner_email: '', 
-    new_owner_tin: '',
+    new_owner_tin: '', // <-- Added here
     new_owner_address: '', 
     new_owner_barangay: '', 
     new_owner_city: 'Zamboanga City',
@@ -78,14 +78,21 @@ const areAllDocsUploaded = computed(() => {
     return reqs.every(r => form.documents[r.id]);
 });
 
+// Added form.new_owner_tin check here
 const isStep2Valid = computed(() => {
     if (isFranchiseSelectRequired.value && !form.selected_franchise_id) return false;
+    
+    // Check if the current required documents are uploaded
     if (!areAllDocsUploaded.value) return false;
 
     if (isOwnerRequired.value) {
         if (ownerMode.value === 'existing' && !form.existing_operator_id) return false;
         if (ownerMode.value === 'new') {
-            if (!form.new_owner_first_name || !form.new_owner_last_name || !form.new_owner_contact || !form.new_owner_address || !form.new_owner_barangay) return false;
+            if (!form.new_owner_first_name || !form.new_owner_last_name || 
+                !form.new_owner_contact || !form.new_owner_address || 
+                !form.new_owner_barangay || !form.new_owner_tin) {
+                return false;
+            }
         }
     }
 
@@ -142,7 +149,7 @@ const submit = () => {
             },
         });
     } else if (selectedType.value === 'change_owner') {
-        form.owner_mode = ownerMode.value; // Sync the mode type
+        form.owner_mode = ownerMode.value; // Sync to controller expectation
         form.post(route('franchise.applications.store-change-owner'), {
             preserveScroll: true,
             onSuccess: () => {
@@ -150,8 +157,15 @@ const submit = () => {
                 closeModal();
             },
         });
-    } else {
-        alert("The backend logic for this application type is not yet hooked up. Only Change of Unit and Change of Owner are working.");
+    } else if (selectedType.value === 'renewal') {
+        // Renewal goes straight to its dedicated route
+        form.post(route('franchise.applications.store-renewal'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('submit'); 
+                closeModal();
+            },
+        });
     }
 };
 </script>
@@ -228,8 +242,8 @@ const submit = () => {
                                 <div><InputLabel value="Contact Number" /><TextInput v-model="form.new_owner_contact" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
                                 
                                 <div><InputLabel value="TIN Number" /><TextInput v-model="form.new_owner_tin" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div class="sm:col-span-2"><InputLabel value="Street Address" /><TextInput v-model="form.new_owner_address" class="w-full text-sm py-1.5 mt-1" /></div>
                                 
+                                <div class="sm:col-span-2"><InputLabel value="Street Address" /><TextInput v-model="form.new_owner_address" class="w-full text-sm py-1.5 mt-1" /></div>
                                 <div class="sm:col-span-2">
                                     <InputLabel value="Barangay" />
                                     <div class="relative mt-1">

@@ -83,15 +83,14 @@ const complaintOptions = [
 ];
 
 const complaintForm = useForm({
-    franchise_id: props.franchise.id,
     nature_of_complaint: '',
-    remarks: '',
-    fare_collected: '',
+    incident_date: '',
+    incident_time: '',
     pick_up_point: '',
     drop_off_point: '',
+    fare_collected: '',
     complainant_contact: '',
-    incident_date: new Date().toISOString().split('T')[0],
-    incident_time: new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+    remarks: ''
 });
 
 // --- ACTIONS ---
@@ -117,8 +116,11 @@ const submitDriverAssignment = () => {
 
 const submitComplaint = () => {
     complaintForm.post(route('admin.franchises.complaints.store', props.franchise.id), {
-        onSuccess: () => { showComplaintModal.value = false; complaintForm.reset(); activeTab.value = 'complaints'; },
-        onError: () => { showComplaintModal.value = true; }
+        preserveScroll: true,
+        onSuccess: () => { 
+            showComplaintModal.value = false; 
+            complaintForm.reset(); 
+        },
     });
 };
 
@@ -861,75 +863,79 @@ const getDriverName = (driver) => {
             </div>
         </Modal>
 
-        <Modal :show="showComplaintModal" @close="showComplaintModal = false" maxWidth="lg">
-             <div class="p-6">
-                <div class="mb-4">
-                     <h2 class="text-lg font-bold text-red-600">File a Complaint</h2>
-                     <p class="text-sm text-gray-500">Report an incident involving this franchise.</p>
-                </div>
-
-                <form @submit.prevent="submitComplaint" class="space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
+<Modal :show="showComplaintModal" @close="showComplaintModal = false">
+            <div class="p-6">
+                <h2 class="text-lg font-bold text-gray-900 mb-6">File a Complaint</h2>
+                <form @submit.prevent="submitComplaint">
+                    <div class="space-y-4">
+                        
                         <div>
-                            <InputLabel>Date of Incident *</InputLabel>
-                            <TextInput v-model="complaintForm.incident_date" type="date" class="mt-1 block w-full" required />
+                            <InputLabel value="Nature of Complaint *" />
+                            <select v-model="complaintForm.nature_of_complaint" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" required>
+                                <option value="" disabled>Select nature of complaint...</option>
+                                <option v-for="nature in complaintNatures" :key="nature.id" :value="nature.name">
+                                    {{ nature.name }}
+                                </option>
+                            </select>
+                            <p v-if="complaintForm.errors.nature_of_complaint" class="text-red-500 text-xs mt-1">{{ complaintForm.errors.nature_of_complaint }}</p>
                         </div>
-                         <div>
-                            <InputLabel>Time *</InputLabel>
-                            <TextInput v-model="complaintForm.incident_time" type="time" class="mt-1 block w-full" required />
-                        </div>
-                    </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Nature of Complaint *</label>
-                        <select v-model="complaintForm.nature_of_complaint" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
-                            <option value="" disabled>Select nature of complaint...</option>
-                            <option v-for="nature in complaintNatures" :key="nature.id" :value="nature.id">
-                                {{ nature.name }}
-                            </option>
-                        </select>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel>Pick-up Point</InputLabel>
-                            <TextInput v-model="complaintForm.pick_up_point" type="text" class="mt-1 block w-full" placeholder="e.g. City Hall" />
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel value="Date of Incident *" />
+                                <TextInput v-model="complaintForm.incident_date" type="date" class="mt-1 block w-full text-sm" required />
+                                <p v-if="complaintForm.errors.incident_date" class="text-red-500 text-xs mt-1">{{ complaintForm.errors.incident_date }}</p>
+                            </div>
+                            <div>
+                                <InputLabel value="Time of Incident *" />
+                                <TextInput v-model="complaintForm.incident_time" type="time" class="mt-1 block w-full text-sm" required />
+                                <p v-if="complaintForm.errors.incident_time" class="text-red-500 text-xs mt-1">{{ complaintForm.errors.incident_time }}</p>
+                            </div>
                         </div>
-                         <div>
-                            <InputLabel>Drop-off Point</InputLabel>
-                            <TextInput v-model="complaintForm.drop_off_point" type="text" class="mt-1 block w-full" placeholder="e.g. Market" />
-                        </div>
-                    </div>
 
-                     <div class="grid grid-cols-2 gap-4">
-                        <div>
-                             <label class="block text-sm font-medium text-gray-700 mb-1">Fare Collected</label>
-                             <div class="relative rounded-md shadow-sm">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                  <span class="text-gray-500 sm:text-sm">₱</span>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel value="Pick-up Point" />
+                                <TextInput v-model="complaintForm.pick_up_point" type="text" class="mt-1 block w-full text-sm" placeholder="e.g. Plaza" />
+                            </div>
+                            <div>
+                                <InputLabel value="Drop-off Point" />
+                                <TextInput v-model="complaintForm.drop_off_point" type="text" class="mt-1 block w-full text-sm" placeholder="e.g. Market" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <InputLabel value="Fare Collected (Optional)" />
+                                <div class="relative mt-1">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 sm:text-sm">₱</span>
+                                    </div>
+                                    <TextInput v-model="complaintForm.fare_collected" type="number" step="0.01" class="block w-full pl-7 text-sm" placeholder="0.00" />
                                 </div>
-                                <input type="number" v-model="complaintForm.fare_collected" step="0.01" class="focus:ring-red-500 focus:border-red-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-md" placeholder="0.00">
-                              </div>
+                            </div>
+                            <div>
+                                <InputLabel value="Complainant Contact # *" />
+                                <TextInput v-model="complaintForm.complainant_contact" type="text" class="mt-1 block w-full text-sm" placeholder="09xxxxxxxxx" required />
+                                <p v-if="complaintForm.errors.complainant_contact" class="text-red-500 text-xs mt-1">{{ complaintForm.errors.complainant_contact }}</p>
+                            </div>
                         </div>
-                         <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Complainant Contact *</label>
-                             <input type="text" v-model="complaintForm.complainant_contact" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" placeholder="09xxxxxxxxx" required>
+
+                        <div>
+                            <InputLabel value="Remarks / Narrative" />
+                            <textarea v-model="complaintForm.remarks" rows="3" class="mt-1 block w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" placeholder="Describe the incident..."></textarea>
                         </div>
+
                     </div>
 
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Narrative / Remarks</label>
-                        <textarea v-model="complaintForm.remarks" rows="3" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" placeholder="Describe what happened..."></textarea>
-                    </div>
-
-                    <div class="mt-6 flex justify-end gap-3">
-                         <SecondaryButton @click="showComplaintModal = false">Cancel</SecondaryButton>
-                         <button type="submit" :disabled="complaintForm.processing" class="inline-flex items-center px-4 py-2 bg-red-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-red-700 active:bg-red-900 focus:outline-none focus:border-red-900 focus:ring ring-red-300 disabled:opacity-25 transition ease-in-out duration-150">
-                            Submit Report
+                    <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
+                        <SecondaryButton type="button" @click="showComplaintModal = false">Cancel</SecondaryButton>
+                        <button type="submit" :disabled="complaintForm.processing" class="px-4 py-2 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500">
+                            {{ complaintForm.processing ? 'Submitting...' : 'Submit Report' }}
                         </button>
                     </div>
                 </form>
-             </div>
+            </div>
         </Modal>
 
         <Modal :show="showRedFlagModal" @close="showRedFlagModal = false">

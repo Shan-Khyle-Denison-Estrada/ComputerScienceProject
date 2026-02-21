@@ -248,7 +248,7 @@ class FranchiseController extends Controller
         return Inertia::render('Verify');
     }
 
-public function publicShow($id)
+    public function publicShow($id)
     {
         $franchise = Franchise::with([
             'currentOwnership.newOwner.user',
@@ -264,7 +264,7 @@ public function publicShow($id)
         ]);
     }
 
-public function lookup(Request $request)
+    public function lookup(Request $request)
     {
         $request->validate([
             'qr_code' => 'required|string'
@@ -293,41 +293,25 @@ public function lookup(Request $request)
 
 public function storeComplaint(Request $request, $franchiseId)
     {
+        // Mirrors ComplaintController exactly
         $validated = $request->validate([
             'nature_of_complaint' => 'required|string',
             'incident_date' => 'required|date',
             'incident_time' => 'required',
-            'complainant_contact' => 'required|string',
             'remarks' => 'nullable|string',
             'fare_collected' => 'nullable|numeric',
             'pick_up_point' => 'nullable|string',
             'drop_off_point' => 'nullable|string',
+            'complainant_contact' => 'required|string', // Required in PublicShow
         ]);
 
-        $franchise = Franchise::findOrFail($franchiseId);
-        
-        // 1. Determine Incident DateTime
-        $incidentDateTime = Carbon::parse($validated['incident_date'] . ' ' . $validated['incident_time']);
+        // Attach Franchise ID and Default Status
+        $validated['franchise_id'] = $franchiseId;
+        $validated['status'] = 'Pending';
 
-        // 2. Find the driver who was active at that exact moment
-        // Logic: Started BEFORE incident AND (Ended AFTER incident OR Still Active/Null)
-        $driverLog = DriverLog::where('franchise_id', $franchiseId)
-            ->where('started_at', '<=', $incidentDateTime)
-            ->where(function($query) use ($incidentDateTime) {
-                $query->where('ended_at', '>=', $incidentDateTime)
-                      ->orWhereNull('ended_at');
-            })
-            ->first();
+        Complaint::create($validated);
 
-        // 3. Attach Driver ID if found
-        $complaintData = $validated;
-        if ($driverLog) {
-            $complaintData['driver_id'] = $driverLog->driver_id;
-        }
-
-        $franchise->complaints()->create($complaintData);
-
-        return redirect()->back()->with('success', 'Complaint logged successfully. Driver identified: ' . ($driverLog ? $driverLog->driver->full_name : 'None'));
+        return redirect()->back()->with('success', 'Complaint logged successfully.');
     }
 
     // NEW: Resolve Complaint

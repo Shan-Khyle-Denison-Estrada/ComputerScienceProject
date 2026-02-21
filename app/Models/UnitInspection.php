@@ -14,11 +14,24 @@ class UnitInspection extends Model
         'inspection_item_id',
         'rating',
         'remarks',
+        'unit_id',           // NEW
+        'application_id'     // NEW
     ];
 
     public function proposedUnit()
     {
         return $this->belongsTo(ProposedUnit::class);
+    }
+
+    // New Relationships
+    public function unit()
+    {
+        return $this->belongsTo(Unit::class);
+    }
+
+    public function application()
+    {
+        return $this->belongsTo(Application::class);
     }
 
     public function inspectionItem()

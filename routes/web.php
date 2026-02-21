@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\ApplicationShowController;
 use App\Http\Controllers\Franchise\ApplicationController as FranchiseApplicationController;
 use App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController;
 use App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController;
+use App\Http\Controllers\Admin\ApplicationRenewalShowController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -131,7 +132,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // 14. Complaint Route
     Route::get('/admin/complaints', [ComplaintController::class, 'index'])->name('admin.complaints.index');
-    Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
+    // Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
     Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
 
     // 15. Red Flags Routes
@@ -182,20 +183,26 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/change-of-owner/{application}/return', [ApplicationChangeOfOwnerShowController::class, 'returnApplication'])->name('admin.applications.change-of-owner.return');
     Route::post('/applications/change-of-owner/{application}/finalize', [ApplicationChangeOfOwnerShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-owner.finalize');
 
-Route::get('/franchise-owner', function () {
-    return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
-        'application' => null, 
-        'barangays' => [],
-        'zones' => [],
-        'unitMakes' => [],
-    ]);
-});
+    // NEW: RENEWAL SHOW ROUTES
+    Route::get('/applications/renewal/{application}', [ApplicationRenewalShowController::class, 'show'])->name('admin.applications.show-renewal');
+    Route::post('/applications/renewal/{application}/evaluate', [ApplicationRenewalShowController::class, 'updateEvaluation'])->name('admin.applications.renewal.evaluate');
+    Route::post('/applications/renewal/{application}/inspect', [ApplicationRenewalShowController::class, 'updateInspection'])->name('admin.applications.renewal.inspect');
+    Route::post('/applications/renewal/{application}/approve', [ApplicationRenewalShowController::class, 'approveApplication'])->name('admin.applications.renewal.approve');
+    Route::post('/applications/renewal/{application}/reject', [ApplicationRenewalShowController::class, 'rejectApplication'])->name('admin.applications.renewal.reject');
+    Route::post('/applications/renewal/{application}/return', [ApplicationRenewalShowController::class, 'returnApplication'])->name('admin.applications.renewal.return');
+    Route::post('/applications/renewal/{application}/finalize', [ApplicationRenewalShowController::class, 'finalizeApplication'])->name('admin.applications.renewal.finalize');
 
-Route::get('/renewal', function () {
-    return Inertia::render('Admin/Applications/ShowRenewal', [
-        'application' => null,
-    ]);
-});
+    Route::patch('/applications/renewal/{application}/complaints/{complaint}/resolve', [ApplicationRenewalShowController::class, 'resolveComplaint'])->name('admin.applications.renewal.resolve-complaint');
+    Route::patch('/applications/renewal/{application}/red-flags/{redFlag}/resolve', [ApplicationRenewalShowController::class, 'resolveRedFlag'])->name('admin.applications.renewal.resolve-red-flag');
+
+    Route::get('/franchise-owner', function () {
+        return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
+            'application' => null, 
+            'barangays' => [],
+            'zones' => [],
+            'unitMakes' => [],
+        ]);
+    });
 
 });
 
@@ -208,6 +215,7 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');
     Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])->name('franchise.applications.store-change-unit');
     Route::post('/franchise/applications/change-owner', [FranchiseApplicationController::class, 'storeChangeOfOwner'])->name('franchise.applications.store-change-owner');
+    Route::post('/franchise/applications/renewal', [FranchiseApplicationController::class, 'storeRenewal'])->name('franchise.applications.store-renewal');
     
     // NEW: Application Resubmit/Comply Route
     Route::post('/franchise/applications/{application}/resubmit', [FranchiseApplicationController::class, 'resubmitApplication'])->name('franchise.applications.resubmit');

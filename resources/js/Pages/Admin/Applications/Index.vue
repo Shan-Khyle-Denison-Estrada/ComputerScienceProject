@@ -159,6 +159,8 @@ const getApplicationRoute = (app) => {
         return route('admin.applications.show-change-of-unit', app.id);
     } else if (app.type === 'Change of Owner') {
         return route('admin.applications.show-change-of-owner', app.id);
+    } else if (app.type === 'Renewal') {
+        return route('admin.applications.show-renewal', app.id); // <-- UPDATED HERE
     }
     // Fallback or future paths
     return route('admin.applications.show', app.id);
