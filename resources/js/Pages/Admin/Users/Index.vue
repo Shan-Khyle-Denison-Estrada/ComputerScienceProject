@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- Added Pagination Import
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -34,10 +35,10 @@ const addForm = useForm({
     middle_name: '',
     last_name: '',
     email: '',
-    contact_number: '',    // Added
-    street_address: '',    // Added
-    barangay: '',          // Added
-    city: '',              // Added
+    contact_number: '',    
+    street_address: '',    
+    barangay: '',          
+    city: '',              
     role: 'admin', 
     password: '',
     password_confirmation: '',
@@ -51,10 +52,10 @@ const editForm = useForm({
     middle_name: '',
     last_name: '',
     email: '',
-    contact_number: '',    // Added
-    street_address: '',    // Added
-    barangay: '',          // Added
-    city: '',              // Added
+    contact_number: '',    
+    street_address: '',    
+    barangay: '',          
+    city: '',              
     role: '',
     status: '',
     password: '', 
@@ -269,24 +270,13 @@ const resetFilters = () => {
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="users.links && users.meta">
-                <div class="text-xs text-gray-500">
-                    Showing {{ users.meta.from }} to {{ users.meta.to }} of {{ users.meta.total }} results
+            <div class="px-6 py-4 border-t border-gray-200 flex flex-col sm:flex-row items-center justify-between bg-gray-50" v-if="users.links || (users.meta && users.meta.links)">
+                <div class="text-xs text-gray-500 mb-4 sm:mb-0">
+                    Showing {{ users.meta ? users.meta.from : users.from }} to {{ users.meta ? users.meta.to : users.to }} of {{ users.meta ? users.meta.total : users.total }} results
                 </div>
-                <div class="flex gap-2">
-                    <Link 
-                        v-for="(link, key) in users.meta.links" 
-                        :key="key"
-                        :href="link.url || '#'"
-                        v-html="link.label"
-                        class="px-3 py-1 border rounded-md text-xs transition-colors"
-                        :class="[
-                            link.active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50',
-                            !link.url ? 'opacity-50 cursor-not-allowed' : ''
-                        ]"
-                    />
-                </div>
+                <Pagination :links="users.meta ? users.meta.links : users.links" />
             </div>
+
         </div>
 
         <Modal :show="showAddModal" @close="closeAddModal">

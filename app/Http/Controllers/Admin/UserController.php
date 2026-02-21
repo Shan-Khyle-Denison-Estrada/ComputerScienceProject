@@ -37,7 +37,7 @@ class UserController extends Controller
             $query->where('status', $request->status);
         }
 
-        $users = $query->latest()->paginate(10)->withQueryString();
+        $users = $query->latest()->paginate(6)->withQueryString();
 
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
