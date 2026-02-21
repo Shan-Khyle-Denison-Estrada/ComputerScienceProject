@@ -4,14 +4,17 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, Link, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
+import debounce from 'lodash/debounce';
 
 // --- PROPS (Real Data from Backend) ---
 const props = defineProps({
-    applications: Array,
+    applications: Object, // <-- CHANGED: Array to Object for Pagination
     evaluationRequirements: Array,
-    inspectionRequirements: Array
+    inspectionRequirements: Array,
+    filters: Object // <-- ADDED: Track filters passed from the controller
 });
 
 // --- CONSTANTS ---
@@ -25,40 +28,51 @@ const applicationTypes = [
 // --- STATE MANAGEMENT ---
 const showFilterModal = ref(false);
 const showRequirementsModal = ref(false);
-const search = ref('');
-const filterStatus = ref('');
-const filterType = ref('');
+
+// Initialize search variables using the props filters
+const search = ref(props.filters?.search || '');
+const filterStatus = ref(props.filters?.status || '');
+const filterType = ref(props.filters?.type || '');
 
 // Requirements Modal State
 const activeReqTab = ref('evaluation');
 const isEditingReq = ref(false);
 const reqForm = ref({ id: null, name: '', options: '', type: '' });
 
-// --- COMPUTED PROPERTIES ---
-const filteredApplications = computed(() => {
-    // [!code focus] Changed from dummyApplications to props.applications
-    return props.applications.filter(app => {
-        const searchLower = search.value.toLowerCase();
-        
-        // Safety check for null values
-        const fName = app.applicant?.first_name || '';
-        const lName = app.applicant?.last_name || '';
-        const refNo = app.reference_no || '';
-        const appType = app.type || '';
 
-        const matchesSearch = 
-            fName.toLowerCase().includes(searchLower) ||
-            lName.toLowerCase().includes(searchLower) ||
-            refNo.toLowerCase().includes(searchLower) ||
-            appType.toLowerCase().includes(searchLower);
+// --- SEARCH & FILTER LOGIC (Server-side) ---
+const handleSearch = debounce(() => {
+    router.get(route('admin.applications.index'), {
+        search: search.value,
+        status: filterStatus.value,
+        type: filterType.value
+    }, { preserveState: true, replace: true });
+}, 300);
 
-        const matchesStatus = filterStatus.value ? app.status.toLowerCase() === filterStatus.value.toLowerCase() : true;
-        const matchesType = filterType.value ? app.type === filterType.value : true;
+// Watch for search input changes directly
+watch(search, handleSearch);
 
-        return matchesSearch && matchesStatus && matchesType;
+const applyFilters = () => {
+    router.get(route('admin.applications.index'), {
+        search: search.value,
+        status: filterStatus.value,
+        type: filterType.value
+    }, { 
+        preserveState: true, 
+        preserveScroll: true,
+        onSuccess: () => showFilterModal.value = false 
     });
-});
+};
 
+const resetFilters = () => { 
+    filterStatus.value = ''; 
+    filterType.value = ''; 
+    search.value = ''; 
+    applyFilters(); 
+};
+
+
+// --- COMPUTED PROPERTIES ---
 const currentRequirementsList = computed(() => activeReqTab.value === 'evaluation' ? props.evaluationRequirements : props.inspectionRequirements);
 
 // Group evaluation requirements by type
@@ -85,13 +99,6 @@ const getOptionsArray = (optionsStr) => {
 // --- ACTIONS ---
 const openFilterModal = () => showFilterModal.value = true;
 const closeFilterModal = () => showFilterModal.value = false;
-const applyFilters = () => closeFilterModal();
-const resetFilters = () => { 
-    filterStatus.value = ''; 
-    filterType.value = ''; 
-    search.value = ''; 
-    closeFilterModal(); 
-};
 
 const openRequirementsModal = () => { showRequirementsModal.value = true; activeReqTab.value = 'evaluation'; resetReqForm(); };
 const closeRequirementsModal = () => { showRequirementsModal.value = false; resetReqForm(); };
@@ -112,7 +119,7 @@ const editRequirement = (req) => {
     isEditingReq.value = true; 
 };
 
-// [!code focus] Backend Connection
+// Backend Connection
 const saveRequirement = () => {
     if (!reqForm.value.name.trim()) return;
     
@@ -128,29 +135,13 @@ const saveRequirement = () => {
     });
 };
 
-// [!code focus] Backend Connection
+// Backend Connection
 const deleteRequirement = (id) => {
     if (confirm("Are you sure you want to delete this requirement?")) {
         router.delete(route('admin.requirements.destroy', { type: activeReqTab.value, id: id }), {
             preserveScroll: true
         });
     }
-};
-
-// This checks the type and returns the correct Laravel route
-const getApplicationShowRoute = (app) => {
-    // Assuming your DB stores it as 'application_type' or 'type'
-    const type = app.application_type || app.type; 
-    
-    if (type === 'Change of Unit') {
-        return route('admin.applications.show-change-of-unit', app.id);
-    }
-    
-    // Add more types here later (e.g., Change of Owner)
-    // if (type === 'Change of Owner') { return ... }
-    
-    // Fallback to the default show page
-    return route('admin.applications.show', app.id);
 };
 
 // --- DYNAMIC ROUTING HELPER ---
@@ -160,7 +151,7 @@ const getApplicationRoute = (app) => {
     } else if (app.type === 'Change of Owner') {
         return route('admin.applications.show-change-of-owner', app.id);
     } else if (app.type === 'Renewal') {
-        return route('admin.applications.show-renewal', app.id); // <-- UPDATED HERE
+        return route('admin.applications.show-renewal', app.id); 
     }
     // Fallback or future paths
     return route('admin.applications.show', app.id);
@@ -187,7 +178,9 @@ const getApplicationRoute = (app) => {
                 </div>
 
                 <button @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative" title="Filter Applications">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                    </svg>
                     <span v-if="filterStatus || filterType" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
 
@@ -211,7 +204,7 @@ const getApplicationRoute = (app) => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        <tr v-for="app in filteredApplications" :key="app.id" class="hover:bg-gray-50 transition-colors group">
+                        <tr v-for="app in applications.data" :key="app.id" class="hover:bg-gray-50 transition-colors group">
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
                                     <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold border border-gray-300 overflow-hidden">
@@ -241,11 +234,19 @@ const getApplicationRoute = (app) => {
                                 </Link>
                             </td>
                         </tr>
-                        <tr v-if="filteredApplications.length === 0">
+                        <tr v-if="applications.data.length === 0">
                             <td colspan="5" class="px-6 py-10 text-center text-gray-500">No applications found.</td>
                         </tr>
                     </tbody>
                 </table>
+            </div>
+
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="applications.links && applications.links.length > 3">
+                <div class="text-xs text-gray-500">
+                    Showing {{ applications.from }} to {{ applications.to }} of {{ applications.total }} results
+                </div>
+                
+                <Pagination :links="applications.links" />
             </div>
         </div>
 

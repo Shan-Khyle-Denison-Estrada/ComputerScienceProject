@@ -12,12 +12,33 @@ use Carbon\Carbon;
 
 class ApplicationController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // 1. Fetch Applications and map to Frontend structure
-        $applications = Application::latest('submitted_at')
-            ->get()
-            ->map(function ($app) {
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $type = $request->input('type');
+
+        // 1. Fetch Applications and map to Frontend structure via Pagination
+        $applications = Application::query()
+            ->when($search, function($query, $search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('reference_number', 'like', "%{$search}%")
+                      ->orWhere('application_type', 'like', "%{$search}%")
+                      ->orWhere('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%");
+                });
+            })
+            ->when($status, function($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($type, function($query, $type) {
+                $query->where('application_type', $type);
+            })
+            ->latest('submitted_at')
+            ->paginate(6)
+            ->withQueryString()
+            ->through(function ($app) {
                 return [
                     'id' => $app->id,
                     'reference_no' => $app->reference_number,
@@ -55,7 +76,8 @@ class ApplicationController extends Controller
         return Inertia::render('Admin/Applications/Index', [
             'applications' => $applications,
             'evaluationRequirements' => $evalReqs,
-            'inspectionRequirements' => $inspReqs
+            'inspectionRequirements' => $inspReqs,
+            'filters' => $request->only(['search', 'status', 'type']),
         ]);
     }
 
