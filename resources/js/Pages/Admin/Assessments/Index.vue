@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 
@@ -249,29 +250,8 @@ const getGroupBadgeClass = (group) => {
                 <div class="text-xs text-gray-500">
                     Page {{ assessments.current_page }} of {{ assessments.last_page }}
                 </div>
-                <div class="flex items-center gap-2">
-                    <Link 
-                        :href="assessments.prev_page_url || '#'" 
-                        :class="{'opacity-50 cursor-not-allowed': !assessments.prev_page_url}"
-                        class="px-3 py-1 bg-white border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-100"
-                        preserve-scroll
-                    >
-                        &lt; Prev
-                    </Link>
-                    
-                    <span class="px-3 py-1 font-bold text-gray-700 text-sm bg-white border border-gray-300 rounded">
-                        {{ assessments.current_page }}
-                    </span>
-
-                    <Link 
-                        :href="assessments.next_page_url || '#'" 
-                        :class="{'opacity-50 cursor-not-allowed': !assessments.next_page_url}"
-                        class="px-3 py-1 bg-white border border-gray-300 rounded text-sm text-gray-600 hover:bg-gray-100"
-                        preserve-scroll
-                    >
-                        Next &gt;
-                    </Link>
-                </div>
+                
+                <Pagination :links="assessments.links" />
             </div>
         </div>
 

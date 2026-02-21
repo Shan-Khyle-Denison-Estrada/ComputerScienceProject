@@ -40,7 +40,7 @@ class AssessmentController extends Controller
                 $query->where('franchise_id', $franchiseId);
             })
             ->latest()
-            ->paginate(7) // <--- CHANGED TO 6
+            ->paginate(5) // <--- CHANGED TO 6
             ->withQueryString();
 
         $particulars = Particular::orderBy('group')->orderBy('name')->get();
