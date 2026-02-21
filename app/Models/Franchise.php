@@ -52,36 +52,35 @@ class Franchise extends Model
             ->latest('driver_assignments.created_at');
     }
 
-    // --- Accessors & Mutators ---
     public function getStatusAttribute()
     {
-        $threeYearsAgo = Carbon::now()->subYears(3);
-
-        // 1. Check for Termination (Unpaid Assessment > 3 Years)
-        // We filter the assessments to find any that are NOT 'paid' 
-        // AND were issued more than 3 years ago.
-        $hasLongOverdueAssessment = $this->assessments->contains(function ($assessment) use ($threeYearsAgo) {
-            // Check if status is pending or overdue (not paid)
-            $isUnpaid = $assessment->assessment_status !== 'paid';
-            
-            // Check if the assessment date is older than 3 years
-            $isOld = Carbon::parse($assessment->assessment_date)->lte($threeYearsAgo);
-
-            return $isUnpaid && $isOld;
-        });
-
-        if ($hasLongOverdueAssessment) {
-            return 'terminated';
+        // 1. Check for Pending Renewal Applications
+        // A renewal application that is not fully 'Completed', 'Rejected', or 'Cancelled'
+        if ($this->relationLoaded('applications')) {
+            // Use collection filtering if eager loaded
+            $hasPendingRenewal = $this->applications
+                ->where('application_type', 'Renewal')
+                ->whereNotIn('status', ['Completed', 'Rejected', 'Cancelled'])
+                ->isNotEmpty();
+        } else {
+            // REMOVED 'clone' here. Just use the fresh query builder.
+            $hasPendingRenewal = $this->applications()
+                ->where('application_type', 'Renewal')
+                ->whereNotIn('status', ['Completed', 'Rejected', 'Cancelled'])
+                ->exists();
         }
 
-        // 2. Check for Pending Renewal
-        // Check if there are any current pending/overdue assessments (regardless of age)
-        $hasPendingAssessments = $this->assessments
-            ->whereIn('assessment_status', ['pending', 'overdue'])
-            ->isNotEmpty();
-
-        if ($hasPendingAssessments) {
+        if ($hasPendingRenewal) {
             return 'pending renewal';
+        }
+
+        // 2. Check for Terminated Status
+        // Terminate if more than 3 years have passed since the last date_issued
+        if ($this->date_issued) {
+            $threeYearsAgo = Carbon::now()->subYears(3);
+            if (Carbon::parse($this->date_issued)->lte($threeYearsAgo)) {
+                return 'terminated';
+            }
         }
 
         // 3. Default to Renewed
