@@ -6,6 +6,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import DangerButton from '@/Components/DangerButton.vue'; // Assumed component
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue'; // Assumed component
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
@@ -215,23 +216,12 @@ const deleteNature = (id) => {
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="complaints.links && complaints.meta">
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="complaints.links && complaints.links.length > 3">
                 <div class="text-xs text-gray-500">
-                    Showing {{ complaints.meta.from }} to {{ complaints.meta.to }} of {{ complaints.meta.total }}
+                    Showing {{ complaints.from }} to {{ complaints.to }} of {{ complaints.total }}
                 </div>
-                <div class="flex gap-2">
-                    <Link 
-                        v-for="(link, key) in complaints.meta.links" 
-                        :key="key"
-                        :href="link.url || '#'"
-                        v-html="link.label"
-                        class="px-3 py-1 border rounded-md text-xs transition-colors"
-                        :class="[
-                            link.active ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50',
-                            !link.url ? 'opacity-50 cursor-not-allowed' : ''
-                        ]"
-                    />
-                </div>
+                
+                <Pagination :links="complaints.links" />
             </div>
         </div>
 

@@ -43,7 +43,7 @@ class ComplaintController extends Controller
         $natures = NatureOfComplaint::orderBy('name')->get();
 
         return Inertia::render('Admin/Complaints/Index', [
-            'complaints' => $query->latest()->paginate(10)->withQueryString(),
+            'complaints' => $query->latest()->paginate(5)->withQueryString(),
             'natures' => $natures, 
             'filters' => $request->only(['search', 'status', 'nature'])
         ]);
