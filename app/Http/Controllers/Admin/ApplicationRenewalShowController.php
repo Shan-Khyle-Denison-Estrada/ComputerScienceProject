@@ -100,9 +100,9 @@ class ApplicationRenewalShowController extends Controller
 
     public function approveApplication(Application $application)
     {
-        // Enforce the Business Rule: > 3 Complaints = Block Renewal Approval
-        if ($application->franchise && $application->franchise->complaints()->count() > 3) {
-            return redirect()->back()->withErrors(['error' => 'Cannot approve renewal: Franchise has more than 3 recorded complaints.']);
+        // FIX: Only count unresolved complaints
+        if ($application->franchise && $application->franchise->complaints()->where('status', '!=', 'resolved')->count() > 3) {
+            return redirect()->back()->withErrors(['error' => 'Cannot approve renewal: Franchise has more than 3 unresolved complaints.']);
         }
 
         $application->update(['status' => 'Approved']);
@@ -139,9 +139,9 @@ class ApplicationRenewalShowController extends Controller
 
     public function finalizeApplication(Request $request, Application $application)
     {
-        // Double check enforcement just in case
-        if ($application->franchise && $application->franchise->complaints()->count() > 3) {
-            return redirect()->back()->withErrors(['error' => 'Cannot finalize renewal: Franchise has more than 3 recorded complaints.']);
+        // FIX: Only count unresolved complaints
+        if ($application->franchise && $application->franchise->complaints()->where('status', '!=', 'resolved')->count() > 3) {
+            return redirect()->back()->withErrors(['error' => 'Cannot finalize renewal: Franchise has more than 3 unresolved complaints.']);
         }
 
         $request->validate([
@@ -168,14 +168,14 @@ class ApplicationRenewalShowController extends Controller
     // NEW: Resolve Complaint
     public function resolveComplaint(Request $request, Application $application, Complaint $complaint)
     {
-        $complaint->update(['status' => 'Resolved']);
+        $complaint->update(['status' => 'resolved']);
         return redirect()->back()->with('success', 'Complaint marked as resolved.');
     }
 
     // NEW: Resolve Red Flag
     public function resolveRedFlag(Request $request, Application $application, RedFlag $redFlag)
     {
-        $redFlag->update(['status' => 'Resolved']);
+        $redFlag->update(['status' => 'resolved']);
         return redirect()->back()->with('success', 'Red Flag marked as resolved.');
     }
 }

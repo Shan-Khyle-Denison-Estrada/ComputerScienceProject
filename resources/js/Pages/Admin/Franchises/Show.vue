@@ -863,9 +863,14 @@ const getDriverName = (driver) => {
             </div>
         </Modal>
 
-<Modal :show="showComplaintModal" @close="showComplaintModal = false">
+        <Modal :show="showComplaintModal" @close="showComplaintModal = false">
             <div class="p-6">
                 <h2 class="text-lg font-bold text-gray-900 mb-6">File a Complaint</h2>
+                
+                <div v-if="$page.props.errors.complaint_error" class="mb-6 bg-red-50 border border-red-400 text-red-700 px-4 py-3 rounded text-sm">
+                    <strong>Backend Error:</strong> {{ $page.props.errors.complaint_error }}
+                </div>
+
                 <form @submit.prevent="submitComplaint">
                     <div class="space-y-4">
                         

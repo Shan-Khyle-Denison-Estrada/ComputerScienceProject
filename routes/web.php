@@ -120,7 +120,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
     Route::post('/admin/franchises', [FranchiseController::class, 'store'])->name('admin.franchises.store');
     Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
-    Route::post('/admin/franchises/{franchise}/complaints', [ComplaintController::class, 'store'])->name('admin.franchises.complaints.store');
+    Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
 
     // 12. Franchise Actions
     Route::post('/admin/franchises/{franchise}/transfer', [FranchiseController::class, 'transferOwnership'])->name('admin.franchises.transfer');
@@ -132,7 +132,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 
     // 14. Complaint Route
     Route::get('/admin/complaints', [ComplaintController::class, 'index'])->name('admin.complaints.index');
-    // Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
     Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
 
     // 15. Red Flags Routes

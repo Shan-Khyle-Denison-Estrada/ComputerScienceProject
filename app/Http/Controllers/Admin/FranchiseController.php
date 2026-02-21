@@ -293,25 +293,33 @@ class FranchiseController extends Controller
 
 public function storeComplaint(Request $request, $franchiseId)
     {
-        // Mirrors ComplaintController exactly
-        $validated = $request->validate([
-            'nature_of_complaint' => 'required|string',
-            'incident_date' => 'required|date',
-            'incident_time' => 'required',
-            'remarks' => 'nullable|string',
-            'fare_collected' => 'nullable|numeric',
-            'pick_up_point' => 'nullable|string',
-            'drop_off_point' => 'nullable|string',
-            'complainant_contact' => 'required|string', // Required in PublicShow
-        ]);
+        try {
+            $validated = $request->validate([
+                'nature_of_complaint' => 'required|string',
+                'incident_date' => 'required|date',
+                'incident_time' => 'required',
+                'remarks' => 'nullable|string',
+                'fare_collected' => 'nullable|numeric',
+                'pick_up_point' => 'nullable|string',
+                'drop_off_point' => 'nullable|string',
+                'complainant_contact' => 'required|string', 
+            ]);
 
-        // Attach Franchise ID and Default Status
-        $validated['franchise_id'] = $franchiseId;
-        $validated['status'] = 'Pending';
+            $validated['franchise_id'] = $franchiseId;
+            $validated['status'] = 'pending';
 
-        Complaint::create($validated);
+            \App\Models\Complaint::create($validated);
 
-        return redirect()->back()->with('success', 'Complaint logged successfully.');
+            return redirect()->back()->with('success', 'Complaint logged successfully.');
+
+        } catch (\Illuminate\Validation\ValidationException $e) {
+            // This catches form validation rules (like missing fields) and sends them to the form inputs
+            throw $e;
+        } catch (\Exception $e) {
+            // This catches Database errors (like missing columns, foreign key constraints, etc.)
+            // and sends the exact SQL error back to the page
+            return redirect()->back()->withErrors(['complaint_error' => $e->getMessage()]);
+        }
     }
 
     // NEW: Resolve Complaint

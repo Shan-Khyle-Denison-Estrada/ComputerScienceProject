@@ -90,6 +90,17 @@ const application = computed(() => {
         }))
     } : null;
 
+    // Formatting helper for time
+    const formatTime = (timeStr) => {
+        if (!timeStr) return 'N/A';
+        try {
+            const [hours, minutes] = timeStr.split(':');
+            const d = new Date();
+            d.setHours(hours, minutes);
+            return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        } catch(e) { return timeStr; }
+    };
+
     return {
         id: app.id,
         type: app.application_type || 'Renewal',
@@ -112,14 +123,20 @@ const application = computed(() => {
             status: franchise.status || 'N/A',
             mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
             
-            // Map the newly loaded relationships
+            // MAP ALL COMPLAINT ATTRIBUTES HERE
             complaints: (franchise.complaints || []).map(c => ({
                 id: c.id,
                 nature: c.nature_of_complaint,
-                date: new Date(c.incident_date).toLocaleDateString(),
+                date: c.incident_date ? new Date(c.incident_date).toLocaleDateString() : 'N/A',
+                time: formatTime(c.incident_time),
+                pick_up_point: c.pick_up_point || 'Not specified',
+                drop_off_point: c.drop_off_point || 'Not specified',
+                fare_collected: c.fare_collected,
+                complainant_contact: c.complainant_contact || 'N/A',
                 status: c.status || 'Pending',
-                remarks: c.remarks
+                remarks: c.remarks || 'No narrative provided.'
             })),
+            
             red_flags: (franchise.red_flags || []).map(r => ({
                 id: r.id,
                 nature: r.nature?.name || 'Unknown',
@@ -164,9 +181,13 @@ const application = computed(() => {
     };
 });
 
-// NEW: Business Rule computation
+// --- UPDATED BUSINESS LOGIC ---
+const unresolvedComplaintsCount = computed(() => {
+    return application.value.franchise_details.complaints.filter(c => c.status.toLowerCase() !== 'resolved').length;
+});
+
 const hasTooManyComplaints = computed(() => {
-    return application.value.franchise_details.complaints.length > 3;
+    return unresolvedComplaintsCount.value > 3;
 });
 
 const inspectionsList = computed(() => {
@@ -196,7 +217,7 @@ const selectedInspection = computed(() => {
 const openApproveModal = () => showApproveModal.value = true;
 const closeApproveModal = () => showApproveModal.value = false;
 const submitApproval = () => {
-    if (hasTooManyComplaints.value) return; // double protection
+    if (hasTooManyComplaints.value) return; 
     approveProcessing.value = true;
     router.post(route('admin.applications.renewal.approve', application.value.id), {}, {
         preserveScroll: true,
@@ -230,13 +251,12 @@ const submitRejection = () => {
 };
 
 const submitFinalize = () => {
-    if (hasTooManyComplaints.value) return; // double protection
+    if (hasTooManyComplaints.value) return; 
     finalizeForm.post(route('admin.applications.renewal.finalize', application.value.id), {
         onSuccess: () => showFinalizeModal.value = false
     });
 };
 
-// Complaint and Red Flag Actions
 const resolveComplaint = (complaintId) => {
     if(confirm('Are you sure you want to mark this complaint as resolved?')) {
         router.patch(route('admin.applications.renewal.resolve-complaint', { application: application.value.id, complaint: complaintId }), {}, { preserveScroll: true });
@@ -250,7 +270,7 @@ const resolveRedFlag = (redFlagId) => {
 };
 
 const formatCurrency = (value) => {
-    if(!value) return '₱0.00';
+    if(value === null || value === undefined) return '₱0.00';
     return new Intl.NumberFormat('en-PH', { style: 'currency', currency: 'PHP' }).format(value);
 };
 
@@ -367,8 +387,8 @@ const saveInspectionStatus = () => {
                         <svg class="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.28 7.22a.75.75 0 00-1.06 1.06L8.94 10l-1.72 1.72a.75.75 0 101.06 1.06L10 11.06l1.72 1.72a.75.75 0 101.06-1.06L11.06 10l1.72-1.72a.75.75 0 00-1.06-1.06L10 8.94 8.28 7.22z" clip-rule="evenodd" /></svg>
                     </div>
                     <div class="ml-3">
-                        <h3 class="text-sm font-bold text-red-800">Renewal Blocked: Excessive Complaints</h3>
-                        <p class="text-xs text-red-700 mt-1">This franchise has <strong>{{ application.franchise_details.complaints.length }}</strong> recorded complaints. Per ordinance regulations, a franchise cannot be renewed if it exceeds 3 complaints.</p>
+                        <h3 class="text-sm font-bold text-red-800">Renewal Blocked: Excessive Unresolved Complaints</h3>
+                        <p class="text-xs text-red-700 mt-1">This franchise currently has <strong>{{ unresolvedComplaintsCount }}</strong> unresolved complaints. Per ordinance regulations, a franchise cannot be renewed if it exceeds 3 unresolved complaints.</p>
                     </div>
                 </div>
             </div>
@@ -430,9 +450,7 @@ const saveInspectionStatus = () => {
                     <div class="flex-1 overflow-y-auto bg-gray-50/50 p-6 custom-scrollbar">
                         
                         <div v-if="activeTab === 'franchise_overview'" class="space-y-6">
-                            
                             <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                                
                                 <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
                                     <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b pb-2 flex items-center justify-between">
                                         <span>Target Franchise Profile</span>
@@ -466,7 +484,6 @@ const saveInspectionStatus = () => {
                                         </div>
                                     </div>
                                 </div>
-
                             </div>
 
                             <div class="bg-blue-50 border border-blue-100 rounded-lg p-6 mt-6">
@@ -600,21 +617,45 @@ const saveInspectionStatus = () => {
                             <div v-for="complaint in application.franchise_details.complaints" :key="complaint.id" 
                                 class="bg-white p-5 border border-gray-200 rounded-lg shadow-sm">
                                 <div class="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
-                                    <div>
-                                        <div class="flex items-center gap-2 mb-1">
+                                    <div class="w-full">
+                                        <div class="flex items-center gap-2 mb-3">
                                             <h4 class="font-bold text-gray-900 text-base">{{ complaint.nature }}</h4>
                                             <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide"
-                                                :class="complaint.status.toLowerCase() === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                                :class="complaint.status.toLowerCase() === 'resolved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
                                                 {{ complaint.status }}
                                             </span>
                                         </div>
-                                        <p class="text-xs text-gray-500 font-mono">Incident Date: {{ complaint.date }}</p>
-                                        <div class="mt-3 text-sm text-gray-700 bg-gray-50 p-3 rounded border border-gray-100">
+                                        
+                                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-3 text-sm">
+                                            <div>
+                                                <span class="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Date & Time</span>
+                                                <span class="text-gray-800 font-medium">{{ complaint.date }} • {{ complaint.time }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Reporter Contact</span>
+                                                <span class="text-gray-800 font-medium">{{ complaint.complainant_contact }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Fare Collected</span>
+                                                <span class="text-gray-800 font-medium">{{ complaint.fare_collected ? formatCurrency(complaint.fare_collected) : 'Not specified' }}</span>
+                                            </div>
+                                            <div>
+                                                <span class="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Pick-up Point</span>
+                                                <span class="text-gray-800 font-medium">{{ complaint.pick_up_point }}</span>
+                                            </div>
+                                            <div class="sm:col-span-2">
+                                                <span class="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-0.5">Drop-off Point</span>
+                                                <span class="text-gray-800 font-medium">{{ complaint.drop_off_point }}</span>
+                                            </div>
+                                        </div>
+
+                                        <div class="text-sm text-gray-700 bg-gray-50 p-3 rounded border border-gray-100 mt-2">
+                                            <span class="block text-[10px] text-gray-400 uppercase font-bold tracking-wider mb-1">Remarks / Narrative</span>
                                             "{{ complaint.remarks }}"
                                         </div>
                                     </div>
                                     <div class="flex-shrink-0" v-if="complaint.status.toLowerCase() !== 'resolved'">
-                                        <button @click="resolveComplaint(complaint.id)" class="px-3 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded text-xs font-bold transition-colors">
+                                        <button @click="resolveComplaint(complaint.id)" class="px-4 py-2 bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-blue-600 rounded-lg text-xs font-bold transition-colors shadow-sm whitespace-nowrap">
                                             Mark as Resolved
                                         </button>
                                     </div>
