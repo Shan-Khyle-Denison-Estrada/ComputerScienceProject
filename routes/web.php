@@ -194,14 +194,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::patch('/applications/renewal/{application}/complaints/{complaint}/resolve', [ApplicationRenewalShowController::class, 'resolveComplaint'])->name('admin.applications.renewal.resolve-complaint');
     Route::patch('/applications/renewal/{application}/red-flags/{redFlag}/resolve', [ApplicationRenewalShowController::class, 'resolveRedFlag'])->name('admin.applications.renewal.resolve-red-flag');
 
-    Route::get('/franchise-owner', function () {
-        return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
-            'application' => null, 
-            'barangays' => [],
-            'zones' => [],
-            'unitMakes' => [],
-        ]);
-    });
+    Route::get('/admin/settings/index', function () {
+        return Inertia::render('Admin/Settings/Index');
+    })->name('admin.settings.index');
 
 });
 

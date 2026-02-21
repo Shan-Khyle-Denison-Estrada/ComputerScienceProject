@@ -9,11 +9,6 @@ import Footer from "../Components/Footer.vue";
     <NavBar />
 
     <div class="relative bg-slate-900 isolate overflow-hidden pt-24 pb-20 sm:pt-32 sm:pb-24">
-        <img 
-            src="/non_index_bg.png" 
-            alt="Zamboanga City Hall" 
-            class="absolute inset-0 -z-10 h-full w-full object-cover opacity-30" 
-        />
         <div class="absolute inset-0 -z-10 bg-gradient-to-t from-slate-900 via-slate-900/60 to-transparent"></div>
 
         <div class="mx-auto max-w-7xl px-6 lg:px-8 text-center relative z-10">
