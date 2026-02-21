@@ -24,7 +24,8 @@ class ZoneController extends Controller
         $allBarangays = Barangay::orderBy('name')->get(); 
 
         return Inertia::render('Admin/Zones/Index', [
-            'zones' => $query->latest()->get(),
+            // CHANGED: Replaced get() with paginate(10)->withQueryString()
+            'zones' => $query->latest()->paginate(6)->withQueryString(),
             'filters' => $request->only(['search']),
             'barangays' => $allBarangays,
         ]);

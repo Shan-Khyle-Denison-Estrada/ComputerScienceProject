@@ -5,11 +5,12 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
 const props = defineProps({
-    zones: Array,
+    zones: Object, // <-- CHANGED: Array to Object for Pagination
     filters: Object,
     barangays: Array 
 });
@@ -24,9 +25,10 @@ const showCoverageModal = ref(false);
 const search = ref(''); 
 
 const visibleZones = computed(() => {
-    if (!search.value) return props.zones;
+    // <-- CHANGED: props.zones to props.zones.data
+    if (!search.value) return props.zones.data; 
     const q = search.value.toLowerCase();
-    return props.zones.filter(zone => 
+    return props.zones.data.filter(zone => 
         zone.description.toLowerCase().includes(q) || 
         zone.color.toLowerCase().includes(q)
     );
@@ -62,7 +64,8 @@ const applySentenceCase = (form, field) => {
 // --- LOGIC: EXCLUSIVE COVERAGE ---
 const getGloballyUsedBarangays = (exceptZoneId = null) => {
     const used = new Set();
-    props.zones.forEach(zone => {
+    // <-- CHANGED: props.zones to props.zones.data
+    props.zones.data.forEach(zone => {
         if (zone.id === exceptZoneId) return; 
         if (Array.isArray(zone.coverage)) {
             zone.coverage.forEach(name => used.add(name));
@@ -224,7 +227,7 @@ const deleteBarangay = (id) => {
                         v-model="search"
                         type="text" 
                         class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm transition" 
-                        placeholder="Search zones..." 
+                        placeholder="Search current page..." 
                     />
                 </div>
 
@@ -299,6 +302,10 @@ const deleteBarangay = (id) => {
                     </tbody>
                 </table>
             </div>
+        </div>
+        
+        <div class="mt-6 flex justify-end">
+            <Pagination :links="zones.links" />
         </div>
 
         <Modal :show="showAddModal" @close="showAddModal = false">
