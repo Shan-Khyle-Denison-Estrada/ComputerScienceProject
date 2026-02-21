@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
@@ -295,23 +296,12 @@ const resetFilters = () => {
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="users.links && users.meta">
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="users.links && users.links.length > 3">
                 <div class="text-xs text-gray-500">
-                    Showing {{ users.meta.from }} to {{ users.meta.to }} of {{ users.meta.total }} results
+                    Showing {{ users.from }} to {{ users.to }} of {{ users.total }} results
                 </div>
-                <div class="flex gap-2">
-                    <Link 
-                        v-for="(link, key) in users.meta.links" 
-                        :key="key"
-                        :href="link.url || '#'"
-                        v-html="link.label"
-                        class="px-3 py-1 border rounded-md text-xs transition-colors"
-                        :class="[
-                            link.active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50',
-                            !link.url ? 'opacity-50 cursor-not-allowed' : ''
-                        ]"
-                    />
-                </div>
+                
+                <Pagination :links="users.links" />
             </div>
         </div>
 

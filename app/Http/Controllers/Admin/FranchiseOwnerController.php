@@ -36,7 +36,7 @@ class FranchiseOwnerController extends Controller
                 $query->where('status', $status);
             })
             ->latest()
-            ->paginate(10)
+            ->paginate(6)
             ->withQueryString();
 
         $barangays = Barangay::select('id', 'name')->orderBy('name')->get();
