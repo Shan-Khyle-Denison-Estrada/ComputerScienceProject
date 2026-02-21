@@ -98,9 +98,19 @@ watch(() => props.chart, () => initChart(), { deep: true });
         <div class="h-full flex flex-col gap-6 overflow-hidden">
             
             <div class="flex-none flex flex-col gap-6">
-                <div>
-                    <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
-                    <p class="text-gray-500 text-sm">Overview of Tricycle Franchise Management System</p>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+                        <p class="text-gray-500 text-sm mt-1">Overview of Tricycle Franchise Management System</p>
+                    </div>
+
+                    <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
+                        <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Current Fiscal Year:</span>
+                        <span class="text-base font-black text-indigo-700">{{ props.stats.current_fiscal_year }}</span>
+                    </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -109,10 +119,6 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
-                            <!-- <span class="text-xs font-bold px-2 py-1 rounded bg-slate-100 text-slate-600" 
-                                  :class="props.stats.franchise_growth >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'">
-                                {{ props.stats.franchise_growth }}%
-                            </span> -->
                         </div>
                         <div>
                             <span class="text-3xl font-black text-slate-800">{{ props.stats.total_franchises }}</span>

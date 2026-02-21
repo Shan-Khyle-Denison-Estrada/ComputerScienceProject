@@ -18,6 +18,8 @@ use App\Models\Operator;
 use App\Models\Unit;
 use App\Models\Assessment;
 use App\Models\Particular;
+use App\Models\SystemSetting;
+use Carbon\Carbon;
 
 class ApplicationController extends Controller
 {
@@ -359,7 +361,6 @@ class ApplicationController extends Controller
         return redirect()->back()->with('success', 'Change of Owner application submitted successfully!');
     }
 
-    // --- RENEWAL ---
     public function storeRenewal(Request $request)
     {
         $request->validate([
@@ -371,14 +372,31 @@ class ApplicationController extends Controller
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
 
+        // --- NEW: Calculate the current Fiscal Year String ---
+        $settings = SystemSetting::first();
+        $currentYear = now()->year;
+        $fiscalYearEnd = $settings->fiscal_year_end ?? '12-31';
+        
+        // Define the deadline for the current calendar year
+        $deadlineThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$fiscalYearEnd}")->endOfDay();
+
+        // Determine if we are in the cycle ending this year or next year
+        if (now()->lte($deadlineThisYear)) {
+            $fiscalYearString = ($currentYear - 1) . '-' . $currentYear;
+        } else {
+            $fiscalYearString = $currentYear . '-' . ($currentYear + 1);
+        }
+        // ---------------------------------------------------
+
         $application = Application::create([
-            'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
+            // Use the dynamic fiscal year string here
+            'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)),
             'user_id'          => $user->id,
             'franchise_id'     => $franchise->id,
             'zone_id'          => $franchise->zone_id,
             'application_type' => 'Renewal',
             'status'           => 'Pending',
-            'remarks'          => 'Application submitted. Waiting for initial review.',
+            'remarks'          => "Application submitted for {$fiscalYearString} cycle. Waiting for initial review.",
             'submitted_at'     => now(),
             
             // Uses current owner details
