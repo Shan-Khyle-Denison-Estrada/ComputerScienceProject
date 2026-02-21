@@ -38,7 +38,7 @@ class FranchiseController extends Controller
                 $query->where('id', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(10)
+            ->paginate(5)
             ->withQueryString();
 
         $operators = Operator::with('user')->get(); 
