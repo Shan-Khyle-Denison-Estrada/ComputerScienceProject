@@ -48,7 +48,7 @@ class AdminDashboardController extends Controller
         ];
 
         // 3. Recent Payments Table
-        $recentPayments = Payment::with(['assessment.franchise.currentActiveUnit.newUnit'])
+        $recentPayments = Payment::with(['assessment.application.franchise.currentActiveUnit.newUnit']) // <-- Updated here
             ->latest()
             ->take(5)
             ->get()
@@ -57,7 +57,8 @@ class AdminDashboardController extends Controller
                     'id' => $payment->id,
                     'amount' => $payment->amount_paid,
                     'date' => $payment->created_at->format('M d'),
-                    'plate_number' => $payment->assessment->franchise->currentActiveUnit->newUnit->plate_number ?? 'No Unit',
+                    // V-- Updated the relationship chain here --V
+                    'plate_number' => $payment->assessment->application->franchise->currentActiveUnit->newUnit->plate_number ?? 'No Unit', 
                     'payee' => $payment->payee_first_name . ' ' . $payment->payee_last_name,
                 ];
             });
