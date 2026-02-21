@@ -22,7 +22,7 @@ class UnitController extends Controller
                       ->orWhere('chassis_number', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(10)
+            ->paginate(4)
             ->withQueryString();
 
         $unitMakes = UnitMake::orderBy('name')->get();

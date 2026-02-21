@@ -5,6 +5,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
@@ -162,16 +163,8 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
 
                             <td class="px-6 py-4">
                                 <div class="grid grid-cols-[80px_1fr] gap-y-2 items-center">
-                                    
-                                    <!-- <span class="text-xs text-gray-400 font-bold uppercase tracking-wider text-right pr-3">Plate</span>
-                                    <div>
-                                        <span class="bg-blue-50 text-blue-700 text-xs font-bold px-2 py-0.5 rounded border border-blue-100 font-mono tracking-wide">
-                                            {{ unit.plate_number }}
-                                        </span>
-                                    </div> -->
-
                                     <span class="text-xs text-gray-400 uppercase tracking-wider text-right pr-3">Plate</span>
-                                    <span class="text-xs text-gray-700 font-mono font-medium truncate" :title="unit.place_number">{{ unit.plate_number }}</span>
+                                    <span class="text-xs text-gray-700 font-mono font-medium truncate" :title="unit.plate_number">{{ unit.plate_number }}</span>
 
                                     <span class="text-xs text-gray-400 uppercase tracking-wider text-right pr-3">Motor</span>
                                     <span class="text-xs text-gray-700 font-mono font-medium truncate" :title="unit.motor_number">{{ unit.motor_number }}</span>
@@ -224,23 +217,12 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="units.links && units.meta">
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="units.links && units.links.length > 3">
                 <div class="text-xs text-gray-500">
-                    Showing {{ units.meta.from }} to {{ units.meta.to }} of {{ units.meta.total }} results
+                    Showing {{ units.from }} to {{ units.to }} of {{ units.total }} results
                 </div>
-                <div class="flex gap-2">
-                    <Link 
-                        v-for="(link, key) in units.meta.links" 
-                        :key="key"
-                        :href="link.url || '#'"
-                        v-html="link.label"
-                        class="px-3 py-1 border rounded-md text-xs transition-colors"
-                        :class="[
-                            link.active ? 'bg-blue-500 text-white border-blue-500' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50',
-                            !link.url ? 'opacity-50 cursor-not-allowed' : ''
-                        ]"
-                    />
-                </div>
+                
+                <Pagination :links="units.links" />
             </div>
         </div>
 
