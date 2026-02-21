@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
 use Inertia\Middleware;
+use App\Models\SystemSetting;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -34,6 +35,8 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(), // This shares the whole user model, including new columns
             ],
+            // This shares the settings globally to $page.props.settings in Vue
+            'settings' => SystemSetting::first() ?? new SystemSetting(),
         ];
     }
 }

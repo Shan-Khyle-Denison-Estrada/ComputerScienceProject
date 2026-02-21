@@ -1,6 +1,10 @@
 <script setup>
-import { Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+
+// Globally fetch the settings from Inertia's shared props
+const page = usePage();
+const settings = computed(() => page.props.settings);
 
 const isMobileMenuOpen = ref(false);
 
@@ -15,37 +19,40 @@ const toggleMobileMenu = () => {
             <div class="flex justify-between h-20">
                 
                 <div class="flex items-center">
-                    <Link href="/" class="flex-shrink-0 flex items-center gap-2">
-                        <img class="h-10 w-auto" src="/zc_seal.png" alt="Logo" onerror="this.style.display='none'"/>
-                        <div class="flex flex-col">
+                    <Link href="/" class="flex-shrink-0 flex items-center gap-3">
+                        <img 
+                            class="h-10 w-10 rounded-full object-cover border border-gray-200 shadow-sm" 
+                            :src="settings?.lgu_logo_path ? '/storage/' + settings.lgu_logo_path : '/zc_seal.png'" 
+                            alt="LGU Logo" 
+                            onerror="this.style.display='none'"
+                        />
+                        <div class="flex flex-col justify-center">
                             <span class="font-black text-xl tracking-tighter text-gray-900 leading-none">
                                 TRICY<span class="text-blue-600">SYS</span>
                             </span>
-                            <span class="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest">
-                                Zamboanga City
+                            <span class="text-[0.65rem] font-bold text-gray-500 uppercase tracking-widest mt-0.5">
+                                {{ settings?.lgu_name || 'Zamboanga City' }}
                             </span>
                         </div>
                     </Link>
                 </div>
 
                 <div class="hidden md:flex md:items-center md:space-x-8">
-                    <Link href="/" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Home</Link>
-                    <Link href="/about" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">About</Link>
-                    <Link href="/ordinances" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Ordinances</Link>
-                    <!-- <Link href="/contact" class="text-gray-500 hover:text-blue-600 px-3 py-2 rounded-md text-sm font-medium transition-colors">Contact</Link> -->
+                    <Link href="/" class="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">Home</Link>
+                    <Link href="/about" class="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">About</Link>
+                    <Link href="/ordinances" class="text-sm font-semibold text-gray-600 hover:text-blue-600 transition-colors">Ordinances</Link>
                     
-                    <Link href="/login" class="bg-blue-600 text-white px-5 py-2.5 rounded-full text-sm font-bold shadow-lg shadow-blue-600/30 hover:bg-blue-700 hover:shadow-blue-600/50 transition-all transform hover:-translate-y-0.5">
-                        Login Portal
-                    </Link>
+                    <div class="h-6 w-px bg-gray-200"></div>
+
+                    <Link :href="route('login')" class="text-sm font-bold text-gray-900 hover:text-blue-600 transition-colors">Sign In</Link>
                 </div>
 
                 <div class="flex items-center md:hidden">
-                    <button @click="toggleMobileMenu" class="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500">
-                        <span class="sr-only">Open main menu</span>
-                        <svg v-if="!isMobileMenuOpen" class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <button @click="toggleMobileMenu" class="text-gray-500 hover:text-gray-900 focus:outline-none p-2">
+                        <svg v-if="!isMobileMenuOpen" class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
                         </svg>
-                        <svg v-else class="block h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg v-else class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
@@ -58,12 +65,8 @@ const toggleMobileMenu = () => {
                 <Link href="/" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Home</Link>
                 <Link href="/about" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">About</Link>
                 <Link href="/ordinances" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Ordinances</Link>
-                <!-- <Link href="/contact" class="block px-3 py-2 rounded-md text-base font-medium text-gray-700 hover:text-blue-600 hover:bg-gray-50">Contact Us</Link> -->
-                <div class="pt-4 pb-2">
-                    <Link href="/login" class="block w-full text-center px-4 py-3 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">
-                        Access Portal
-                    </Link>
-                </div>
+                <div class="border-t border-gray-100 my-2"></div>
+                <Link :href="route('login')" class="block px-3 py-2 rounded-md text-base font-bold text-gray-900 hover:text-blue-600 hover:bg-gray-50">Sign In</Link>
             </div>
         </div>
     </nav>

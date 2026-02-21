@@ -22,15 +22,18 @@ use App\Http\Controllers\Franchise\ApplicationController as FranchiseApplication
 use App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController;
 use App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController;
 use App\Http\Controllers\Admin\ApplicationRenewalShowController;
+use App\Http\Controllers\Admin\SettingsController;
 use App\Models\Franchise;
+use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
     return Inertia::render('Index', [
-        'activeFranchisesCount' => Franchise::count()
+        'activeFranchisesCount' => \App\Models\Franchise::count(),
+        // Removed settings from here, it's globally shared now!
     ]);
-})->name('home');
+});
 
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
 Route::post('/apply', [ApplicationController::class, 'store'])->name('application.store');
@@ -194,9 +197,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::patch('/applications/renewal/{application}/complaints/{complaint}/resolve', [ApplicationRenewalShowController::class, 'resolveComplaint'])->name('admin.applications.renewal.resolve-complaint');
     Route::patch('/applications/renewal/{application}/red-flags/{redFlag}/resolve', [ApplicationRenewalShowController::class, 'resolveRedFlag'])->name('admin.applications.renewal.resolve-red-flag');
 
-    Route::get('/admin/settings/index', function () {
-        return Inertia::render('Admin/Settings/Index');
-    })->name('admin.settings.index');
+    Route::get('/admin/settings', [SettingsController::class, 'index'])->name('admin.settings.index');
+    Route::put('/admin/settings', [SettingsController::class, 'update'])->name('admin.settings.update');
 
 });
 

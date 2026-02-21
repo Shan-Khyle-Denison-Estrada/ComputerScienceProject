@@ -129,6 +129,14 @@ const removeOrdinance = (index) => {
     form.ordinances.splice(index, 1);
 };
 
+// Helper function to safely evaluate file instances
+const getOrdinanceFileName = (file) => {
+    if (file instanceof File) {
+        return file.name;
+    }
+    return 'Attached PDF';
+};
+
 // --- GLOBAL ACTIONS ---
 const handleLguLogoChange = (event) => {
     const file = event.target.files[0];
@@ -484,7 +492,7 @@ const submitSettings = () => {
                                                         <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                                                             <path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd" />
                                                         </svg>
-                                                        {{ ord.file instanceof File ? ord.file.name : 'Attached PDF' }}
+                                                        {{ getOrdinanceFileName(ord.file) }}
                                                     </span>
                                                 </td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
