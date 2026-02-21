@@ -5,6 +5,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, Link, router, useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 import debounce from 'lodash/debounce';
@@ -173,15 +174,12 @@ const deleteNature = (id) => {
                 </table>
             </div>
             
-            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="redFlags.links && redFlags.meta">
+            <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between bg-gray-50" v-if="redFlags.links && redFlags.links.length > 3">
                 <div class="text-xs text-gray-500">
-                    Showing {{ redFlags.meta.from }} to {{ redFlags.meta.to }} of {{ redFlags.meta.total }}
+                    Showing {{ redFlags.from }} to {{ redFlags.to }} of {{ redFlags.total }}
                 </div>
-                <div class="flex gap-2">
-                    <Link v-for="(link, key) in redFlags.meta.links" :key="key" :href="link.url || '#'" v-html="link.label" 
-                        class="px-3 py-1 border rounded-md text-xs transition-colors" 
-                        :class="link.active ? 'bg-red-600 text-white border-red-600' : 'bg-white text-gray-500 border-gray-300 hover:bg-gray-50'" />
-                </div>
+                
+                <Pagination :links="redFlags.links" />
             </div>
         </div>
 

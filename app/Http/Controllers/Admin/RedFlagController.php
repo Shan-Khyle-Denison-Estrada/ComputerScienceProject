@@ -33,7 +33,7 @@ class RedFlagController extends Controller
                 $query->where('nature_id', $natureId);
             })
             ->latest()
-            ->paginate(10)
+            ->paginate(7)
             ->withQueryString();
 
         $natures = NatureOfRedFlag::all();
