@@ -19,7 +19,7 @@ class PaymentController extends Controller
         $payments = Payment::query()
             ->filter($filters)
             ->latest()
-            ->paginate(10)
+            ->paginate(6)
             ->withQueryString();
             
         // Fetch Barangays for the dropdown
