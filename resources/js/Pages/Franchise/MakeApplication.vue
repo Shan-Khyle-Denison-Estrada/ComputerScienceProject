@@ -2,7 +2,7 @@
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import MakeApplicationModal from '@/Components/Modals/MakeApplicationModal.vue';
-import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.vue'; // The new modal
+import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.vue';
 import { Head } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
@@ -193,7 +193,7 @@ const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2.5 py-1 inline-flex text-xs leading-4 font-bold rounded border"
                                             :class="{
-                                                'bg-green-50 text-green-700 border-green-200': app.status === 'Approved',
+                                                'bg-green-50 text-green-700 border-green-200': app.status === 'Completed' || app.status === 'Approved',
                                                 'bg-red-50 text-red-700 border-red-200': app.status === 'Rejected',
                                                 'bg-gray-100 text-gray-600 border-gray-200': app.status === 'Cancelled'
                                             }">
@@ -209,7 +209,7 @@ const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 
                                             <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
                                                 <div class="h-1.5 rounded-full" 
                                                     :class="{
-                                                        'bg-green-500': app.status === 'Approved',
+                                                        'bg-green-500': app.status === 'Approved' || app.status === 'Completed',
                                                         'bg-red-500': app.status === 'Rejected',
                                                         'bg-gray-400': app.status === 'Cancelled'
                                                     }"

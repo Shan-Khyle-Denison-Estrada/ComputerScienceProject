@@ -152,6 +152,17 @@ const getApplicationShowRoute = (app) => {
     // Fallback to the default show page
     return route('admin.applications.show', app.id);
 };
+
+// --- DYNAMIC ROUTING HELPER ---
+const getApplicationRoute = (app) => {
+    if (app.type === 'Change of Unit') {
+        return route('admin.applications.show-change-of-unit', app.id);
+    } else if (app.type === 'Change of Owner') {
+        return route('admin.applications.show-change-of-owner', app.id);
+    }
+    // Fallback or future paths
+    return route('admin.applications.show', app.id);
+};
 </script>
 
 <template>
@@ -222,15 +233,10 @@ const getApplicationShowRoute = (app) => {
                                     {{ app.status.toUpperCase() }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-sm text-right font-medium">
-                                
-                                <Link 
-                                    :href="getApplicationShowRoute(app)" 
-                                    class="text-blue-600 hover:text-blue-900 font-bold uppercase text-xs"
-                                >
-                                    View
+                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                <Link :href="getApplicationRoute(app)" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center justify-end gap-1 ml-auto">
+                                    Review <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
                                 </Link>
-
                             </td>
                         </tr>
                         <tr v-if="filteredApplications.length === 0">

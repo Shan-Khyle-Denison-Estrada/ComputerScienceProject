@@ -40,8 +40,19 @@ const form = useForm({
     selected_franchise_id: '', 
     remarks: '',
     
+    owner_mode: 'existing', // Added to pass to backend
+
     // Owner Fields
-    existing_owner_id: '', first_name: '', middle_name: '', last_name: '', contact_number: '', email: '', street_address: '', barangay: '', city: 'Zamboanga City',
+    existing_operator_id: '', 
+    new_owner_first_name: '', 
+    new_owner_middle_name: '', 
+    new_owner_last_name: '', 
+    new_owner_contact: '', 
+    new_owner_email: '', 
+    new_owner_tin: '',
+    new_owner_address: '', 
+    new_owner_barangay: '', 
+    new_owner_city: 'Zamboanga City',
     
     // Unit Fields
     existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
@@ -72,9 +83,9 @@ const isStep2Valid = computed(() => {
     if (!areAllDocsUploaded.value) return false;
 
     if (isOwnerRequired.value) {
-        if (ownerMode.value === 'existing' && !form.existing_owner_id) return false;
+        if (ownerMode.value === 'existing' && !form.existing_operator_id) return false;
         if (ownerMode.value === 'new') {
-            if (!form.first_name || !form.last_name || !form.contact_number || !form.street_address || !form.barangay) return false;
+            if (!form.new_owner_first_name || !form.new_owner_last_name || !form.new_owner_contact || !form.new_owner_address || !form.new_owner_barangay) return false;
         }
     }
 
@@ -107,8 +118,7 @@ const selectType = (typeId) => {
     form.documents = {};
     docPreviews.value = {};
     form.unit_front_photo = null; form.unit_back_photo = null; form.unit_left_photo = null; form.unit_right_photo = null;
-    unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
-    form.existing_owner_id = '';
+    form.existing_operator_id = '';
     form.existing_unit_id = '';
 };
 
@@ -131,8 +141,17 @@ const submit = () => {
                 closeModal();
             },
         });
+    } else if (selectedType.value === 'change_owner') {
+        form.owner_mode = ownerMode.value; // Sync the mode type
+        form.post(route('franchise.applications.store-change-owner'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('submit'); 
+                closeModal();
+            },
+        });
     } else {
-        alert("The backend logic for this application type is not yet hooked up. Only Change of Unit is working.");
+        alert("The backend logic for this application type is not yet hooked up. Only Change of Unit and Change of Owner are working.");
     }
 };
 </script>
@@ -174,8 +193,8 @@ const submit = () => {
                     <div v-if="currentStep === 2" class="space-y-6">
                         <div v-if="isFranchiseSelectRequired">
                             <InputLabel value="Select Existing Franchise to Modify/Renew" />
-                            <select v-model="form.selected_franchise_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2">
-                                <option value="">-- Choose Unit --</option>
+                            <select v-model="form.selected_franchise_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2 mt-1">
+                                <option value="" disabled>-- Choose Unit --</option>
                                 <option v-for="fran in franchises" :key="fran.id" :value="fran.id">
                                     {{ fran.mtfrb_case_no || `Franchise #${fran.id}` }} 
                                     - {{ fran.current_active_unit?.new_unit?.make?.name || 'Unknown Make' }} 
@@ -194,28 +213,30 @@ const submit = () => {
 
                             <div v-if="ownerMode === 'existing'" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
                                 <InputLabel value="Search / Select Existing Owner" />
-                                <select v-model="form.existing_owner_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
+                                <select v-model="form.existing_operator_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
                                     <option value="">-- Select Owner --</option>
                                     <option v-for="o in operators" :key="o.id" :value="o.id">{{ o.name }} ({{ o.email }})</option>
                                 </select>
                             </div>
 
                             <div v-if="ownerMode === 'new'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div><InputLabel value="First Name" /><TextInput v-model="form.first_name" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Middle Name" /><TextInput v-model="form.middle_name" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Last Name" /><TextInput v-model="form.last_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel value="First Name" /><TextInput v-model="form.new_owner_first_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel value="Middle Name" /><TextInput v-model="form.new_owner_middle_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel value="Last Name" /><TextInput v-model="form.new_owner_last_name" class="w-full text-sm py-1.5 mt-1" /></div>
                                 
-                                <div class="sm:col-span-2"><InputLabel value="Email Address" /><TextInput type="email" v-model="form.email" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Contact Number" /><TextInput v-model="form.contact_number" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
+                                <div class="sm:col-span-2"><InputLabel value="Email Address" /><TextInput type="email" v-model="form.new_owner_email" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel value="Contact Number" /><TextInput v-model="form.new_owner_contact" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
                                 
-                                <div><InputLabel value="Street Address" /><TextInput v-model="form.street_address" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div>
+                                <div><InputLabel value="TIN Number" /><TextInput v-model="form.new_owner_tin" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div class="sm:col-span-2"><InputLabel value="Street Address" /><TextInput v-model="form.new_owner_address" class="w-full text-sm py-1.5 mt-1" /></div>
+                                
+                                <div class="sm:col-span-2">
                                     <InputLabel value="Barangay" />
                                     <div class="relative mt-1">
                                         <TextInput v-model="barangayQuery" @focus="showBarangayDropdown = true" placeholder="Search..." class="w-full text-sm py-1.5" />
                                         <div v-if="showBarangayDropdown" class="absolute z-10 w-full bg-white border mt-1 rounded shadow-lg max-h-32 overflow-y-auto">
                                             <div v-for="brgy in filteredBarangays" :key="brgy.id" 
-                                                @click="form.barangay = brgy.name; barangayQuery = brgy.name; showBarangayDropdown = false" 
+                                                @click="form.new_owner_barangay = brgy.name; barangayQuery = brgy.name; showBarangayDropdown = false" 
                                                 class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer">
                                                 {{ brgy.name }}
                                             </div>
@@ -223,7 +244,7 @@ const submit = () => {
                                         </div>
                                     </div>
                                 </div>
-                                <div><InputLabel value="City" /><TextInput v-model="form.city" disabled class="w-full text-sm py-1.5 mt-1 bg-gray-100" /></div>
+                                <div><InputLabel value="City" /><TextInput v-model="form.new_owner_city" disabled class="w-full text-sm py-1.5 mt-1 bg-gray-100" /></div>
                             </div>
                         </div>
 
@@ -255,16 +276,16 @@ const submit = () => {
                                     <div><InputLabel value="Model Year" /><TextInput type="number" v-model="form.model_year" class="w-full text-sm py-1.5 mt-1" placeholder="YYYY" />
                                         <p v-if="form.errors.model_year" class="text-red-500 text-xs mt-1">{{ form.errors.model_year }}</p>
                                     </div>
-                                    <div><InputLabel value="Plate No." /><TextInput v-model="form.plate_number" class="w-full text-sm py-1.5 mt-1" />
+                                    <div><InputLabel value="Plate No." /><TextInput v-model="form.plate_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.plate_number" class="text-red-500 text-xs mt-1">{{ form.errors.plate_number }}</p>
                                     </div>
-                                    <div><InputLabel value="Motor No." /><TextInput v-model="form.motor_number" class="w-full text-sm py-1.5 mt-1" />
+                                    <div><InputLabel value="Motor No." /><TextInput v-model="form.motor_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.motor_number" class="text-red-500 text-xs mt-1">{{ form.errors.motor_number }}</p>
                                     </div>
-                                    <div><InputLabel value="Chassis No." /><TextInput v-model="form.chassis_number" class="w-full text-sm py-1.5 mt-1" />
+                                    <div><InputLabel value="Chassis No." /><TextInput v-model="form.chassis_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.chassis_number" class="text-red-500 text-xs mt-1">{{ form.errors.chassis_number }}</p>
                                     </div>
-                                    <div><InputLabel value="CR No." /><TextInput v-model="form.cr_number" class="w-full text-sm py-1.5 mt-1" />
+                                    <div><InputLabel value="CR No." /><TextInput v-model="form.cr_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.cr_number" class="text-red-500 text-xs mt-1">{{ form.errors.cr_number }}</p>
                                     </div>
                                 </div>

@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\ApplicationController as AdminApplicationControll
 use App\Http\Controllers\Admin\ApplicationShowController;
 use App\Http\Controllers\Franchise\ApplicationController as FranchiseApplicationController;
 use App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController;
+use App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController;
 use App\Models\Franchise;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -173,6 +174,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/change-of-unit/{application}/finalize', [ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])
     ->name('admin.applications.change-of-unit.finalize');
 
+    // NEW: CHANGE OF OWNER SHOW ROUTES
+    Route::get('/applications/change-of-owner/{application}', [ApplicationChangeOfOwnerShowController::class, 'show'])->name('admin.applications.show-change-of-owner');
+    Route::post('/applications/change-of-owner/{application}/evaluate', [ApplicationChangeOfOwnerShowController::class, 'updateEvaluation'])->name('admin.applications.change-of-owner.evaluate');
+    Route::post('/applications/change-of-owner/{application}/approve', [ApplicationChangeOfOwnerShowController::class, 'approveApplication'])->name('admin.applications.change-of-owner.approve');
+    Route::post('/applications/change-of-owner/{application}/reject', [ApplicationChangeOfOwnerShowController::class, 'rejectApplication'])->name('admin.applications.change-of-owner.reject');
+    Route::post('/applications/change-of-owner/{application}/return', [ApplicationChangeOfOwnerShowController::class, 'returnApplication'])->name('admin.applications.change-of-owner.return');
+    Route::post('/applications/change-of-owner/{application}/finalize', [ApplicationChangeOfOwnerShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-owner.finalize');
+
 Route::get('/franchise-owner', function () {
     return Inertia::render('Admin/Applications/ShowFranchiseOwner', [
         'application' => null, 
@@ -188,12 +197,6 @@ Route::get('/renewal', function () {
     ]);
 });
 
-Route::get('/change-of-owner', function () {
-    return Inertia::render('Admin/Applications/ShowChangeOfOwner', [
-        'application' => null,
-    ]);
-});
-
 });
 
 // --- FRANCHISE OWNER ROUTES ---
@@ -204,6 +207,7 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     // Applications
     Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');
     Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])->name('franchise.applications.store-change-unit');
+    Route::post('/franchise/applications/change-owner', [FranchiseApplicationController::class, 'storeChangeOfOwner'])->name('franchise.applications.store-change-owner');
     
     // NEW: Application Resubmit/Comply Route
     Route::post('/franchise/applications/{application}/resubmit', [FranchiseApplicationController::class, 'resubmitApplication'])->name('franchise.applications.resubmit');
