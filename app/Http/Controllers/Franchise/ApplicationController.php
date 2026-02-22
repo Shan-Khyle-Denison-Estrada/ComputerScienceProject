@@ -20,6 +20,7 @@ use App\Models\Assessment;
 use App\Models\Particular;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
+use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
@@ -82,7 +83,9 @@ class ApplicationController extends Controller
         ])
         ->get();
 
-        $franchises->transform(function ($franchise) {
+        $fiscalYearString = $this->getFiscalYearString();
+
+        $franchises->transform(function ($franchise) use ($fiscalYearString) {
             $franchise->current_status = $franchise->status; 
 
             $franchise->payment_history = $franchise->assessments->flatMap(function($assessment) {
@@ -107,6 +110,22 @@ class ApplicationController extends Controller
                 ->where('is_active', true)
                 ->first()
                 ?->driver;
+
+            // Pre-calculate existing applications precisely on the server for the frontend to consume instantly
+            $franchise->has_renewal_this_year = Application::where('franchise_id', $franchise->id)
+                ->where('application_type', 'Renewal')
+                ->where('reference_number', 'LIKE', "%APP-{$fiscalYearString}-%")
+                ->exists();
+
+            $franchise->has_active_change_unit = Application::where('franchise_id', $franchise->id)
+                ->where('application_type', 'Change of Unit')
+                ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+                ->exists();
+
+            $franchise->has_active_change_owner = Application::where('franchise_id', $franchise->id)
+                ->where('application_type', 'Change of Owner')
+                ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+                ->exists();
 
             return $franchise;
         });
@@ -133,6 +152,7 @@ class ApplicationController extends Controller
                     'current_step' => $step,
                     'remarks' => $app->remarks ?? 'No remarks provided.',
                     'is_active' => !in_array($status, ['Approved', 'Rejected', 'Cancelled', 'Completed']),
+                    'franchise_id' => $app->franchise_id, 
                     'evaluations' => $app->evaluations->map(function($eval) {
                         return [
                             'id' => $eval->id,
@@ -159,7 +179,20 @@ class ApplicationController extends Controller
         ]);
     }
 
-    // --- CHANGE OF UNIT ---
+    private function getFiscalYearString() {
+        $settings = SystemSetting::first();
+        $currentYear = now()->year;
+        $fiscalYearEnd = $settings->fiscal_year_end ?? '12-31';
+        
+        $deadlineThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$fiscalYearEnd}")->endOfDay();
+
+        if (now()->lte($deadlineThisYear)) {
+            return ($currentYear - 1) . '-' . $currentYear;
+        } else {
+            return $currentYear . '-' . ($currentYear + 1);
+        }
+    }
+
     public function storeChangeOfUnit(Request $request)
     {
         $request->validate([
@@ -177,6 +210,17 @@ class ApplicationController extends Controller
             'documents'             => 'required|array',
             'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
+
+        $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
+            ->where('application_type', 'Change of Unit')
+            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+            ->exists();
+
+        if ($existingApp) {
+             throw ValidationException::withMessages([
+                'selected_franchise_id' => 'An active Change of Unit application already exists for this franchise.',
+            ]);
+        }
 
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
@@ -257,7 +301,6 @@ class ApplicationController extends Controller
         return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
     }
 
-    // --- CHANGE OF OWNER ---
     public function storeChangeOfOwner(Request $request)
     {
         $request->validate([
@@ -266,6 +309,17 @@ class ApplicationController extends Controller
             'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'owner_mode'            => 'required|in:new,existing',
         ]);
+
+        $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
+            ->where('application_type', 'Change of Owner')
+            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+            ->exists();
+
+        if ($existingApp) {
+             throw ValidationException::withMessages([
+                'selected_franchise_id' => 'An active Change of Owner application already exists for this franchise.',
+            ]);
+        }
 
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
@@ -369,27 +423,23 @@ class ApplicationController extends Controller
             'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
+        $fiscalYearString = $this->getFiscalYearString();
+
+        $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
+            ->where('application_type', 'Renewal')
+            ->where('reference_number', 'LIKE', "%APP-{$fiscalYearString}-%")
+            ->exists();
+
+        if ($existingApp) {
+             throw ValidationException::withMessages([
+                'selected_franchise_id' => "A Renewal application for the {$fiscalYearString} fiscal year already exists for this franchise.",
+            ]);
+        }
+
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
 
-        // --- NEW: Calculate the current Fiscal Year String ---
-        $settings = SystemSetting::first();
-        $currentYear = now()->year;
-        $fiscalYearEnd = $settings->fiscal_year_end ?? '12-31';
-        
-        // Define the deadline for the current calendar year
-        $deadlineThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$fiscalYearEnd}")->endOfDay();
-
-        // Determine if we are in the cycle ending this year or next year
-        if (now()->lte($deadlineThisYear)) {
-            $fiscalYearString = ($currentYear - 1) . '-' . $currentYear;
-        } else {
-            $fiscalYearString = $currentYear . '-' . ($currentYear + 1);
-        }
-        // ---------------------------------------------------
-
         $application = Application::create([
-            // Use the dynamic fiscal year string here
             'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)),
             'user_id'          => $user->id,
             'franchise_id'     => $franchise->id,
@@ -399,7 +449,6 @@ class ApplicationController extends Controller
             'remarks'          => "Application submitted for {$fiscalYearString} cycle. Waiting for initial review.",
             'submitted_at'     => now(),
             
-            // Uses current owner details
             'first_name'       => $user->first_name,
             'middle_name'      => $user->middle_name,
             'last_name'        => $user->last_name,

@@ -3,8 +3,8 @@ import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { useForm } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { useForm, usePage } from '@inertiajs/vue3';
+import { ref, computed, watch } from 'vue';
 
 const props = defineProps({
     show: { type: Boolean, required: true },
@@ -17,6 +17,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['close', 'submit']);
+const page = usePage();
 
 // --- MODAL STATES ---
 const currentStep = ref(1); 
@@ -27,6 +28,10 @@ const barangayQuery = ref('');
 const showBarangayDropdown = ref(false);
 const docPreviews = ref({}); 
 const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); 
+
+// Warning Modal States
+const showWarningModal = ref(false);
+const warningMessage = ref('');
 
 const applicationTypes = [
     { id: 'renewal', name: 'Renewal', description: 'Renew franchise validity.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
@@ -40,7 +45,7 @@ const form = useForm({
     selected_franchise_id: '', 
     remarks: '',
     
-    owner_mode: 'existing', // Added to properly pass mode to backend
+    owner_mode: 'existing', 
 
     // Owner Fields
     existing_operator_id: '', 
@@ -49,7 +54,7 @@ const form = useForm({
     new_owner_last_name: '', 
     new_owner_contact: '', 
     new_owner_email: '', 
-    new_owner_tin: '', // <-- Added here
+    new_owner_tin: '', 
     new_owner_address: '', 
     new_owner_barangay: '', 
     new_owner_city: 'Zamboanga City',
@@ -60,6 +65,17 @@ const form = useForm({
     
     // Document uploads
     documents: {} 
+});
+
+// Watch for Server-Side Validation Errors as a fallback
+watch(() => form.errors.selected_franchise_id, (newError) => {
+    if (newError) {
+        warningMessage.value = newError;
+        showWarningModal.value = true;
+        currentStep.value = 2; 
+        form.selected_franchise_id = ''; 
+        form.clearErrors('selected_franchise_id'); 
+    }
 });
 
 const currentEvaluationRequirements = computed(() => {
@@ -78,11 +94,43 @@ const areAllDocsUploaded = computed(() => {
     return reqs.every(r => form.documents[r.id]);
 });
 
-// Added form.new_owner_tin check here
+// Uses pre-calculated server states instead of localized date calculations
+const duplicateApplicationError = computed(() => {
+    if (!form.selected_franchise_id) return null;
+
+    const selectedFranchise = props.franchises.find(f => f.id == form.selected_franchise_id);
+    if (!selectedFranchise) return null;
+
+    if (selectedType.value === 'renewal') {
+        if (selectedFranchise.has_renewal_this_year) {
+            return `A Renewal application for the current fiscal year already exists for this franchise.`;
+        }
+    } else if (selectedType.value === 'change_unit') {
+        if (selectedFranchise.has_active_change_unit) {
+            return `An active Change of Unit application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
+        }
+    } else if (selectedType.value === 'change_owner') {
+        if (selectedFranchise.has_active_change_owner) {
+            return `An active Change of Owner application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
+        }
+    }
+    
+    return null;
+});
+
+// Triggers instantly when a franchise is selected from the dropdown
+const validateFranchiseSelection = () => {
+    const error = duplicateApplicationError.value;
+    if (error) {
+        warningMessage.value = error;
+        showWarningModal.value = true;
+        form.selected_franchise_id = '';
+    }
+};
+
 const isStep2Valid = computed(() => {
     if (isFranchiseSelectRequired.value && !form.selected_franchise_id) return false;
-    
-    // Check if the current required documents are uploaded
+    if (duplicateApplicationError.value) return false;
     if (!areAllDocsUploaded.value) return false;
 
     if (isOwnerRequired.value) {
@@ -127,6 +175,7 @@ const selectType = (typeId) => {
     form.unit_front_photo = null; form.unit_back_photo = null; form.unit_left_photo = null; form.unit_right_photo = null;
     form.existing_operator_id = '';
     form.existing_unit_id = '';
+    form.selected_franchise_id = ''; 
 };
 
 const handleDocChange = (event, reqId) => {
@@ -149,7 +198,7 @@ const submit = () => {
             },
         });
     } else if (selectedType.value === 'change_owner') {
-        form.owner_mode = ownerMode.value; // Sync to controller expectation
+        form.owner_mode = ownerMode.value; 
         form.post(route('franchise.applications.store-change-owner'), {
             preserveScroll: true,
             onSuccess: () => {
@@ -158,7 +207,6 @@ const submit = () => {
             },
         });
     } else if (selectedType.value === 'renewal') {
-        // Renewal goes straight to its dedicated route
         form.post(route('franchise.applications.store-renewal'), {
             preserveScroll: true,
             onSuccess: () => {
@@ -207,7 +255,7 @@ const submit = () => {
                     <div v-if="currentStep === 2" class="space-y-6">
                         <div v-if="isFranchiseSelectRequired">
                             <InputLabel value="Select Existing Franchise to Modify/Renew" />
-                            <select v-model="form.selected_franchise_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2 mt-1">
+                            <select v-model="form.selected_franchise_id" @change="validateFranchiseSelection" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2 mt-1">
                                 <option value="" disabled>-- Choose Unit --</option>
                                 <option v-for="fran in franchises" :key="fran.id" :value="fran.id">
                                     {{ fran.mtfrb_case_no || `Franchise #${fran.id}` }} 
@@ -215,7 +263,6 @@ const submit = () => {
                                     (Plate: {{ fran.current_active_unit?.new_unit?.plate_number || 'N/A' }})
                                 </option>
                             </select>
-                            <p v-if="form.errors.selected_franchise_id" class="text-red-500 text-xs mt-1">{{ form.errors.selected_franchise_id }}</p>
                         </div>
 
                         <div v-if="isOwnerRequired">
@@ -386,6 +433,24 @@ const submit = () => {
                         {{ form.processing ? 'Submitting...' : 'Confirm Submission' }}
                     </PrimaryButton>
                 </div>
+            </div>
+        </div>
+    </transition>
+
+    <transition name="fade">
+        <div v-if="showWarningModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showWarningModal = false"></div>
+            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center transform transition-all">
+                <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4">
+                    <svg class="h-7 w-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                </div>
+                <h3 class="text-lg font-bold text-gray-900 mb-2">Application Prohibited</h3>
+                <p class="text-sm text-gray-600 mb-6 px-2">{{ warningMessage }}</p>
+                <PrimaryButton @click="showWarningModal = false" class="w-full justify-center !bg-red-600 hover:!bg-red-700 focus:!ring-red-500">
+                    Acknowledge
+                </PrimaryButton>
             </div>
         </div>
     </transition>
