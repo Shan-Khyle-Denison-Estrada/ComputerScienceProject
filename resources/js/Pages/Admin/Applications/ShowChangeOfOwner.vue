@@ -279,7 +279,7 @@ const saveRequirementStatus = (status) => {
                             Finalize Ownership Change
                         </PrimaryButton>
                     </template>
-                    <template v-else-if="!['Rejected', 'Returned'].includes(application.status)">
+                    <template v-else-if="!['Rejected', 'Returned', 'Cancelled'].includes(application.status)">
                         <button @click="openReturnModal" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white text-xs font-bold uppercase rounded-lg transition-colors">Return</button>
                         <button @click="openRejectModal" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Reject</button>
                         <button @click="openApproveModal" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase rounded-lg transition-colors">Approve</button>

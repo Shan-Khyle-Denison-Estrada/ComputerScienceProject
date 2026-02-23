@@ -527,4 +527,23 @@ class ApplicationController extends Controller
 
         return redirect()->back()->with('success', 'Compliance submitted successfully!');
     }
+    public function cancelApplication(Request $request, Application $application)
+    {
+        abort_if($application->user_id !== Auth::id(), 403);
+
+        if ($application->application_type === 'Renewal') {
+            return redirect()->back()->with('error', 'Renewal applications cannot be cancelled.');
+        }
+
+        if (in_array($application->status, ['Approved', 'Rejected', 'Completed', 'Cancelled'])) {
+            return redirect()->back()->with('error', 'This application cannot be cancelled in its current state.');
+        }
+
+        $application->update([
+            'status' => 'Cancelled',
+            'remarks' => 'Application cancelled by the applicant.'
+        ]);
+
+        return redirect()->back()->with('success', 'Application cancelled successfully!');
+    }
 }

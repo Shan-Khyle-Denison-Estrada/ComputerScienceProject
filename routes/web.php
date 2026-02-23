@@ -222,6 +222,9 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     
     // NEW: Application Resubmit/Comply Route
     Route::post('/franchise/applications/{application}/resubmit', [FranchiseApplicationController::class, 'resubmitApplication'])->name('franchise.applications.resubmit');
+
+    // NEW: Cancel Application Route
+    Route::post('/franchise/applications/{application}/cancel', [FranchiseApplicationController::class, 'cancelApplication'])->name('franchise.applications.cancel');
 });
 
 // --- PROFILE MANAGEMENT ---
