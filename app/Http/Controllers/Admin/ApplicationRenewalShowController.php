@@ -178,4 +178,23 @@ class ApplicationRenewalShowController extends Controller
         $redFlag->update(['status' => 'resolved']);
         return redirect()->back()->with('success', 'Red Flag marked as resolved.');
     }
+
+    // Add this new method
+    public function approveCapo(Application $application)
+    {
+        $application->update(['capo_status' => 'Approved']);
+        return redirect()->back()->with('success', "Inspector's work has been approved by the City Anti-Pollution Officer.");
+    }
+
+    public function approveEvaluator(Application $application)
+    {
+        $application->update(['evaluator_status' => 'Approved']);
+        return redirect()->back()->with('success', "Evaluation has been approved.");
+    }
+
+    public function approveInspector(Application $application)
+    {
+        $application->update(['inspector_status' => 'Approved']);
+        return redirect()->back()->with('success', "Unit Inspection has been approved.");
+    }
 }

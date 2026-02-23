@@ -12,6 +12,7 @@ class Application extends Model
     protected $fillable = [
         'reference_number', 'user_id', 'franchise_id', 'zone_id',
         'application_type', 'status', 'remarks',
+        'evaluator_status', 'inspector_status', 'capo_status', 'reviewer_status', 'sp_status', 'tab_status', // <-- Added TAB Status
         'first_name', 'middle_name', 'last_name', 'contact_number', 'email', 'tin_number',
         'street_address', 'barangay', 'city', 'submitted_at', 'reviewed_at'
     ];
@@ -27,7 +28,6 @@ class Application extends Model
         return $this->hasOne(Assessment::class); 
     }
 
-    // Helper for Full Name
     public function getApplicantNameAttribute()
     {
         return "{$this->first_name} {$this->middle_name} {$this->last_name}";

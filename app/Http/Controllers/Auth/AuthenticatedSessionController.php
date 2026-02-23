@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\UserRole; // Make sure this is imported
+use App\Enums\UserRole; 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -14,9 +14,6 @@ use Inertia\Response;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Display the login view.
-     */
     public function create(): Response
     {
         return Inertia::render('Auth/Login', [
@@ -25,35 +22,33 @@ class AuthenticatedSessionController extends Controller
         ]);
     }
 
-    /**
-     * Handle an incoming authentication request.
-     */
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
 
         $request->session()->regenerate();
 
-        // STRICT REDIRECT: No default '/' fallback for logged-in users.
         $url = match($request->user()->role) {
             \App\Enums\UserRole::ADMIN => route('admin.dashboard', absolute: false),
             \App\Enums\UserRole::FRANCHISE_OWNER => route('franchise.dashboard', absolute: false),
-            // If somehow a user has no role, kick them out
+            \App\Enums\UserRole::EVALUATOR => route('evaluator.applications.index', absolute: false),
+            \App\Enums\UserRole::INSPECTOR => route('inspector.applications.index', absolute: false),
+            \App\Enums\UserRole::CITY_ANTI_POLLUTION_OFFICER => route('capo.applications.index', absolute: false),
+            \App\Enums\UserRole::REVIEWER => route('reviewer.applications.index', absolute: false),
+            \App\Enums\UserRole::SP_APPROVER => route('sp_approver.applications.index', absolute: false),
+            \App\Enums\UserRole::TAB_APPROVER => route('tab_approver.applications.index', absolute: false),
+            \App\Enums\UserRole::ENCODER => route('encoder.applications.index', absolute: false), // <-- Added ENCODER
             default => route('login'), 
         };
 
         return redirect()->intended($url);
     }
 
-    /**
-     * Destroy an authenticated session.
-     */
     public function destroy(Request $request): RedirectResponse
     {
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
-
         $request->session()->regenerateToken();
 
         return redirect('/');

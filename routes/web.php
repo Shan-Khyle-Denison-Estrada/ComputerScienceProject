@@ -23,6 +23,13 @@ use App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController;
 use App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController;
 use App\Http\Controllers\Admin\ApplicationRenewalShowController;
 use App\Http\Controllers\Admin\SettingsController;
+use App\Http\Controllers\Evaluator\EvaluatorApplicationController;
+use App\Http\Controllers\Inspector\InspectorApplicationController;
+use App\Http\Controllers\Capo\CapoApplicationController;
+use App\Http\Controllers\Reviewer\ReviewerApplicationController;
+use App\Http\Controllers\SpApprover\SpApproverApplicationController;
+use App\Http\Controllers\TabApprover\TabApproverApplicationController;
+use App\Http\Controllers\Encoder\EncoderApplicationController;
 use App\Models\Franchise;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
@@ -222,6 +229,106 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+// --- CITY ANTI-POLLUTION OFFICER (CAPO) ROUTES ---
+Route::middleware(['auth', 'role:city_anti_pollution_officer'])->group(function () {
+    Route::get('/capo/applications', [CapoApplicationController::class, 'index'])->name('capo.applications.index');
+    Route::get('/capo/applications/renewal/{application}', [CapoApplicationController::class, 'showRenewal'])->name('capo.applications.show');
+
+    Route::post('/capo/applications/renewal/{application}/approve', [CapoApplicationController::class, 'approve'])
+        ->name('capo.applications.renewal.approve');
+    Route::post('/capo/applications/renewal/{application}/reject', [CapoApplicationController::class, 'reject'])
+        ->name('capo.applications.renewal.reject');
+});
+
+// --- EVALUATOR ROUTES ---
+Route::middleware(['auth', 'role:evaluator'])->group(function () {
+    Route::get('/evaluator/applications', [EvaluatorApplicationController::class, 'index'])->name('evaluator.applications.index');
+    Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show');
+
+    Route::post('/evaluator/applications/renewal/{application}/approve', [EvaluatorApplicationController::class, 'approve'])
+        ->name('evaluator.applications.renewal.approve');
+    Route::post('/evaluator/applications/renewal/{application}/reject', [EvaluatorApplicationController::class, 'reject'])
+        ->name('evaluator.applications.renewal.reject');
+    
+    Route::post('/evaluator/applications/renewal/{application}/evaluate', [EvaluatorApplicationController::class, 'evaluateDocument'])
+        ->name('evaluator.applications.renewal.evaluate');
+
+    // NEW: Resolve Complaints and Red Flags
+    Route::post('/evaluator/applications/renewal/{application}/complaints/{complaint}/resolve', [EvaluatorApplicationController::class, 'resolveComplaint'])
+        ->name('evaluator.applications.renewal.resolve-complaint');
+    Route::post('/evaluator/applications/renewal/{application}/red-flags/{red_flag}/resolve', [EvaluatorApplicationController::class, 'resolveRedFlag'])
+        ->name('evaluator.applications.renewal.resolve-red-flag');
+});
+
+// --- INSPECTOR ROUTES ---
+Route::middleware(['auth', 'role:inspector'])->group(function () {
+    Route::get('/inspector/applications', [InspectorApplicationController::class, 'index'])->name('inspector.applications.index');
+    Route::get('/inspector/applications/renewal/{application}', [InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
+
+    Route::post('/inspector/applications/renewal/{application}/approve', [InspectorApplicationController::class, 'approve'])
+        ->name('inspector.applications.renewal.approve');
+    Route::post('/inspector/applications/renewal/{application}/reject', [InspectorApplicationController::class, 'reject'])
+        ->name('inspector.applications.renewal.reject');
+    
+    // Specific to Inspector: Evaluating Unit Inspection Items
+    Route::post('/inspector/applications/renewal/{application}/inspect', [InspectorApplicationController::class, 'inspectUnit'])
+        ->name('inspector.applications.renewal.inspect');
+});
+
+// --- REVIEWER ROUTES ---
+Route::middleware(['auth', 'role:reviewer'])->group(function () {
+    Route::get('/reviewer/applications', [ReviewerApplicationController::class, 'index'])->name('reviewer.applications.index');
+    Route::get('/reviewer/applications/renewal/{application}', [ReviewerApplicationController::class, 'showRenewal'])->name('reviewer.applications.show');
+
+    Route::post('/reviewer/applications/renewal/{application}/approve', [ReviewerApplicationController::class, 'approve'])
+        ->name('reviewer.applications.renewal.approve');
+    Route::post('/reviewer/applications/renewal/{application}/reject', [ReviewerApplicationController::class, 'reject'])
+        ->name('reviewer.applications.renewal.reject');
+});
+
+// --- SP APPROVER ROUTES ---
+Route::middleware(['auth', 'role:sp_approver'])->group(function () {
+    Route::get('/sp-approver/applications', [SpApproverApplicationController::class, 'index'])->name('sp_approver.applications.index');
+    Route::get('/sp-approver/applications/renewal/{application}', [SpApproverApplicationController::class, 'showRenewal'])->name('sp_approver.applications.show');
+
+    Route::post('/sp-approver/applications/renewal/{application}/approve', [SpApproverApplicationController::class, 'approve'])
+        ->name('sp_approver.applications.renewal.approve');
+    Route::post('/sp-approver/applications/renewal/{application}/reject', [SpApproverApplicationController::class, 'reject'])
+        ->name('sp_approver.applications.renewal.reject');
+});
+
+// --- TAB APPROVER ROUTES ---
+Route::middleware(['auth', 'role:tab_approver'])->group(function () {
+    Route::get('/tab-approver/applications', [TabApproverApplicationController::class, 'index'])->name('tab_approver.applications.index');
+    Route::get('/tab-approver/applications/renewal/{application}', [TabApproverApplicationController::class, 'showRenewal'])->name('tab_approver.applications.show');
+
+    Route::post('/tab-approver/applications/renewal/{application}/approve', [TabApproverApplicationController::class, 'approve'])
+        ->name('tab_approver.applications.renewal.approve');
+    Route::post('/tab-approver/applications/renewal/{application}/reject', [TabApproverApplicationController::class, 'reject'])
+        ->name('tab_approver.applications.renewal.reject');
+});
+
+// --- ENCODER ROUTES ---
+Route::middleware(['auth', 'role:encoder'])->group(function () {
+    Route::get('/encoder/applications', [EncoderApplicationController::class, 'index'])->name('encoder.applications.index');
+    
+    // Renewal
+    Route::get('/encoder/applications/renewal/{application}', [EncoderApplicationController::class, 'showRenewal'])->name('encoder.applications.renewal.show');
+    Route::post('/encoder/applications/renewal/{application}/finalize', [EncoderApplicationController::class, 'finalizeRenewal'])->name('encoder.applications.renewal.finalize');
+
+    // Franchise Owner Account (New Franchise)
+    Route::get('/encoder/applications/new-franchise/{application}', [EncoderApplicationController::class, 'showNewFranchise'])->name('encoder.applications.new-franchise.show');
+    Route::post('/encoder/applications/new-franchise/{application}/finalize', [EncoderApplicationController::class, 'finalizeNewFranchise'])->name('encoder.applications.new-franchise.finalize');
+
+    // Change of Owner
+    Route::get('/encoder/applications/change-of-owner/{application}', [EncoderApplicationController::class, 'showChangeOfOwner'])->name('encoder.applications.change-of-owner.show');
+    Route::post('/encoder/applications/change-of-owner/{application}/finalize', [EncoderApplicationController::class, 'finalizeChangeOfOwner'])->name('encoder.applications.change-of-owner.finalize');
+
+    // Change of Unit
+    Route::get('/encoder/applications/change-of-unit/{application}', [EncoderApplicationController::class, 'showChangeOfUnit'])->name('encoder.applications.change-of-unit.show');
+    Route::post('/encoder/applications/change-of-unit/{application}/finalize', [EncoderApplicationController::class, 'finalizeChangeOfUnit'])->name('encoder.applications.change-of-unit.finalize');
 });
 
 require __DIR__.'/auth.php';
