@@ -492,6 +492,8 @@ class ApplicationController extends Controller
             }
         }
 
+        $franchise->update(['status' => 'Pending Renewal']);
+
         return redirect()->back()->with('success', 'Renewal application submitted successfully!');
     }
 

@@ -81,7 +81,17 @@ class TabApproverApplicationController extends Controller
 
     public function approve(Application $application)
     {
-        $application->update(['tab_status' => 'Approved']);
+        // 1. Approve the application's tab status
+        $application->update(['tab_status' => 'Test']);
+        
+        // 2. Update the associated franchise status and date_issued
+        if ($application->franchise) {
+            $application->franchise->update([
+                'status' => 'Renewed',
+                'date_issued' => now()->format('Y-m-d')
+            ]);
+        }
+
         
         return redirect()->back()->with('success', "Renewal has been approved by the Tabulation Approver.");
     }

@@ -19,8 +19,27 @@ class AutoRenewFranchises extends Command
     // Description for the console
     protected $description = 'Auto-generate late renewal applications and apply penalties.';
 
-public function handle()
+    public function handle()
     {
+        // --- NEW STEP: AUTO-TERMINATE FRANCHISES (3 YEARS UNPAID/NON-COMPLIANT) ---
+        $threeYearsAgo = now()->subYears(3);
+
+        // Find franchises with an unpaid assessment from more than 3 years ago
+        $franchisesToTerminate = Franchise::whereHas('assessments', function ($query) use ($threeYearsAgo) {
+            $query->where('assessment_status', '!=', 'paid')
+                  ->whereDate('assessment_date', '<=', $threeYearsAgo);
+        })->where('status', '!=', 'Terminated')->get();
+
+        // Update them to Terminated
+        foreach ($franchisesToTerminate as $franchise) {
+            $franchise->update(['status' => 'Terminated']);
+        }
+
+        if ($franchisesToTerminate->isNotEmpty()) {
+            $this->info("Auto-terminated {$franchisesToTerminate->count()} franchises for 3 consecutive years of non-compliance.");
+        }
+        // ---------------------------------------------------------------------------
+
         $currentYear = now()->year;
         $settings = SystemSetting::first();
 
@@ -47,7 +66,7 @@ public function handle()
             $query->where('application_type', 'Renewal')
                   ->whereYear('created_at', $currentYear); 
         })
-        ->where('status', '!=', 'terminated') 
+        ->where('status', '!=', 'Terminated') // Updated to match case
         ->with('currentOwnership.newOwner.user')
         ->get();
 
@@ -112,6 +131,7 @@ public function handle()
                     ]);
                 }
             }
+            $franchise->update(['status' => 'Pending Renewal']);
         }
 
         $this->info("Successfully auto-generated late renewals for the {$fiscalYearString} fiscal year.");
