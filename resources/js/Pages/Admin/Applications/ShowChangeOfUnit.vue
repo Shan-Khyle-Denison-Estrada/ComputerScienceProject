@@ -18,7 +18,8 @@ const props = defineProps({
     unitMakes: {
         type: Array,
         default: () => []
-    }
+    },
+    isEncoder: { type: Boolean, default: false },
 });
 
 // --- STATE ---
@@ -353,9 +354,6 @@ const saveInspectionStatus = () => {
             
             <div class="flex-none mb-4 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <Link :href="route('admin.applications.index')" class="p-1.5 rounded-full hover:bg-gray-200 transition-colors">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
-                    </Link>
                     <div>
                         <h1 class="text-xl font-bold text-gray-800 leading-tight">Change of Unit Details</h1>
                         <p class="text-xs text-gray-500">{{ application.reference_no }}</p>
@@ -540,7 +538,7 @@ const saveInspectionStatus = () => {
                             </div>
 
                             <div v-for="(req, index) in application.evaluation_requirements" :key="index" 
-                                @click="openRequirementModal(index)"
+                                @click="!isEncoder && openRequirementModal(index)"
                                 class="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
                                 
                                 <div class="flex items-start gap-3">
@@ -578,7 +576,7 @@ const saveInspectionStatus = () => {
                             </div>
                             
                             <div v-for="(item, index) in inspectionsList" :key="index" 
-                                @click="openInspectionModal(index)"
+                                @click="!isEncoder && openInspectionModal(index)"
                                 class="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
                                 
                                 <div class="flex items-start gap-3">

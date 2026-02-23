@@ -11,10 +11,11 @@ import debounce from 'lodash/debounce';
 
 // --- PROPS (Real Data from Backend) ---
 const props = defineProps({
-    applications: Object, // <-- CHANGED: Array to Object for Pagination
+    applications: Object,
     evaluationRequirements: Array,
     inspectionRequirements: Array,
-    filters: Object // <-- ADDED: Track filters passed from the controller
+    filters: Object,
+    isEncoder: Boolean // <-- ADD THIS
 });
 
 // --- CONSTANTS ---
@@ -39,15 +40,32 @@ const activeReqTab = ref('evaluation');
 const isEditingReq = ref(false);
 const reqForm = ref({ id: null, name: '', options: '', type: '' });
 
+// Add this anywhere in your <script setup>
+const getViewUrl = (app) => {
+    // FIX 1: Check 'app.type' instead of 'app.application_type'
+    switch (app.type) {
+        case 'Renewal': 
+            return route('admin.applications.renewal.show', app.id);
+        case 'Change of Owner': 
+            return route('admin.applications.change-of-owner.show', app.id);
+        case 'Change of Unit': 
+            return route('admin.applications.change-of-unit.show', app.id);
+        case 'Franchise Owner Account': 
+            return route('admin.applications.show', app.id);
+        default: 
+            return '#';
+    }
+}
 
 // --- SEARCH & FILTER LOGIC (Server-side) ---
 const handleSearch = debounce(() => {
-    router.get(route('admin.applications.index'), {
+    // ✅ Replaced hardcoded admin route with current path
+    router.get(window.location.pathname, {
         search: search.value,
         status: filterStatus.value,
         type: filterType.value
     }, { preserveState: true, replace: true });
-}, 300);
+}, 500);
 
 // Watch for search input changes directly
 watch(search, handleSearch);
@@ -177,14 +195,14 @@ const getApplicationRoute = (app) => {
                     <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search applications..." />
                 </div>
 
-                <button @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative" title="Filter Applications">
+                <button v-if="!isEncoder" @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative" title="Filter Applications">
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     <span v-if="filterStatus || filterType" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
 
-                <PrimaryButton @click="openRequirementsModal" class="flex items-center gap-2">
+                <PrimaryButton v-if="!isEncoder" @click="openRequirementsModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     Manage Requirements
                 </PrimaryButton>
@@ -229,8 +247,9 @@ const getApplicationRoute = (app) => {
                                 </span>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                <Link :href="getApplicationRoute(app)" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center justify-end gap-1 ml-auto">
-                                    Review <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" /></svg>
+                                <Link :href="getViewUrl(app)" class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-md hover:bg-blue-100 transition-colors text-xs font-bold">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                                    View
                                 </Link>
                             </td>
                         </tr>

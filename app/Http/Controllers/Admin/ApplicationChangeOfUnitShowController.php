@@ -20,6 +20,9 @@ class ApplicationChangeOfUnitShowController extends Controller
     {
         abort_if($application->application_type !== 'Change of Unit', 404);
 
+        $user = auth()->user();
+        $isEncoder = strtolower($user->role->value) === 'encoder';
+
         $application->load([
             'user',
             'franchise.currentActiveUnit.newUnit.make', 
@@ -38,7 +41,8 @@ class ApplicationChangeOfUnitShowController extends Controller
         return Inertia::render('Admin/Applications/ShowChangeOfUnit', [
             'application' => $application,
             'inspectionItems' => $inspectionItems,
-            'unitMakes' => $unitMakes
+            'unitMakes' => $unitMakes,
+            'isEncoder' => $isEncoder,
         ]);
     }
 

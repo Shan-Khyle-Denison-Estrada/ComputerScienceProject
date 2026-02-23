@@ -15,6 +15,7 @@ const props = defineProps({
     barangays: { type: Array, default: () => [] },
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
+    isEncoder: { type: Boolean, default: false },
 });
 
 // --- STATE ---
@@ -256,11 +257,6 @@ const formatCurrency = (value) => {
             
             <div class="flex-none mb-3 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <Link :href="route('admin.applications.index')" class="p-1.5 rounded-full hover:bg-gray-200 transition-colors">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                    </Link>
                     <div>
                         <h1 class="text-xl font-bold text-gray-800 leading-tight">Application Details</h1>
                         <p class="text-xs text-gray-500">{{ application.reference_no }}</p>
@@ -368,7 +364,7 @@ const formatCurrency = (value) => {
                                 <div class="divide-y divide-gray-100">
                                     <div v-for="(req, index) in application.evaluation_requirements" :key="req.id" 
                                         class="p-4 flex items-center justify-between hover:bg-gray-50 cursor-pointer transition-colors group"
-                                        @click="openRequirementModal(index)">
+                                        @click="!isEncoder && openRequirementModal(index)">
                                         <div class="flex items-center gap-4">
                                             <div class="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 group-hover:bg-blue-100 transition-colors">
                                                 <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" /></svg>

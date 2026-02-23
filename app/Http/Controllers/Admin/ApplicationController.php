@@ -18,6 +18,10 @@ class ApplicationController extends Controller
         $status = $request->input('status');
         $type = $request->input('type');
 
+        $user = auth()->user();
+        // Handle Enum user role safely
+        $isEncoder = strtolower($user->role->value) === 'encoder';
+
         // 1. Fetch Applications and map to Frontend structure via Pagination
         $applications = Application::query()
             ->when($search, function($query, $search) {
@@ -29,11 +33,17 @@ class ApplicationController extends Controller
                       ->orWhere('email', 'like', "%{$search}%");
                 });
             })
-            ->when($status, function($query, $status) {
-                $query->where('status', $status);
-            })
             ->when($type, function($query, $type) {
                 $query->where('application_type', $type);
+            })
+            ->when($isEncoder, function($query) {
+                // ENCODERS: Force to show ONLY Approved applications
+                $query->where('status', 'Approved');
+            }, function($query) use ($status) {
+                // ADMINS: Allow filtering by any status
+                if ($status) {
+                    $query->where('status', $status);
+                }
             })
             ->latest('submitted_at')
             ->paginate(6)
@@ -43,14 +53,12 @@ class ApplicationController extends Controller
                     'id' => $app->id,
                     'reference_no' => $app->reference_number,
                     'type' => $app->application_type,
-                    // FIX: Parse the string to Carbon before formatting
                     'date_submitted' => $app->submitted_at ? Carbon::parse($app->submitted_at)->format('M d, Y') : 'N/A',
                     'status' => $app->status,
                     'applicant' => [
                         'first_name' => $app->first_name,
                         'last_name' => $app->last_name,
                         'email' => $app->email,
-                        // Ensure photo path is correct if it exists
                         'photo' => $app->user_photo ? '/storage/' . $app->user_photo : null,
                     ]
                 ];
@@ -78,6 +86,7 @@ class ApplicationController extends Controller
             'evaluationRequirements' => $evalReqs,
             'inspectionRequirements' => $inspReqs,
             'filters' => $request->only(['search', 'status', 'type']),
+            'isEncoder' => $isEncoder
         ]);
     }
 

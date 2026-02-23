@@ -161,7 +161,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/applications/requirements', [AdminApplicationController::class, 'storeRequirement'])->name('admin.requirements.store');
     Route::delete('/admin/applications/requirements/{type}/{id}', [AdminApplicationController::class, 'destroyRequirement'])->name('admin.requirements.destroy');
 
-    Route::get('/applications/{id}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
+    // Route::get('/applications/{id}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
     Route::post('/applications/{id}/evaluate', [ApplicationShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate');
     Route::post('/applications/{id}/return', [ApplicationShowController::class, 'returnApplication'])->name('admin.applications.return');
     Route::post('/applications/{id}/reject', [ApplicationShowController::class, 'rejectApplication'])->name('admin.applications.reject');
@@ -310,25 +310,29 @@ Route::middleware(['auth', 'role:tab_approver'])->group(function () {
         ->name('tab_approver.applications.renewal.reject');
 });
 
-// --- ENCODER ROUTES ---
-Route::middleware(['auth', 'role:encoder'])->group(function () {
-    Route::get('/encoder/applications', [EncoderApplicationController::class, 'index'])->name('encoder.applications.index');
+// --- SHARED APPLICATION ROUTES (Admin & Encoder) ---
+Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
+    // We will use the 'admin.' prefix for the route names to prevent needing to rewrite all your Vue links,
+    // but the URLs will simply be /applications/...
     
-    // Renewal
-    Route::get('/encoder/applications/renewal/{application}', [EncoderApplicationController::class, 'showRenewal'])->name('encoder.applications.renewal.show');
-    Route::post('/encoder/applications/renewal/{application}/finalize', [EncoderApplicationController::class, 'finalizeRenewal'])->name('encoder.applications.renewal.finalize');
+    Route::get('/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
+    
+    // New Franchise (Franchise Owner Account)
+    Route::get('/applications/new-franchise/{application}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
+    Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate');
+    Route::post('/applications/new-franchise/{application}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
-    // Franchise Owner Account (New Franchise)
-    Route::get('/encoder/applications/new-franchise/{application}', [EncoderApplicationController::class, 'showNewFranchise'])->name('encoder.applications.new-franchise.show');
-    Route::post('/encoder/applications/new-franchise/{application}/finalize', [EncoderApplicationController::class, 'finalizeNewFranchise'])->name('encoder.applications.new-franchise.finalize');
+    // Renewal
+    Route::get('/applications/renewal/{application}', [ApplicationRenewalShowController::class, 'show'])->name('admin.applications.renewal.show');
+    Route::post('/applications/renewal/{application}/finalize', [ApplicationRenewalShowController::class, 'finalizeApplication'])->name('admin.applications.renewal.finalize');
 
     // Change of Owner
-    Route::get('/encoder/applications/change-of-owner/{application}', [EncoderApplicationController::class, 'showChangeOfOwner'])->name('encoder.applications.change-of-owner.show');
-    Route::post('/encoder/applications/change-of-owner/{application}/finalize', [EncoderApplicationController::class, 'finalizeChangeOfOwner'])->name('encoder.applications.change-of-owner.finalize');
+    Route::get('/applications/change-of-owner/{application}', [ApplicationChangeOfOwnerShowController::class, 'show'])->name('admin.applications.change-of-owner.show');
+    Route::post('/applications/change-of-owner/{application}/finalize', [ApplicationChangeOfOwnerShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-owner.finalize');
 
     // Change of Unit
-    Route::get('/encoder/applications/change-of-unit/{application}', [EncoderApplicationController::class, 'showChangeOfUnit'])->name('encoder.applications.change-of-unit.show');
-    Route::post('/encoder/applications/change-of-unit/{application}/finalize', [EncoderApplicationController::class, 'finalizeChangeOfUnit'])->name('encoder.applications.change-of-unit.finalize');
+    Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])->name('admin.applications.change-of-unit.show');
+    Route::post('/applications/change-of-unit/{application}/finalize', [ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-unit.finalize');
 });
 
 require __DIR__.'/auth.php';

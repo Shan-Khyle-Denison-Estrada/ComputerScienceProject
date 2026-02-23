@@ -19,6 +19,9 @@ class ApplicationRenewalShowController extends Controller
     {
         abort_if($application->application_type !== 'Renewal', 404);
 
+        $user = auth()->user();
+        $isEncoder = strtolower($user->role->value) === 'encoder';
+
         $application->load([
             'user',
             'franchise.currentOwnership.newOwner.user', 
@@ -48,7 +51,8 @@ class ApplicationRenewalShowController extends Controller
             'application' => $application,
             'inspectionItems' => $inspectionItems,
             'unitInspections' => $unitInspections,
-            'currentUnitId' => $currentUnitId
+            'currentUnitId' => $currentUnitId,
+            'isEncoder' => $isEncoder,
         ]);
     }
 

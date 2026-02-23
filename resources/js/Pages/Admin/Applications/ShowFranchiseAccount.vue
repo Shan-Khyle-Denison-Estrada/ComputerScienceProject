@@ -128,11 +128,6 @@ const closeFranchiseModal = () => {
             
             <div class="flex-none mb-3 flex items-center justify-between">
                 <div class="flex items-center gap-3">
-                    <Link :href="route('admin.applications.index')" class="p-1.5 rounded-full hover:bg-gray-200 transition-colors">
-                        <svg class="w-5 h-5 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                    </Link>
                     <div>
                         <h1 class="text-xl font-bold text-gray-800 leading-tight">Application Details</h1>
                         <p class="text-xs text-gray-500">{{ application.reference_no }}</p>

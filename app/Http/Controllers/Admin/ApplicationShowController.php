@@ -28,6 +28,9 @@ class ApplicationShowController extends Controller
 {
     public function show($id)
     {
+
+        $user = auth()->user();
+        $isEncoder = strtolower($user->role->value) === 'encoder';
         // 1. Fetch Application with relationships
         $application = Application::with([
             'user',
@@ -49,7 +52,7 @@ class ApplicationShowController extends Controller
                 'name' => $eval->requirement->name ?? 'Requirement #' . $eval->requirement_id,
                 'status' => $status,
                 'file_url' => $eval->file_path ? asset('storage/' . $eval->file_path) : '#',
-                'remarks' => $eval->remarks
+                'remarks' => $eval->remarks,
             ];
         });
 
@@ -157,7 +160,8 @@ class ApplicationShowController extends Controller
             'application' => $appData,
             'barangays' => $barangays, // [!code ++] Pass to view
             'zones' => $zones,         // [!code ++] Pass to view
-            'unitMakes' => $unitMakes  // [!code ++] Pass to view
+            'unitMakes' => $unitMakes,  // [!code ++] Pass to view
+            'isEncoder' => $isEncoder,
         ]);
     }
 

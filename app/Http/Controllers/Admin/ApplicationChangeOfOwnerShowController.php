@@ -20,6 +20,9 @@ class ApplicationChangeOfOwnerShowController extends Controller
     {
         abort_if($application->application_type !== 'Change of Owner', 404);
 
+        $user = auth()->user();
+        $isEncoder = strtolower($user->role->value) === 'encoder';
+
         $application->load([
             'user',
             'franchise.currentOwnership.newOwner.user', 
@@ -31,7 +34,8 @@ class ApplicationChangeOfOwnerShowController extends Controller
         ]);
 
         return Inertia::render('Admin/Applications/ShowChangeOfOwner', [
-            'application' => $application
+            'application' => $application,
+            'isEncoder' => $isEncoder,
         ]);
     }
 
