@@ -155,7 +155,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/complaints/nature/{nature}', [ComplaintController::class, 'destroyNature'])->name('admin.complaints.nature.destroy');
 
     // Application Index
-    Route::get('/admin/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
+    // Route::get('/admin/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
 
     // Requirements Management
     Route::post('/admin/applications/requirements', [AdminApplicationController::class, 'storeRequirement'])->name('admin.requirements.store');

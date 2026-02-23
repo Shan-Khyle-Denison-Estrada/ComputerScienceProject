@@ -86,7 +86,8 @@ const menuItems = computed(() => {
             }
         ];
     }
-    // Franchise Owner View (Unchanged)
+    
+    // Franchise Owner View
     if (user.value.role === 'franchise_owner') {
         return [
             { 
@@ -101,6 +102,28 @@ const menuItems = computed(() => {
             },
         ];
     }
+    
+    // Process-Specific Roles
+    const applicationRolesMap = {
+        'city_anti_pollution_officer': 'capo.applications.index',
+        'evaluator': 'evaluator.applications.index',
+        'inspector': 'inspector.applications.index',
+        'reviewer': 'reviewer.applications.index',
+        'sp_approver': 'sp_approver.applications.index',
+        'tab_approver': 'tab_approver.applications.index',
+        'encoder': 'admin.applications.index' // Encoder shares the admin applications index
+    };
+
+    if (applicationRolesMap[user.value.role]) {
+        return [
+            { 
+                name: 'Applications', 
+                route: applicationRolesMap[user.value.role], 
+                icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' 
+            },
+        ];
+    }
+
     return [];
 });
 
