@@ -92,6 +92,21 @@ const closeCancelModal = () => {
 };
 
 const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 100;
+
+const approvalStages = [
+    { key: 'evaluator_status', label: 'EVL', tooltip: 'Evaluator' },
+    { key: 'inspector_status', label: 'INS', tooltip: 'Inspector' },
+    { key: 'capo_status', label: 'CPO', tooltip: 'CAPO' },
+    { key: 'reviewer_status', label: 'REV', tooltip: 'Reviewer' },
+    { key: 'sp_status', label: 'SP', tooltip: 'Sanggunian Panlungsod' },
+    { key: 'tab_status', label: 'TAB', tooltip: 'Tricycle Adjudication Board' }
+];
+
+const getBadgeStyle = (status) => {
+    if (status === 'Approved' || status === 'Completed') return 'bg-green-100 text-green-700 border-green-200';
+    if (status === 'Rejected' || status === 'Returned') return 'bg-red-100 text-red-700 border-red-200';
+    return 'bg-gray-100 text-gray-400 border-gray-200'; // Pending or default
+};
 </script>
 
 <template>
@@ -166,19 +181,16 @@ const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 
                                             {{ app.status }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 align-middle">
-                                        <div class="w-full">
-                                            <div class="flex justify-between items-end mb-1">
-                                                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Step {{ app.current_step }} of {{ processSteps.length }}</span>
-                                                <span class="text-[10px] text-gray-400 font-mono">{{ Math.round((app.current_step / processSteps.length) * 100) }}%</span>
-                                            </div>
-                                            <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                                <div class="bg-blue-500 h-1.5 rounded-full transition-all duration-500" 
-                                                        :class="{'bg-red-500': app.status === 'Returned', 'bg-green-500': app.status === 'Approved'}"
-                                                        :style="{ width: `${getStepPercentage(app)}%` }"></div>
-                                            </div>
-                                        </div>
-                                    </td>
+<td class="px-6 py-4 align-middle">
+    <div class="flex items-center gap-1.5 flex-wrap">
+        <div v-for="stage in approvalStages" :key="stage.key" 
+             :title="`${stage.tooltip}: ${app[stage.key]}`"
+             class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
+             :class="getBadgeStyle(app[stage.key])">
+            {{ stage.label }}
+        </div>
+    </div>
+</td>
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-3 ml-auto">

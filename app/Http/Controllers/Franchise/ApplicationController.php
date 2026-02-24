@@ -155,7 +155,13 @@ class ApplicationController extends Controller
                     'current_step' => $step,
                     'remarks' => $app->remarks ?? 'No remarks provided.',
                     'is_active' => !in_array($status, ['Approved', 'Rejected', 'Cancelled', 'Completed']),
-                    'franchise_id' => $app->franchise_id, 
+                    'franchise_id' => $app->franchise_id,
+                    'evaluator_status' => $app->evaluator_status ?? 'Pending',
+                    'inspector_status' => $app->inspector_status ?? 'Pending',
+                    'capo_status'      => $app->capo_status ?? 'Pending',
+                    'reviewer_status'  => $app->reviewer_status ?? 'Pending',
+                    'sp_status'        => $app->sp_status ?? 'Pending',
+                    'tab_status'       => $app->tab_status ?? 'Pending',
                     'evaluations' => $app->evaluations->map(function($eval) {
                         return [
                             'id' => $eval->id,
