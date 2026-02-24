@@ -278,7 +278,7 @@ onMounted(() => {
                                 {{ user.first_name }} {{ user.last_name }}
                             </span>
                             <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide mt-0.5">
-                                {{ user.role.replace('_', ' ') }}
+                                {{ user.role.replaceAll('_', ' ') }}
                             </span>
                         </div>
                         
