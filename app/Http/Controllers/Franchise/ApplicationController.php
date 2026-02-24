@@ -20,6 +20,8 @@ use App\Models\Assessment;
 use App\Models\Particular;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log; // Optional, but highly recommended for catching the exact error
 use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
@@ -114,6 +116,7 @@ class ApplicationController extends Controller
             // Pre-calculate existing applications precisely on the server for the frontend to consume instantly
             $franchise->has_renewal_this_year = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Renewal')
+                ->whereNotIn('status', ['Rejected', 'Cancelled'])
                 ->where('reference_number', 'LIKE', "%APP-{$fiscalYearString}-%")
                 ->exists();
 
@@ -225,80 +228,92 @@ class ApplicationController extends Controller
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
 
-        $application = Application::create([
-            'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
-            'user_id'          => $user->id,
-            'franchise_id'     => $franchise->id,
-            'zone_id'          => $franchise->zone_id,
-            'application_type' => 'Change of Unit',
-            'status'           => 'Pending',
-            'remarks'          => 'Application submitted. Waiting for initial review.',
-            'submitted_at'     => now(),
-            
-            'first_name'       => $user->first_name,
-            'middle_name'      => $user->middle_name,
-            'last_name'        => $user->last_name,
-            'contact_number'   => $user->contact_number,
-            'email'            => $user->email, 
-            'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
-            'street_address'   => $user->street_address ?? $user->address,
-            'barangay'         => $user->barangay,
-            'city'             => $user->city ?? 'Zamboanga City',
-        ]);
+        DB::beginTransaction();
 
-        $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
-        $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
-        $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
-        $rightPath = $request->file('unit_right_photo')->store('units/photos', 'public');
-
-        ProposedUnit::create([
-            'application_id'   => $application->id,
-            'make_id'          => $request->make_id, 
-            'model_year'       => $request->model_year,
-            'plate_number'     => $request->plate_number,
-            'motor_number'     => $request->motor_number,
-            'chassis_number'   => $request->chassis_number,
-            'cr_number'        => $request->cr_number,
-            'unit_front_photo' => $frontPath,
-            'unit_back_photo'  => $backPath,
-            'unit_left_photo'  => $leftPath,
-            'unit_right_photo' => $rightPath,
-        ]);
-
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $requirementId => $file) {
-                $filePath = $file->store('applications/documents', 'public');
-
-                ApplicationEvaluation::create([
-                    'application_id' => $application->id,
-                    'requirement_id' => $requirementId,
-                    'file_path'      => $filePath,
-                    'is_compliant'   => null,
-                    'remarks'        => 'Uploaded upon submission.'
-                ]);
-            }
-        }
-
-        $particulars = Particular::where('group', 'Change of Unit')->get();
-        if ($particulars->isNotEmpty()) {
-            $totalAmountDue = $particulars->sum('amount');
-            $assessment = Assessment::create([
-                'application_id'    => $application->id,
-                'assessment_date'   => now(),
-                'assessment_due'    => now()->addDays(7), 
-                'total_amount_due'  => $totalAmountDue,
-                'assessment_status' => 'Pending',
-                'remarks'           => 'Auto-generated assessment for Change of Unit Application: ' . $application->reference_number,
+        try {
+            $application = Application::create([
+                'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
+                'user_id'          => $user->id,
+                'franchise_id'     => $franchise->id,
+                'zone_id'          => $franchise->zone_id,
+                'application_type' => 'Change of Unit',
+                'status'           => 'Pending',
+                'remarks'          => 'Application submitted. Waiting for initial review.',
+                'submitted_at'     => now(),
+                
+                'first_name'       => $user->first_name,
+                'middle_name'      => $user->middle_name,
+                'last_name'        => $user->last_name,
+                'contact_number'   => $user->contact_number,
+                'email'            => $user->email, 
+                'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
+                'street_address'   => $user->street_address ?? $user->address,
+                'barangay'         => $user->barangay,
+                'city'             => $user->city ?? 'Zamboanga City',
             ]);
-            foreach ($particulars as $particular) {
-                $assessment->particulars()->attach($particular->id, [
-                    'quantity' => 1,
-                    'subtotal' => $particular->amount
-                ]);
-            }
-        }
 
-        return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
+            $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
+            $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
+            $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
+            $rightPath = $request->file('unit_right_photo')->store('units/photos', 'public');
+
+            ProposedUnit::create([
+                'application_id'   => $application->id,
+                'make_id'          => $request->make_id, 
+                'model_year'       => $request->model_year,
+                'plate_number'     => $request->plate_number,
+                'motor_number'     => $request->motor_number,
+                'chassis_number'   => $request->chassis_number,
+                'cr_number'        => $request->cr_number,
+                'unit_front_photo' => $frontPath,
+                'unit_back_photo'  => $backPath,
+                'unit_left_photo'  => $leftPath,
+                'unit_right_photo' => $rightPath,
+            ]);
+
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $requirementId => $file) {
+                    $filePath = $file->store('applications/documents', 'public');
+
+                    ApplicationEvaluation::create([
+                        'application_id' => $application->id,
+                        'requirement_id' => $requirementId,
+                        'file_path'      => $filePath,
+                        'is_compliant'   => null,
+                        'remarks'        => 'Uploaded upon submission.'
+                    ]);
+                }
+            }
+
+            $particulars = Particular::where('group', 'change_of_unit')->get();
+            if ($particulars->isNotEmpty()) {
+                $totalAmountDue = $particulars->sum('amount');
+                $assessment = Assessment::create([
+                    'application_id'    => $application->id,
+                    'franchise_id'     => $franchise->id,
+                    'assessment_date'   => now(),
+                    'assessment_due'    => now()->addDays(7), 
+                    'total_amount_due'  => $totalAmountDue,
+                    'assessment_status' => 'Pending',
+                    'remarks'           => 'Auto-generated assessment for Change of Unit Application: ' . $application->reference_number,
+                ]);
+                foreach ($particulars as $particular) {
+                    $assessment->particulars()->attach($particular->id, [
+                        'quantity' => 1,
+                        'subtotal' => $particular->amount
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Log::error('Change of Unit Application Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
+        }
     }
 
     public function storeChangeOfOwner(Request $request)
@@ -359,60 +374,72 @@ class ApplicationController extends Controller
             $city = $request->new_owner_city ?? 'Zamboanga City';
         }
 
-        $application = Application::create([
-            'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
-            'user_id'          => $user->id,
-            'franchise_id'     => $franchise->id,
-            'zone_id'          => $franchise->zone_id,
-            'application_type' => 'Change of Owner',
-            'status'           => 'Pending',
-            'remarks'          => 'Application submitted. Waiting for initial review.',
-            'submitted_at'     => now(),
-            
-            'first_name'       => $firstName,
-            'middle_name'      => $middleName,
-            'last_name'        => $lastName,
-            'contact_number'   => $contactNumber,
-            'email'            => $email, 
-            'tin_number'       => $tinNumber,
-            'street_address'   => $address,
-            'barangay'         => $barangay,
-            'city'             => $city,
-        ]);
+        DB::beginTransaction();
 
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $requirementId => $file) {
-                $filePath = $file->store('applications/documents', 'public');
-                ApplicationEvaluation::create([
-                    'application_id' => $application->id,
-                    'requirement_id' => $requirementId,
-                    'file_path'      => $filePath,
-                    'is_compliant'   => null,
-                    'remarks'        => 'Uploaded upon submission.'
-                ]);
-            }
-        }
-
-        $particulars = Particular::where('group', 'Change of Owner')->get();
-        if ($particulars->isNotEmpty()) {
-            $totalAmountDue = $particulars->sum('amount');
-            $assessment = Assessment::create([
-                'application_id'    => $application->id,
-                'assessment_date'   => now(),
-                'assessment_due'    => now()->addDays(7), 
-                'total_amount_due'  => $totalAmountDue,
-                'assessment_status' => 'Pending',
-                'remarks'           => 'Auto-generated assessment for Change of Owner Application: ' . $application->reference_number,
+        try {
+            $application = Application::create([
+                'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
+                'user_id'          => $user->id,
+                'franchise_id'     => $franchise->id,
+                'zone_id'          => $franchise->zone_id,
+                'application_type' => 'Change of Owner',
+                'status'           => 'Pending',
+                'remarks'          => 'Application submitted. Waiting for initial review.',
+                'submitted_at'     => now(),
+                
+                'first_name'       => $firstName,
+                'middle_name'      => $middleName,
+                'last_name'        => $lastName,
+                'contact_number'   => $contactNumber,
+                'email'            => $email, 
+                'tin_number'       => $tinNumber,
+                'street_address'   => $address,
+                'barangay'         => $barangay,
+                'city'             => $city,
             ]);
-            foreach ($particulars as $particular) {
-                $assessment->particulars()->attach($particular->id, [
-                    'quantity' => 1,
-                    'subtotal' => $particular->amount
-                ]);
-            }
-        }
 
-        return redirect()->back()->with('success', 'Change of Owner application submitted successfully!');
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $requirementId => $file) {
+                    $filePath = $file->store('applications/documents', 'public');
+                    ApplicationEvaluation::create([
+                        'application_id' => $application->id,
+                        'requirement_id' => $requirementId,
+                        'file_path'      => $filePath,
+                        'is_compliant'   => null,
+                        'remarks'        => 'Uploaded upon submission.'
+                    ]);
+                }
+            }
+
+            $particulars = Particular::where('group', 'change_of_owner')->get();
+            if ($particulars->isNotEmpty()) {
+                $totalAmountDue = $particulars->sum('amount');
+                $assessment = Assessment::create([
+                    'application_id'    => $application->id,
+                    'franchise_id'     => $franchise->id,
+                    'assessment_date'   => now(),
+                    'assessment_due'    => now()->addDays(7), 
+                    'total_amount_due'  => $totalAmountDue,
+                    'assessment_status' => 'Pending',
+                    'remarks'           => 'Auto-generated assessment for Change of Owner Application: ' . $application->reference_number,
+                ]);
+                foreach ($particulars as $particular) {
+                    $assessment->particulars()->attach($particular->id, [
+                        'quantity' => 1,
+                        'subtotal' => $particular->amount
+                    ]);
+                }
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Change of Owner application submitted successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Log::error('Change of Owner Application Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
+        }
     }
 
     public function storeRenewal(Request $request)
@@ -427,6 +454,7 @@ class ApplicationController extends Controller
 
         $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
             ->where('application_type', 'Renewal')
+            ->whereNotIn('status', ['Rejected', 'Cancelled'])
             ->where('reference_number', 'LIKE', "%APP-{$fiscalYearString}-%")
             ->exists();
 
@@ -439,62 +467,74 @@ class ApplicationController extends Controller
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
 
-        $application = Application::create([
-            'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)),
-            'user_id'          => $user->id,
-            'franchise_id'     => $franchise->id,
-            'zone_id'          => $franchise->zone_id,
-            'application_type' => 'Renewal',
-            'status'           => 'Pending',
-            'remarks'          => "Application submitted for {$fiscalYearString} cycle. Waiting for initial review.",
-            'submitted_at'     => now(),
-            
-            'first_name'       => $user->first_name,
-            'middle_name'      => $user->middle_name,
-            'last_name'        => $user->last_name,
-            'contact_number'   => $user->contact_number,
-            'email'            => $user->email, 
-            'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
-            'street_address'   => $user->street_address ?? $user->address,
-            'barangay'         => $user->barangay,
-            'city'             => $user->city ?? 'Zamboanga City',
-        ]);
+        DB::beginTransaction();
 
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $requirementId => $file) {
-                $filePath = $file->store('applications/documents', 'public');
-                ApplicationEvaluation::create([
-                    'application_id' => $application->id,
-                    'requirement_id' => $requirementId,
-                    'file_path'      => $filePath,
-                    'is_compliant'   => null,
-                    'remarks'        => 'Uploaded upon submission.'
-                ]);
-            }
-        }
-
-        $particulars = Particular::where('group', 'Renewal')->get();
-        if ($particulars->isNotEmpty()) {
-            $totalAmountDue = $particulars->sum('amount');
-            $assessment = Assessment::create([
-                'application_id'    => $application->id,
-                'assessment_date'   => now(),
-                'assessment_due'    => now()->addDays(7), 
-                'total_amount_due'  => $totalAmountDue,
-                'assessment_status' => 'Pending',
-                'remarks'           => 'Auto-generated assessment for Renewal Application: ' . $application->reference_number,
+        try {
+            $application = Application::create([
+                'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)),
+                'user_id'          => $user->id,
+                'franchise_id'     => $franchise->id,
+                'zone_id'          => $franchise->zone_id,
+                'application_type' => 'Renewal',
+                'status'           => 'Pending',
+                'remarks'          => "Application submitted for {$fiscalYearString} cycle. Waiting for initial review.",
+                'submitted_at'     => now(),
+                
+                'first_name'       => $user->first_name,
+                'middle_name'      => $user->middle_name,
+                'last_name'        => $user->last_name,
+                'contact_number'   => $user->contact_number,
+                'email'            => $user->email, 
+                'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
+                'street_address'   => $user->street_address ?? $user->address,
+                'barangay'         => $user->barangay,
+                'city'             => $user->city ?? 'Zamboanga City',
             ]);
-            foreach ($particulars as $particular) {
-                $assessment->particulars()->attach($particular->id, [
-                    'quantity' => 1,
-                    'subtotal' => $particular->amount
-                ]);
+
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $requirementId => $file) {
+                    $filePath = $file->store('applications/documents', 'public');
+                    ApplicationEvaluation::create([
+                        'application_id' => $application->id,
+                        'requirement_id' => $requirementId,
+                        'file_path'      => $filePath,
+                        'is_compliant'   => null,
+                        'remarks'        => 'Uploaded upon submission.'
+                    ]);
+                }
             }
+
+            $particulars = Particular::where('group', 'renewal')->get();
+            if ($particulars->isNotEmpty()) {
+                $totalAmountDue = $particulars->sum('amount');
+                $assessment = Assessment::create([
+                    'application_id'    => $application->id,
+                    'franchise_id'     => $franchise->id,
+                    'assessment_date'   => now(),
+                    'assessment_due'    => now()->addDays(7), 
+                    'total_amount_due'  => $totalAmountDue,
+                    'assessment_status' => 'Pending',
+                    'remarks'           => 'Auto-generated assessment for Renewal Application: ' . $application->reference_number,
+                ]);
+                foreach ($particulars as $particular) {
+                    $assessment->particulars()->attach($particular->id, [
+                        'quantity' => 1,
+                        'subtotal' => $particular->amount
+                    ]);
+                }
+            }
+
+            $franchise->update(['status' => 'Pending Renewal']);
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Renewal application submitted successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Log::error('Renewal Application Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
         }
-
-        $franchise->update(['status' => 'Pending Renewal']);
-
-        return redirect()->back()->with('success', 'Renewal application submitted successfully!');
     }
 
     public function resubmitApplication(Request $request, Application $application)
