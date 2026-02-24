@@ -28,24 +28,34 @@ class PaymentController extends Controller
         // NEW: Fetch Pending/Overdue Assessments with their current balance
         // We eagerly load payments to calculate the balance on the fly if needed, 
         // or rely on a raw query for performance. Here we use Eloquent for simplicity.
-        $assessments = Assessment::whereIn('assessment_status', ['pending', 'overdue'])
-            ->with('payments') // Eager load to calculate balance
-            ->get()
-            ->map(function ($assessment) {
-                return [
-                    'id' => $assessment->id,
-                    'franchise_id' => $assessment->franchise_id,
-                    'total_due' => $assessment->total_amount_due,
-                    'balance' => $assessment->total_amount_due - $assessment->payments->sum('amount_paid'),
-                    'label' => "Assessment #{$assessment->id} - Bal: ₱" . number_format($assessment->total_amount_due - $assessment->payments->sum('amount_paid'), 2)
-                ];
-            });
+$assessments = Assessment::whereIn('assessment_status', ['pending', 'overdue'])
+    ->with(['application', 'particulars']) // <-- 1. Eager load relationships
+    ->get()
+    ->map(function ($assessment) {
+        return [
+            'id' => $assessment->id,
+            // 2. Grab the reference_number from the loaded Application relationship
+            'application_reference_id' => $assessment->application ? $assessment->application->reference_number : null, 
+            'label' => $assessment->remarks ?? 'Application Assessment',
+            'balance' => $assessment->balance,
+            'total_amount' => $assessment->total_amount_due,
+            // 3. Map the particulars and grab the subtotal from the pivot table
+'particulars' => $assessment->particulars->map(function ($particular) {
+    return [
+        'name' => $particular->name,
+        'quantity' => $particular->pivot->quantity, // <-- ADD THIS LINE
+        'amount' => $particular->pivot->subtotal 
+    ];
+})
+        ];
+    });
 
         return Inertia::render('Admin/Payments/Index', [
             'payments' => $payments,
             'filters' => $filters,
             'barangays' => $barangays,
-            'assessments' => $assessments, // Pass to view
+            'assessments' => $assessments,
+            'userRole' => auth()->user()->role->value ?? auth()->user()->role,
         ]);
     }
 

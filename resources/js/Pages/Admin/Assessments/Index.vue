@@ -7,14 +7,15 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
     assessments: Object,    
     filters: Object,
     particulars: Array,
-    franchises: Array
+    franchises: Array,
+    userRole: String,
 });
 
 // --- STATE ---
@@ -129,7 +130,11 @@ const submitAdd = () => {
     addForm.post(route('admin.assessments.store'), { onSuccess: () => closeAddModal() });
 };
 const closeAddModal = () => { showAddModal.value = false; addForm.reset(); };
-const openAddModal = () => showAddModal.value = true;
+const openAddModal = () => {
+    addForm.reset();
+    franchiseQuery.value = ''; // <-- Add this line
+    showAddModal.value = true;
+};
 
 // --- FORM: PARTICULARS ---
 const particularForm = useForm({ id: null, name: '', amount: '', description: '', group: '', is_system: false });
@@ -147,7 +152,7 @@ const editParticular = (p) => {
 };
 
 const submitParticular = () => {
-    const routeName = isEditingParticular.value ? 'admin.particulars.update' : 'admin.particulars.store';
+    const routeName = isEditingParticular.value ? 'admin.particulars.store' : 'admin.particulars.store';
     const params = isEditingParticular.value ? particularForm.id : undefined;
     const method = isEditingParticular.value ? 'put' : 'post';
     particularForm[method](route(routeName, params), { onSuccess: () => resetParticularForm(), preserveScroll: true });
@@ -167,6 +172,58 @@ const getGroupBadgeClass = (group) => {
         default: return 'bg-gray-100 text-gray-800';
     }
 };
+
+// Calculate subtotal for a single row
+const calculateSubtotal = (item) => {
+    if (!item.particular_id) return 0;
+    // Find the actual particular object from your props to get its amount
+    const particular = props.particulars.find(p => p.id === item.particular_id);
+    return particular ? (particular.amount * (item.quantity || 1)) : 0;
+};
+
+// Calculate total for the whole form
+const calculateTotal = () => {
+    return addForm.items.reduce((total, item) => total + calculateSubtotal(item), 0);
+};
+
+// --- SEARCHABLE FRANCHISE DROPDOWN STATE ---
+const franchiseQuery = ref('');
+const showFranchiseDropdown = ref(false);
+const dropdownContainer = ref(null); // <-- Add this ref to track the DOM element
+
+const filteredFranchises = computed(() => {
+    if (!franchiseQuery.value) return props.franchises;
+    const query = franchiseQuery.value.toLowerCase();
+    
+    return props.franchises.filter(f => {
+        const mtop = String(f.id).toLowerCase();
+        const owner = String(f.owner_name || '').toLowerCase();
+        return owner.includes(query);
+    });
+});
+
+const selectFranchise = (franchise) => {
+    addForm.franchise_id = franchise.id;
+    // Set the input field to show the selected visual text
+    franchiseQuery.value = `${franchise.id} - ${franchise.owner_name}`;
+    showFranchiseDropdown.value = false;
+};
+
+// --- CLICK OUTSIDE LOGIC ---
+const handleClickOutside = (event) => {
+    // If the click happened outside the dropdownContainer div, close the dropdown
+    if (dropdownContainer.value && !dropdownContainer.value.contains(event.target)) {
+        showFranchiseDropdown.value = false;
+    }
+};
+
+onMounted(() => {
+    document.addEventListener('click', handleClickOutside);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('click', handleClickOutside);
+});
 </script>
 
 <template>
@@ -192,8 +249,8 @@ const getGroupBadgeClass = (group) => {
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     <span v-if="filterForm.status || filterForm.franchise_id" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
-                <SecondaryButton @click="showParticularsModal = true">Particulars</SecondaryButton>
-                <PrimaryButton @click="openAddModal">New Assessment</PrimaryButton>
+                <SecondaryButton v-if="userRole === 'collector'" @click="showParticularsModal = true">Particulars</SecondaryButton>
+                <PrimaryButton v-if="userRole === 'collector'" @click="openAddModal">New Assessment</PrimaryButton>
             </div>
         </div>
 
@@ -203,6 +260,7 @@ const getGroupBadgeClass = (group) => {
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
                             <th class="px-6 py-4">ID</th>
+                            <th class="px-6 py-4">Franchise</th>
                             <th class="px-6 py-4">Application</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4">Due Date</th>
@@ -216,9 +274,23 @@ const getGroupBadgeClass = (group) => {
                                 <span class="text-blue-600 font-bold">#{{ assessment.id }}</span>
                                 <div v-if="assessment.remarks" class="text-xs text-gray-400 italic truncate max-w-[150px]">{{ assessment.remarks }}</div>
                             </td>
-                            <td class="px-6 py-4 text-gray-600">
-                                {{ assessment.application_id ? `Application #${assessment.application_id}` : 'Unassigned' }}
-                            </td>
+<td class="px-6 py-4 font-medium text-gray-900">
+    <span v-if="assessment.franchise_id">
+        {{ assessment.franchise_id }}
+    </span>
+    <span v-else class="text-gray-400 text-xs italic">
+        N/A
+    </span>
+</td>
+
+<td class="px-6 py-4">
+    <span v-if="assessment.application" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+        {{ assessment.application.reference_number }}
+    </span>
+    <span v-else class="text-gray-400 text-xs italic">
+        N/A
+    </span>
+</td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium uppercase"
                                     :class="{
@@ -255,111 +327,189 @@ const getGroupBadgeClass = (group) => {
             </div>
         </div>
 
-        <Modal :show="showAddModal" @close="closeAddModal" maxWidth="4xl">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-6 border-b pb-4">
-                    <h2 class="text-xl font-bold text-gray-900">New Assessment</h2>
-                    <button @click="closeAddModal" class="text-gray-400 hover:text-gray-600">✕</button>
+<Transition
+    enter-active-class="transition duration-200 ease-out"
+    enter-from-class="opacity-0"
+    enter-to-class="opacity-100"
+    leave-active-class="transition duration-150 ease-in"
+    leave-from-class="opacity-100"
+    leave-to-class="opacity-0"
+>
+    <div v-if="showAddModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+        
+        <div class="fixed inset-0 bg-gray-900/75 backdrop-blur-sm transition-opacity" @click="closeAddModal"></div>
+
+        <div class="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] md:max-h-[85vh] transform transition-all">
+            
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 shrink-0">
+                <div>
+                    <h2 class="text-xl font-bold text-gray-900" id="modal-title">Create Assessment</h2>
+                    <p class="text-sm text-gray-500">Draft a new payment assessment for a franchise.</p>
                 </div>
+                <button @click="closeAddModal" class="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-2 rounded-full transition-colors">
+                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
 
+            <div class="p-6 overflow-y-auto flex-1 min-h-0 bg-white">
                 <form @submit.prevent="submitAdd" class="space-y-6">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <div>
-                            <InputLabel>Franchise *</InputLabel>
-                            <select v-model="addForm.franchise_id" class="mt-1 block w-full text-sm border-gray-300 rounded-md">
-                                <option value="" disabled>Select</option>
-                                <option v-for="f in franchises" :key="f.id" :value="f.id">{{ getFranchiseLabel(f) }}</option>
-                            </select>
-                        </div>
-                        <div>
-                            <InputLabel>Issued *</InputLabel>
-                            <TextInput type="date" class="mt-1 block w-full" v-model="addForm.assessment_date" required />
-                        </div>
-                        <div>
-                            <InputLabel>Due Date *</InputLabel>
-                            <TextInput type="date" class="mt-1 block w-full" v-model="addForm.assessment_due" required />
-                        </div>
-                        <div class="md:col-span-3">
-                            <InputLabel>Remarks</InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.remarks" placeholder="Description..." />
-                        </div>
-                    </div>
+                    
+                    <div class="bg-blue-50/50 p-5 rounded-xl border border-blue-100">
+                        <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            General Information
+                        </h4>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="col-span-1 md:col-span-2">
+                                <InputLabel>Target Franchise <span class="text-red-500">*</span></InputLabel>
+<div class="relative" ref="dropdownContainer">
+    <input 
+        type="text" 
+        v-model="franchiseQuery" 
+        @focus="showFranchiseDropdown = true" 
+        class="mt-1 block w-full border-gray-300 rounded-md text-sm" 
+        placeholder="Search Franchise or Owner Name..."
+        required
+    />
+    <ul v-if="showFranchiseDropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+        <li v-if="filteredFranchises.length === 0" class="p-2 text-sm text-gray-500">
+            No franchises found
+        </li>
+        <li 
+            v-for="franchise in filteredFranchises" 
+            :key="franchise.id" 
+            @click="selectFranchise(franchise)"
+            class="p-2 text-sm hover:bg-indigo-50 cursor-pointer text-gray-700"
+        >
+            {{ franchise.id }} - {{ franchise.owner_name }}
+        </li>
+    </ul>
+</div>
+<input type="hidden" v-model="addForm.franchise_id" required />
+                            </div>
 
-                    <div v-if="isLate" class="bg-yellow-50 border-l-4 border-yellow-400 p-4">
-                        <div class="flex">
-                            <div class="ml-3">
-                                <p class="text-sm text-yellow-700">
-                                    <span class="font-bold">Notice:</span> 
-                                    The "Date Issued" is after the "Due Date". 
-                                    <span class="font-bold">Surcharge and Interest</span> 
-                                    will be automatically calculated and applied upon saving if Renewal Fees are present.
-                                </p>
+                            <div>
+                                <InputLabel>Assessment Date <span class="text-red-500">*</span></InputLabel>
+                                <TextInput type="date" class="mt-1 block w-full bg-white" v-model="addForm.assessment_date" required />
+                            </div>
+                            <div>
+                                <InputLabel>Due Date <span class="text-red-500">*</span></InputLabel>
+                                <TextInput type="date" class="mt-1 block w-full bg-white" v-model="addForm.assessment_due" required />
+                            </div>
+
+                            <div class="col-span-1 md:col-span-2">
+                                <InputLabel>Remarks / Project Name <span class="text-red-500">*</span></InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full bg-white" v-model="addForm.remarks" placeholder="e.g. Annual Renewal Assessment 2024" required />
                             </div>
                         </div>
                     </div>
 
                     <div>
-                        <div class="flex items-center justify-between mb-2">
-                            <h3 class="text-sm font-bold text-gray-700 uppercase">Particulars *</h3>
-                            <button type="button" @click="addItemRow" class="text-xs text-blue-600 hover:text-blue-800 font-bold">+ Add Item</button>
+                        <div class="flex justify-between items-center mb-3">
+                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                                </svg>
+                                Particulars Breakdown
+                            </h4>
+                            <button type="button" @click="addForm.items.push({ particular_id: '', quantity: 1 })" class="text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1 transition-colors">
+                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                                Add Item
+                            </button>
                         </div>
-                        
-                        <div class="border rounded-lg overflow-hidden">
-                            <table class="min-w-full divide-y divide-gray-200">
-                                <thead class="bg-gray-100">
-                                    <tr>
-                                        <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase">Item</th>
-                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Price</th>
-                                        <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 uppercase">Qty</th>
-                                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase">Subtotal</th>
-                                        <th class="w-10"></th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white divide-y divide-gray-200">
-                                    <tr v-for="(item, index) in addForm.items" :key="index">
-                                        <td class="px-4 py-2">
-                                            <select v-model="item.particular_id" required class="block w-full text-sm border-gray-300 rounded-md">
-                                                <option value="" disabled>Select Particular</option>
-                                                <optgroup v-if="renewalParticulars.length" label="Renewal Fees">
-                                                    <option v-for="p in renewalParticulars" :key="p.id" :value="p.id">{{ p.name }}</option>
+
+                        <div class="bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                            <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-3 bg-gray-50 border-b border-gray-200 text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="col-span-6">Particular / Fee</div>
+                                <div class="col-span-2">Quantity</div>
+                                <div class="col-span-3 text-right">Subtotal</div>
+                                <div class="col-span-1 text-center">Action</div>
+                            </div>
+                            
+                            <div class="divide-y divide-gray-100">
+                                <div v-for="(item, index) in addForm.items" :key="index" class="p-4 md:p-0">
+                                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4 md:items-center md:px-4 md:py-3">
+                                        
+                                        <div class="col-span-1 md:col-span-6">
+                                            <InputLabel class="md:hidden mb-1">Fee</InputLabel>
+                                            <select v-model="item.particular_id" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-lg shadow-sm text-sm" required>
+                                                <option value="" disabled>Select particular...</option>
+                                                
+                                                <optgroup label="Renewal Fees" v-if="renewalParticulars.length">
+                                                    <option v-for="p in renewalParticulars" :key="p.id" :value="p.id">
+                                                        {{ p.name }} ({{ formatCurrency(p.amount) }})
+                                                    </option>
                                                 </optgroup>
-                                                <optgroup v-if="unitParticulars.length" label="Change of Unit">
-                                                    <option v-for="p in unitParticulars" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                                
+                                                <optgroup label="Change of Unit Fees" v-if="unitParticulars.length">
+                                                    <option v-for="p in unitParticulars" :key="p.id" :value="p.id">
+                                                        {{ p.name }} ({{ formatCurrency(p.amount) }})
+                                                    </option>
                                                 </optgroup>
-                                                <optgroup v-if="ownerParticulars.length" label="Change of Owner">
-                                                    <option v-for="p in ownerParticulars" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                                
+                                                <optgroup label="Change of Owner Fees" v-if="ownerParticulars.length">
+                                                    <option v-for="p in ownerParticulars" :key="p.id" :value="p.id">
+                                                        {{ p.name }} ({{ formatCurrency(p.amount) }})
+                                                    </option>
                                                 </optgroup>
-                                                <optgroup v-if="otherParticulars.length" label="Other Fees">
-                                                    <option v-for="p in otherParticulars" :key="p.id" :value="p.id">{{ p.name }}</option>
+                                                
+                                                <optgroup label="Other Fees" v-if="otherParticulars.length">
+                                                    <option v-for="p in otherParticulars" :key="p.id" :value="p.id">
+                                                        {{ p.name }} ({{ formatCurrency(p.amount) }})
+                                                    </option>
                                                 </optgroup>
                                             </select>
-                                        </td>
-                                        <td class="px-4 py-2 text-right text-sm text-gray-700 font-mono">{{ item.amount > 0 ? formatCurrency(item.amount) : '-' }}</td>
-                                        <td class="px-4 py-2"><input type="number" min="1" v-model="item.quantity" required class="block w-full text-center text-sm border-gray-300 rounded-md" /></td>
-                                        <td class="px-4 py-2 text-right font-medium">{{ formatCurrency(item.subtotal) }}</td>
-                                        <td class="px-2 py-2 text-center">
-                                            <button type="button" @click="removeItemRow(index)" class="text-red-400 hover:text-red-600">✕</button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                                <tfoot class="bg-gray-50">
-                                    <tr>
-                                        <td colspan="3" class="px-4 py-3 text-right font-bold text-gray-700">Estimated Total:</td>
-                                        <td class="px-4 py-3 text-right font-bold text-blue-600 text-lg">{{ formatCurrency(addForm.total_amount_due) }}</td>
-                                        <td></td>
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
+                                        </div>
 
-                    <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-100">
-                        <SecondaryButton @click="closeAddModal">Cancel</SecondaryButton>
-                        <PrimaryButton :disabled="addForm.processing">Save Assessment</PrimaryButton>
+                                        <div class="col-span-1 md:col-span-2">
+                                            <InputLabel class="md:hidden mb-1">Quantity</InputLabel>
+                                            <TextInput type="number" min="1" v-model="item.quantity" class="block w-full text-center" required />
+                                        </div>
+
+                                        <div class="col-span-1 md:col-span-3 md:text-right font-mono text-gray-800 font-medium bg-gray-50 md:bg-transparent p-2 md:p-0 rounded border border-gray-200 md:border-0">
+                                            <span class="md:hidden text-xs text-gray-500 mr-2 uppercase">Subtotal:</span>
+                                            {{ formatCurrency(calculateSubtotal(item)) }}
+                                        </div>
+
+                                        <div class="col-span-1 md:col-span-1 flex justify-end md:justify-center">
+                                            <button type="button" @click="addForm.items.splice(index, 1)" :disabled="addForm.items.length === 1" class="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors disabled:opacity-30 disabled:hover:bg-transparent">
+                                                <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-gray-100 px-6 py-4 border-t border-gray-200 flex justify-between items-center">
+                                <span class="font-bold text-gray-600 uppercase text-xs tracking-wider">Total Assessed Amount</span>
+                                <span class="text-xl font-bold font-mono text-blue-700">{{ formatCurrency(calculateTotal()) }}</span>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>
-        </Modal>
+
+            <div class="px-6 py-4 border-t border-gray-200 bg-gray-50 flex justify-end gap-3 shrink-0">
+                <SecondaryButton type="button" @click="closeAddModal">Cancel</SecondaryButton>
+                
+                <PrimaryButton @click="submitAdd" :disabled="addForm.processing || addForm.items.length === 0" class="flex items-center gap-2">
+                    <svg v-if="addForm.processing" class="animate-spin h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span v-if="addForm.processing">Saving...</span>
+                    <span v-else>Save Assessment</span>
+                </PrimaryButton>
+            </div>
+
+        </div>
+    </div>
+</Transition>
 
         <Modal :show="showParticularsModal" @close="showParticularsModal = false" maxWidth="2xl">
             <div class="p-6">

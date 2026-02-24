@@ -42,7 +42,7 @@ class ZoneController extends Controller
 
         // Apply Sentence Case (e.g., "red" -> "Red", "downtown zone" -> "Downtown zone")
         // We lowercase first to ensure uniform formatting, then capitalize the first letter.
-        $validated['description'] = Str::ucfirst(Str::lower($validated['description']));
+        $validated['description'] = Str::upper($validated['description']);
         $validated['color'] = Str::ucfirst(Str::lower($validated['color']));
 
         Zone::create($validated);

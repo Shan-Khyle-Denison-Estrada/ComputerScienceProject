@@ -12,6 +12,7 @@ class Assessment extends Model
 
     protected $fillable = [
         'application_id',
+        'franchise_id',
         'assessment_date',
         'assessment_due',
         'total_amount_due',
@@ -118,5 +119,9 @@ class Assessment extends Model
             'total_amount_due' => $baseTotal + $penaltyTotal,
             'assessment_status' => 'overdue'
         ]);
+    }
+    public function franchise()
+    {
+        return $this->belongsTo(Franchise::class);
     }
 }

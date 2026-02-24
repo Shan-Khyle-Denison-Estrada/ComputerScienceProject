@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\Particular;
 use App\Models\Franchise;
+use App\Models\Operator;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
@@ -26,7 +27,7 @@ class AssessmentController extends Controller
 
         // 1. Pagination set to 6 rows
         $assessments = Assessment::query()
-            ->with(['particulars', 'payments'])
+            ->with(['particulars', 'payments', 'application', 'franchise']) // <-- ADD 'franchise' HERE
             ->when($search, function($query, $search) {
                 $query->where(function($q) use ($search) {
                     $q->where('id', 'like', "%{$search}%")
@@ -40,29 +41,32 @@ class AssessmentController extends Controller
                 $query->where('franchise_id', $franchiseId);
             })
             ->latest()
-            ->paginate(5) // <--- CHANGED TO 6
+            ->paginate(6) // Adjust pagination as needed
             ->withQueryString();
 
         $particulars = Particular::orderBy('group')->orderBy('name')->get();
         
         // Load franchise data safely with mapping
-        $franchises = Franchise::with('currentOwnership')
-            ->get()
-            ->map(function ($franchise) {
-                return [
-                    'id' => $franchise->id,
-                    'franchise_number' => $franchise->id,
-                    'status' => $franchise->status,
-                    'last_name' => $franchise->currentOwnership ? $franchise->currentOwnership->last_name : '',
-                    'first_name' => $franchise->currentOwnership ? $franchise->currentOwnership->first_name : '',
-                ];
-            });
+$franchises = Franchise::with('currentOwnership.newOwner.user')
+    ->get()
+    ->map(function ($franchise) {
+        // Safely dig through the relationships
+        $user = $franchise->currentOwnership?->newOwner?->user;
+        
+        // Attach a clean string for the frontend
+        $franchise->owner_name = $user 
+            ? "{$user->first_name} {$user->last_name}" 
+            : 'No Owner Assigned'; // Fallback if no owner exists
+            
+        return $franchise;
+    });
 
         return Inertia::render('Admin/Assessments/Index', [
             'assessments' => $assessments,
             'filters' => $request->only(['search', 'status', 'franchise_id']),
             'particulars' => $particulars,
-            'franchises' => $franchises
+            'franchises' => $franchises,
+            'userRole' => auth()->user()->role->value ?? auth()->user()->role,
         ]);
     }
 

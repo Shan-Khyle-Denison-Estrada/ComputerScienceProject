@@ -37,7 +37,8 @@ class AuthenticatedSessionController extends Controller
             \App\Enums\UserRole::REVIEWER => route('reviewer.applications.index', absolute: false),
             \App\Enums\UserRole::SP_APPROVER => route('sp_approver.applications.index', absolute: false),
             \App\Enums\UserRole::TAB_APPROVER => route('tab_approver.applications.index', absolute: false),
-            \App\Enums\UserRole::ENCODER => route('encoder.applications.index', absolute: false), // <-- Added ENCODER
+            \App\Enums\UserRole::ENCODER => route('admin.applications.index', absolute: false),
+            \App\Enums\UserRole::COLLECTOR => route('admin.assessments.index', absolute: false),
             default => route('login'), 
         };
 

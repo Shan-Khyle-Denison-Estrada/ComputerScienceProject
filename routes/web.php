@@ -103,18 +103,13 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
             'edit'    => 'admin.drivers.edit',
         ]);
 
-    // 6. Payment Routes
-    Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
-    Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
+    // // 6. Payment Routes
+    // Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
+    // Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
 
-    // 7. Assessment Routes
-    Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
-    Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
-
-    // 8. Particulars (Fee Types) Routes
-    Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
-    Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
-    Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
+    // // 7. Assessment Routes
+    // Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
+    // Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
 
     // 9. Units Routes
     Route::get('/admin/units', [UnitController::class, 'index'])->name('admin.units.index');
@@ -336,6 +331,30 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
     // Change of Unit
     Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])->name('admin.applications.change-of-unit.show');
     Route::post('/applications/change-of-unit/{application}/finalize', [ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-unit.finalize');
+});
+
+// --- SHARED ROUTES: Admin & Collector ---
+// Both can view the index pages for payments and assessments
+Route::middleware(['auth', 'role:admin,collector'])->group(function () {
+    Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
+    Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
+});
+
+// --- COLLECTOR ONLY ROUTES ---
+// Only collectors have full CRUD access (store, update, destroy)
+Route::middleware(['auth', 'role:collector'])->group(function () {
+    // Payment CRUD
+    Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
+    // If you add update/destroy for payments in the future, add them here.
+    
+    // Assessment CRUD
+    Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
+    // If you add update/destroy for assessments in the future, add them here.
+
+    // 8. Particulars (Fee Types) Routes
+    Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
+    Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
+    Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
 });
 
 require __DIR__.'/auth.php';
