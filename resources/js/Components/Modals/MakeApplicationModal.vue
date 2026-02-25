@@ -46,6 +46,7 @@ const form = useForm({
     remarks: '',
     
     owner_mode: 'existing', 
+    unit_mode: 'existing',
 
     // Owner Fields
     existing_operator_id: '', 
@@ -175,7 +176,10 @@ const selectType = (typeId) => {
 
 const handleDocChange = (event, reqId) => {
     const file = event.target.files[0];
-    if (file) { form.documents[reqId] = file; docPreviews.value[reqId] = file.name; }
+    if (file) { 
+        form.documents = { ...form.documents, [reqId]: file };
+        docPreviews.value = { ...docPreviews.value, [reqId]: file.name };
+    }
 };
 
 const handleUnitPhoto = (event, side) => {
@@ -185,6 +189,7 @@ const handleUnitPhoto = (event, side) => {
 
 const submit = () => {
     if (selectedType.value === 'change_unit') {
+        form.unit_mode = unitMode.value;
         form.post(route('franchise.applications.store-change-unit'), {
             preserveScroll: true,
             onSuccess: () => {
