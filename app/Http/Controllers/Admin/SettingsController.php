@@ -24,7 +24,8 @@ class SettingsController extends Controller
         $settings = SystemSetting::first() ?? SystemSetting::create([]);
 
         $validated = $request->validate([
-            'fiscal_year_end' => 'nullable|string',
+            'annual_renewal_start' => 'nullable|string',
+            'annual_renewal_due' => 'nullable|string',
             'surcharge_rate' => 'nullable|numeric',
             'interest_rate' => 'nullable|numeric',
             'theme_color' => 'nullable|string',

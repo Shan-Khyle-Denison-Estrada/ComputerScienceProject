@@ -13,7 +13,8 @@ const props = defineProps({
     settings: {
         type: Object,
         default: () => ({
-            fiscal_year_end: '', // Expected format: 'MM-DD'
+            annual_renewal_start: '', // Expected format: 'MM-DD'
+            annual_renewal_due: '',   // Expected format: 'MM-DD'
             surcharge_rate: '',
             interest_rate: '',
             theme_color: '#3B82F6',
@@ -34,16 +35,20 @@ const props = defineProps({
 });
 
 // --- DATE LOGIC ---
-// Split existing 'MM-DD' format if available, otherwise default to January 1st
-const initialMonth = props.settings.fiscal_year_end ? props.settings.fiscal_year_end.split('-')[0] : '01';
-const initialDay = props.settings.fiscal_year_end ? props.settings.fiscal_year_end.split('-')[1] : '01';
+const initialStartMonth = props.settings.annual_renewal_start ? props.settings.annual_renewal_start.split('-')[0] : '01';
+const initialStartDay = props.settings.annual_renewal_start ? props.settings.annual_renewal_start.split('-')[1] : '01';
+const initialDueMonth = props.settings.annual_renewal_due ? props.settings.annual_renewal_due.split('-')[0] : '12';
+const initialDueDay = props.settings.annual_renewal_due ? props.settings.annual_renewal_due.split('-')[1] : '31';
 
-const selectedMonth = ref(initialMonth);
-const selectedDay = ref(initialDay);
+const selectedStartMonth = ref(initialStartMonth);
+const selectedStartDay = ref(initialStartDay);
+const selectedDueMonth = ref(initialDueMonth);
+const selectedDueDay = ref(initialDueDay);
 
 // --- STATE & FORM ---
 const form = useForm({
-    fiscal_year_end: `${selectedMonth.value}-${selectedDay.value}`, // Initialize with combined value
+    annual_renewal_start: `${selectedStartMonth.value}-${selectedStartDay.value}`,
+    annual_renewal_due: `${selectedDueMonth.value}-${selectedDueDay.value}`,
     surcharge_rate: props.settings.surcharge_rate,
     interest_rate: props.settings.interest_rate,
     theme_color: props.settings.theme_color,
@@ -62,9 +67,13 @@ const form = useForm({
     _method: 'PUT'
 });
 
-// Automatically update form's fiscal_year_end when month or day changes
-watch([selectedMonth, selectedDay], ([newMonth, newDay]) => {
-    form.fiscal_year_end = `${newMonth}-${newDay}`;
+// Automatically update form's dates when month or day changes
+watch([selectedStartMonth, selectedStartDay], ([newMonth, newDay]) => {
+    form.annual_renewal_start = `${newMonth}-${newDay}`;
+});
+
+watch([selectedDueMonth, selectedDueDay], ([newMonth, newDay]) => {
+    form.annual_renewal_due = `${newMonth}-${newDay}`;
 });
 
 // Image Previews
@@ -249,44 +258,71 @@ const submitSettings = () => {
                         
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
-                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
-                                <div class="flex items-center gap-3 mb-4">
-                                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
-                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                        </svg>
-                                    </div>
-                                    <h4 class="text-md font-bold text-gray-800">Renewal Schedule</h4>
-                                </div>
-                                <div class="flex-1">
-                                    <InputLabel>Annual Franchise Due Date<span class="text-red-600"> *</span></InputLabel>
-                                    <p class="text-xs text-gray-500 mb-3">The system-wide deadline (Month & Day) for tricycle franchise renewals.</p>
-                                    
-                                    <div class="flex items-center gap-2 mt-1">
-                                        <select v-model="selectedMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                                            <option value="01">January</option>
-                                            <option value="02">February</option>
-                                            <option value="03">March</option>
-                                            <option value="04">April</option>
-                                            <option value="05">May</option>
-                                            <option value="06">June</option>
-                                            <option value="07">July</option>
-                                            <option value="08">August</option>
-                                            <option value="09">September</option>
-                                            <option value="10">October</option>
-                                            <option value="11">November</option>
-                                            <option value="12">December</option>
-                                        </select>
-                                        
-                                        <select v-model="selectedDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                                            <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
-                                                {{ day }}
-                                            </option>
-                                        </select>
-                                    </div>
-                                    <div v-if="form.errors.fiscal_year_end" class="text-red-500 text-xs mt-1">{{ form.errors.fiscal_year_end }}</div>
-                                </div>
-                            </div>
+<div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
+    <div class="flex items-center gap-3 mb-4">
+        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+        </div>
+        <div>
+            <h4 class="font-bold text-gray-900 text-sm">Renewal Schedule</h4>
+            <p class="text-xs text-gray-500">Set the annual renewal period</p>
+        </div>
+    </div>
+    
+    <div class="flex-1 space-y-4">
+        <div>
+            <InputLabel>Annual Renewal Start Date</InputLabel>
+            <div class="mt-1 flex gap-2">
+                <select v-model="selectedStartMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+                <select v-model="selectedStartDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                    <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
+                        {{ day }}
+                    </option>
+                </select>
+            </div>
+            <div v-if="form.errors.annual_renewal_start" class="text-red-500 text-xs mt-1">{{ form.errors.annual_renewal_start }}</div>
+        </div>
+
+        <div>
+            <InputLabel>Annual Renewal Due Date</InputLabel>
+            <div class="mt-1 flex gap-2">
+                <select v-model="selectedDueMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                    <option value="01">January</option>
+                    <option value="02">February</option>
+                    <option value="03">March</option>
+                    <option value="04">April</option>
+                    <option value="05">May</option>
+                    <option value="06">June</option>
+                    <option value="07">July</option>
+                    <option value="08">August</option>
+                    <option value="09">September</option>
+                    <option value="10">October</option>
+                    <option value="11">November</option>
+                    <option value="12">December</option>
+                </select>
+                <select v-model="selectedDueDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                    <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
+                        {{ day }}
+                    </option>
+                </select>
+            </div>
+            <div v-if="form.errors.annual_renewal_due" class="text-red-500 text-xs mt-1">{{ form.errors.annual_renewal_due }}</div>
+        </div>
+    </div>
+</div>
 
                             <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
                                 <div class="flex items-center gap-3 mb-4">

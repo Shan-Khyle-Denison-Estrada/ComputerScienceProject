@@ -191,14 +191,18 @@ class ApplicationController extends Controller
     private function getFiscalYearString() {
         $settings = SystemSetting::first();
         $currentYear = now()->year;
-        $fiscalYearEnd = $settings->fiscal_year_end ?? '12-31';
         
-        $deadlineThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$fiscalYearEnd}")->endOfDay();
+        $renewalStart = $settings->annual_renewal_start ?? '01-01';
+        $startDateThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalStart}")->startOfDay();
 
-        if (now()->lte($deadlineThisYear)) {
-            return ($currentYear - 1) . '-' . $currentYear;
+        if ($renewalStart === '01-01') {
+            return (string) $currentYear;
         } else {
-            return $currentYear . '-' . ($currentYear + 1);
+            if (now()->lt($startDateThisYear)) {
+                return ($currentYear - 1) . '-' . $currentYear;
+            } else {
+                return $currentYear . '-' . ($currentYear + 1);
+            }
         }
     }
 

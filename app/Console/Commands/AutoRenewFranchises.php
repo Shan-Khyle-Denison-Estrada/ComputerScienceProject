@@ -43,24 +43,31 @@ class AutoRenewFranchises extends Command
         $currentYear = now()->year;
         $settings = SystemSetting::first();
 
-        // 1. DETERMINE THE DEADLINE AND FISCAL YEAR
-        // Example: fiscal_year_end is "03-27" (March 27)
-        $fiscalYearEnd = $settings->fiscal_year_end ?? '12-31'; 
-        $deadlineDate = \Carbon\Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$fiscalYearEnd}")->endOfDay();
+        // 1. DETERMINE THE FISCAL YEAR STRING (Based on Start Date)
+        $renewalStart = $settings->annual_renewal_start ?? '01-01';
+        $startDateThisYear = \Carbon\Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalStart}")->startOfDay();
 
-        // If the current date is past the deadline, but we are in the next calendar year,
-        // we need to make sure we are calculating the Fiscal Year string correctly.
-        // For a deadline of March 27, 2026, the Fiscal Year is "2025-2026"
-        $previousYear = $currentYear - 1;
-        $fiscalYearString = "{$previousYear}-{$currentYear}";
+        if ($renewalStart === '01-01') {
+            $fiscalYearString = (string) $currentYear;
+        } else {
+            if (now()->lt($startDateThisYear)) {
+                $fiscalYearString = ($currentYear - 1) . '-' . $currentYear;
+            } else {
+                $fiscalYearString = $currentYear . '-' . ($currentYear + 1);
+            }
+        }
 
-        // If today hasn't reached the deadline yet, stop.
+        // 2. DETERMINE THE PENALTY DEADLINE (Based on Due Date)
+        $renewalDue = $settings->annual_renewal_due ?? '12-31'; 
+        $deadlineDate = \Carbon\Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalDue}")->endOfDay();
+
+        // If today hasn't reached the penalty deadline yet, stop.
         if (now()->startOfDay()->lt($deadlineDate->startOfDay())) {
             $this->info("The {$fiscalYearString} renewal deadline ({$deadlineDate->format('M d, Y')}) has not passed yet.");
             return;
         }
 
-        // 2. FIND NON-COMPLIANT FRANCHISES
+        // 3. FIND NON-COMPLIANT FRANCHISES
         // We look for franchises missing a renewal for THIS specific fiscal year cycle
         $franchises = Franchise::whereDoesntHave('applications', function ($query) use ($currentYear) {
             $query->where('application_type', 'Renewal')
@@ -75,7 +82,7 @@ class AutoRenewFranchises extends Command
             return;
         }
 
-        // 3. CALCULATE FEES & PENALTIES
+        // 4. CALCULATE FEES & PENALTIES
         $particulars = Particular::where('group', 'Renewal')->get();
         $baseAmountDue = $particulars->sum('amount');
         
@@ -87,7 +94,7 @@ class AutoRenewFranchises extends Command
         
         $totalAmountDue = $baseAmountDue + $surchargeFee + $interestFee;
 
-        // 4. GENERATE THE APPLICATIONS
+        // 5. GENERATE THE APPLICATIONS
         foreach ($franchises as $franchise) {
             $user = $franchise->currentOwnership->newOwner->user ?? null;
             if (!$user) continue; 

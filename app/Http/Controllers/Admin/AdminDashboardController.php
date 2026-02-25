@@ -16,16 +16,22 @@ class AdminDashboardController extends Controller
 {
     public function index()
     {
-        // 1. Calculate Current Fiscal Year String
+// 1. Calculate Current Fiscal Year String based on Start Date
         $settings = SystemSetting::first();
         $currentYear = now()->year;
-        $fiscalYearEnd = $settings->fiscal_year_end ?? '12-31';
-        $deadlineThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$fiscalYearEnd}")->endOfDay();
+        
+        $renewalStart = $settings->annual_renewal_start ?? '01-01';
+        $startDateThisYear = \Carbon\Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalStart}")->startOfDay();
 
-        if (now()->lte($deadlineThisYear)) {
-            $fiscalYearString = ($currentYear - 1) . '-' . $currentYear;
+        // Check if it's a standard Calendar Year or a cross-year Fiscal Year
+        if ($renewalStart === '01-01') {
+            $fiscalYearString = (string) $currentYear;
         } else {
-            $fiscalYearString = $currentYear . '-' . ($currentYear + 1);
+            if (now()->lt($startDateThisYear)) {
+                $fiscalYearString = ($currentYear - 1) . '-' . $currentYear;
+            } else {
+                $fiscalYearString = $currentYear . '-' . ($currentYear + 1);
+            }
         }
 
         // 2. Top Cards Statistics
