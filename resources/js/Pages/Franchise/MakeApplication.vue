@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import MakeApplicationModal from '@/Components/Modals/MakeApplicationModal.vue';
 import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.vue';
+import SubmitRenewalModal from '@/Components/Modals/SubmitRenewalModal.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 
@@ -43,8 +44,10 @@ const activeTab = ref('active');
 const showNewAppModal = ref(false);
 const showComplyModal = ref(false);
 const showCancelModal = ref(false);
+const showSubmitRenewalModal = ref(false);
 
 const selectedReturnedApp = ref(null); 
+const selectedRenewalApp = ref(null);
 const appToCancel = ref(null);
 
 const activeApplications = computed(() => props.applications.filter(app => app.is_active));
@@ -67,11 +70,43 @@ const paginatedPastApplications = computed(() => {
 });
 const historyTotalPages = computed(() => Math.ceil(pastApplications.value.length / itemsPerPage) || 1);
 
-// --- ACTIONS ---
+// --- ACTIONS & HELPERS ---
+
+// Helper to determine if an auto-renewal needs documents uploaded
+const isUnsubmittedRenewal = (app) => {
+    const isRenewal = app.type === 'Renewal' || app.application_type === 'Renewal';
+    if (!isRenewal) return false;
+
+    // If the application has moved past its initial auto-generated state, it has been submitted.
+    // (Our controller changes status to 'Pending' once documents are successfully uploaded)
+    const activeStatuses = ['Pending', 'Under Review', 'Inspection', 'Processing', 'For Payment', 'Approved', 'Completed', 'Returned'];
+    
+    if (activeStatuses.includes(app.status)) {
+        return false;
+    }
+
+    // Fallback strictly to the submitted_at timestamp if the backend exposes it
+    if (app.submitted_at) return false;
+
+    return true;
+};
+
+// Helper to determine if a row should have click/hover states
+const isRowInteractive = (app) => {
+    if (app.status === 'Returned') return true;
+    if (isUnsubmittedRenewal(app)) return true;
+    return false;
+};
+
 const handleCardClick = (app) => {
+    if (!isRowInteractive(app)) return;
+
     if (app.status === 'Returned') {
         selectedReturnedApp.value = app; 
         showComplyModal.value = true;
+    } else if (isUnsubmittedRenewal(app)) { 
+        selectedRenewalApp.value = app;
+        showSubmitRenewalModal.value = true;
     }
 };
 
@@ -82,6 +117,11 @@ const handleNewApplicationSubmit = () => {
 const handleComplianceSubmit = () => {
     showComplyModal.value = false;
     selectedReturnedApp.value = null;
+};
+
+const handleSubmitRenewalSubmit = () => { 
+    showSubmitRenewalModal.value = false;
+    selectedRenewalApp.value = null;
 };
 
 // Open the cancellation modal
@@ -183,11 +223,15 @@ const getBadgeStyle = (status) => {
                                 <tr v-for="app in paginatedActiveApplications" :key="app.id" 
                                     @click="handleCardClick(app)"
                                     class="transition-colors group"
-                                    :class="{ 'hover:bg-red-50 cursor-pointer': app.status === 'Returned', 'hover:bg-gray-50': app.status !== 'Returned' }">
+                                    :class="{ 
+                                        'hover:bg-red-50 cursor-pointer': app.status === 'Returned', 
+                                        'hover:bg-blue-50 cursor-pointer': isUnsubmittedRenewal(app),
+                                        'hover:bg-gray-50': !isRowInteractive(app) 
+                                    }">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-col"><span class="text-sm font-bold text-gray-900 font-mono">{{ app.ref_no }}</span><span class="text-xs text-gray-500">{{ app.date }}</span></div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-700">{{ app.type }}</div></td>
+                                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-700">{{ app.type || app.application_type }}</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2.5 py-1 inline-flex text-xs leading-4 font-bold rounded border"
                                             :class="{
@@ -200,8 +244,7 @@ const getBadgeStyle = (status) => {
                                     </td>
                                     <td class="px-6 py-4 align-middle">
                                         <div class="flex items-center gap-1.5 flex-wrap">
-                                            <div v-for="stage in approvalStages" :key="stage.key" 
-                                                :title="`${stage.tooltip}: ${app[stage.key]}`"
+                                            <div v-for="stage in approvalStages" :key="stage.key" :title="`${stage.tooltip}: ${app[stage.key]}`" 
                                                 class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
                                                 :class="getBadgeStyle(app[stage.key])">
                                                 {{ stage.label }}
@@ -212,36 +255,20 @@ const getBadgeStyle = (status) => {
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-3 ml-auto">
                                             <button v-if="app.status === 'Returned'" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center gap-1">
-                                                Comply <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7" /></svg>
+                                                Comply
+                                            </button>
+                                            
+                                            <button v-if="isUnsubmittedRenewal(app)" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center gap-1">
+                                                Upload Docs
                                             </button>
 
-                                            <button 
-                                                v-if="app.type !== 'Renewal'" 
-                                                @click.stop="confirmCancelApplication(app)" 
-                                                class="text-red-500 hover:text-red-700 font-bold text-xs uppercase"
-                                                title="Cancel Application"
-                                            >
-                                                Cancel
+                                            <button v-if="app.type !== 'Renewal' && app.application_type !== 'Renewal'" @click.stop="confirmCancelApplication(app)" class="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50" title="Cancel Application">
+                                                <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
                                         </div>
                                     </td>
                                 </tr>
                             </tbody>
-                            <tfoot v-if="activeTotalPages > 1">
-                                <tr>
-                                    <td colspan="8" class="px-6 py-3 bg-white border-t border-gray-200">
-                                        <div class="flex items-center justify-between w-full">
-                                            <span class="text-sm text-gray-500">
-                                                Showing {{ (activePage - 1) * itemsPerPage + 1 }} to {{ Math.min(activePage * itemsPerPage, activeApplications.length) }} of {{ activeApplications.length }}
-                                            </span>
-                                            <div class="flex gap-2">
-                                                <button @click="activePage--" :disabled="activePage === 1" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
-                                                <button @click="activePage++" :disabled="activePage === activeTotalPages" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -249,19 +276,18 @@ const getBadgeStyle = (status) => {
                 <div v-if="activeTab === 'history'">
                     <div v-if="pastApplications.length === 0" class="p-10 text-center text-gray-400">
                         <svg class="w-16 h-16 mx-auto mb-4 text-gray-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
-                        <p class="text-sm">No application history found.</p>
+                        <p class="text-sm">No past applications found.</p>
                     </div>
-
                     <div v-else class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No. & Date</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Status</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latest Remarks</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Outcome</th>
+                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Remarks</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -269,12 +295,12 @@ const getBadgeStyle = (status) => {
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-col"><span class="text-sm font-bold text-gray-900 font-mono">{{ app.ref_no }}</span><span class="text-xs text-gray-500">{{ app.date }}</span></div>
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-700">{{ app.type }}</div></td>
+                                    <td class="px-6 py-4 whitespace-nowrap"><div class="text-sm font-medium text-gray-700">{{ app.type || app.application_type }}</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <span class="px-2.5 py-1 inline-flex text-xs leading-4 font-bold rounded border"
                                             :class="{
-                                                'bg-green-50 text-green-700 border-green-200': app.status === 'Completed' || app.status === 'Approved',
-                                                'bg-red-50 text-red-700 border-red-200': app.status === 'Rejected',
+                                                'bg-green-100 text-green-700 border-green-200': app.status === 'Approved' || app.status === 'Completed',
+                                                'bg-red-100 text-red-700 border-red-200': app.status === 'Rejected',
                                                 'bg-gray-100 text-gray-600 border-gray-200': app.status === 'Cancelled'
                                             }">
                                             {{ app.status }}
@@ -283,30 +309,30 @@ const getBadgeStyle = (status) => {
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                 </tr>
                             </tbody>
-                            <tfoot v-if="historyTotalPages > 1">
-                                <tr>
-                                    <td colspan="8" class="px-6 py-3 bg-white border-t border-gray-200">
-                                        <div class="flex items-center justify-between w-full">
-                                            <span class="text-sm text-gray-500">
-                                                Showing {{ (historyPage - 1) * itemsPerPage + 1 }} to {{ Math.min(historyPage * itemsPerPage, pastApplications.length) }} of {{ pastApplications.length }}
-                                            </span>
-                                            <div class="flex gap-2">
-                                                <button @click="historyPage--" :disabled="historyPage === 1" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
-                                                <button @click="historyPage++" :disabled="historyPage === historyTotalPages" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
-                                            </div>
-                                        </div>
-                                    </td>
-                                </tr>
-                            </tfoot>
                         </table>
                     </div>
+                </div>
+            </div>
+
+            <div class="border-t border-gray-200 px-6 py-3 bg-gray-50 flex items-center justify-between">
+                <div class="text-sm text-gray-500">
+                    Showing <span class="font-medium">{{ activeTab === 'active' ? ((activePage - 1) * itemsPerPage) + 1 : ((historyPage - 1) * itemsPerPage) + 1 }}</span> to 
+                    <span class="font-medium">{{ activeTab === 'active' ? Math.min(activePage * itemsPerPage, activeApplications.length) : Math.min(historyPage * itemsPerPage, pastApplications.length) }}</span> of 
+                    <span class="font-medium">{{ activeTab === 'active' ? activeApplications.length : pastApplications.length }}</span> results
+                </div>
+                <div class="flex gap-2">
+                    <button v-if="activeTab === 'active'" :disabled="activePage === 1" @click="activePage--" class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors">Prev</button>
+                    <button v-if="activeTab === 'active'" :disabled="activePage === activeTotalPages" @click="activePage++" class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors">Next</button>
+                    
+                    <button v-if="activeTab === 'history'" :disabled="historyPage === 1" @click="historyPage--" class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors">Prev</button>
+                    <button v-if="activeTab === 'history'" :disabled="historyPage === historyTotalPages" @click="historyPage++" class="px-3 py-1 border border-gray-300 rounded text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 transition-colors">Next</button>
                 </div>
             </div>
         </div>
 
         <MakeApplicationModal 
             :show="showNewAppModal" 
-            :evaluationRequirements="evaluationRequirements" 
+            :evaluationRequirements="evaluationRequirements"
             :franchises="franchises"
             :barangays="barangays"
             :unitMakes="unitMakes"
@@ -319,17 +345,23 @@ const getBadgeStyle = (status) => {
         <ComplyApplicationModal 
             :show="showComplyModal" 
             :application="selectedReturnedApp"
-            @close="showComplyModal = false; selectedReturnedApp = null"
+            :evaluationRequirements="evaluationRequirements"
+            @close="showComplyModal = false"
             @submit="handleComplianceSubmit"
         />
 
-        <div v-if="showCancelModal" class="fixed inset-0 z-50 overflow-y-auto" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-            <div class="flex items-end justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-                <div class="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" aria-hidden="true" @click="closeCancelModal"></div>
+        <SubmitRenewalModal 
+            :show="showSubmitRenewalModal" 
+            :application="selectedRenewalApp"
+            :evaluationRequirements="evaluationRequirements"
+            @close="showSubmitRenewalModal = false"
+            @submit="handleSubmitRenewalSubmit"
+        />
 
-                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                <div class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+        <transition name="fade">
+            <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeCancelModal"></div>
+                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
                         <div class="sm:flex sm:items-start">
                             <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-red-100 sm:mx-0 sm:h-10 sm:w-10">
@@ -338,9 +370,7 @@ const getBadgeStyle = (status) => {
                                 </svg>
                             </div>
                             <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
-                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">
-                                    Cancel Application
-                                </h3>
+                                <h3 class="text-lg leading-6 font-medium text-gray-900" id="modal-title">Cancel Application</h3>
                                 <div class="mt-2">
                                     <p class="text-sm text-gray-500">
                                         Are you sure you want to cancel the application <span class="font-bold text-gray-700">{{ appToCancel?.ref_no }}</span>? This action cannot be undone.
@@ -359,6 +389,6 @@ const getBadgeStyle = (status) => {
                     </div>
                 </div>
             </div>
-        </div>
+        </transition>
     </AuthenticatedLayout>
 </template>

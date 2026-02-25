@@ -16,12 +16,12 @@ class AutoRenewFranchises extends Command
     // The command we type in the terminal to run this manually
     protected $signature = 'franchise:auto-renew';
     
-    // Description for the console
-    protected $description = 'Auto-generate late renewal applications and apply penalties.';
+    // Description for the console (Updated to reflect new behavior)
+    protected $description = 'Auto-generate annual renewal applications at the start of the renewal period.';
 
     public function handle()
     {
-        // --- NEW STEP: AUTO-TERMINATE FRANCHISES (3 YEARS UNPAID/NON-COMPLIANT) ---
+        // --- STEP 0: AUTO-TERMINATE FRANCHISES (3 YEARS UNPAID/NON-COMPLIANT) ---
         $threeYearsAgo = now()->subYears(3);
 
         // Find franchises with an unpaid assessment from more than 3 years ago
@@ -45,7 +45,7 @@ class AutoRenewFranchises extends Command
 
         // 1. DETERMINE THE FISCAL YEAR STRING (Based on Start Date)
         $renewalStart = $settings->annual_renewal_start ?? '01-01';
-        $startDateThisYear = \Carbon\Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalStart}")->startOfDay();
+        $startDateThisYear = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalStart}")->startOfDay();
 
         if ($renewalStart === '01-01') {
             $fiscalYearString = (string) $currentYear;
@@ -57,57 +57,49 @@ class AutoRenewFranchises extends Command
             }
         }
 
-        // 2. DETERMINE THE PENALTY DEADLINE (Based on Due Date)
-        $renewalDue = $settings->annual_renewal_due ?? '12-31'; 
-        $deadlineDate = \Carbon\Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalDue}")->endOfDay();
-
-        // If today hasn't reached the penalty deadline yet, stop.
-        if (now()->startOfDay()->lt($deadlineDate->startOfDay())) {
-            $this->info("The {$fiscalYearString} renewal deadline ({$deadlineDate->format('M d, Y')}) has not passed yet.");
+        // 2. DETERMINE THE RENEWAL START AND DEADLINE
+        // If today hasn't reached the renewal start date yet, stop.
+        if (now()->startOfDay()->lt($startDateThisYear)) {
+            $this->info("The {$fiscalYearString} renewal period ({$startDateThisYear->format('M d, Y')}) has not started yet.");
             return;
         }
 
-        // 3. FIND NON-COMPLIANT FRANCHISES
-        // We look for franchises missing a renewal for THIS specific fiscal year cycle
+        // We still need the due date so we can set it on the Assessment record
+        $renewalDue = $settings->annual_renewal_due ?? '12-31'; 
+        $deadlineDate = Carbon::createFromFormat('Y-m-d', "{$currentYear}-{$renewalDue}")->endOfDay();
+
+        // 3. FIND FRANCHISES THAT NEED A RENEWAL BILL
         $franchises = Franchise::whereDoesntHave('applications', function ($query) use ($currentYear) {
             $query->where('application_type', 'Renewal')
                   ->whereYear('created_at', $currentYear); 
         })
-        ->where('status', '!=', 'Terminated') // Updated to match case
+        ->where('status', '!=', 'Terminated')
         ->with('currentOwnership.newOwner.user')
         ->get();
 
         if ($franchises->isEmpty()) {
-            $this->info("All active franchises are compliant for the {$fiscalYearString} fiscal year.");
+            $this->info("All active franchises already have renewal applications for the {$fiscalYearString} fiscal year.");
             return;
         }
 
-        // 4. CALCULATE FEES & PENALTIES
+        // 4. CALCULATE BASE FEES ONLY (Penalty logic removed)
         $particulars = Particular::where('group', 'Renewal')->get();
-        $baseAmountDue = $particulars->sum('amount');
-        
-        $surchargeRate = ($settings->surcharge_rate ?? 0) / 100;
-        $interestRate = ($settings->interest_rate ?? 0) / 100;
-
-        $surchargeFee = $baseAmountDue * $surchargeRate;
-        $interestFee = $baseAmountDue * $interestRate;
-        
-        $totalAmountDue = $baseAmountDue + $surchargeFee + $interestFee;
+        $totalAmountDue = $particulars->sum('amount');
 
         // 5. GENERATE THE APPLICATIONS
         foreach ($franchises as $franchise) {
             $user = $franchise->currentOwnership->newOwner->user ?? null;
             if (!$user) continue; 
 
-            // Create the Application using the Fiscal Year string
+            // Create the Application
             $application = Application::create([
-                'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)), // e.g., APP-2025-2026-X8B9Q
+                'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)),
                 'user_id'          => $user->id,
                 'franchise_id'     => $franchise->id,
                 'zone_id'          => $franchise->zone_id,
                 'application_type' => 'Renewal',
-                'status'           => 'For Payment',
-                'remarks'          => "SYSTEM AUTO-GENERATED: Missed {$fiscalYearString} Renewal Deadline.",
+                'status'           => 'Pending',
+                'remarks'          => "SYSTEM AUTO-GENERATED: {$fiscalYearString} Annual Renewal.",
                 'submitted_at'     => now(),
                 'first_name'       => $user->first_name,
                 'middle_name'      => $user->middle_name,
@@ -124,11 +116,10 @@ class AutoRenewFranchises extends Command
                 $assessment = Assessment::create([
                     'application_id'    => $application->id,
                     'assessment_date'   => now(),
-                    // SET DUE DATE EXACTLY TO THE RENEWAL SCHEDULE DEADLINE
                     'assessment_due'    => $deadlineDate, 
                     'total_amount_due'  => $totalAmountDue,
                     'assessment_status' => 'Pending',
-                    'remarks'           => "Auto-generated late renewal.",
+                    'remarks'           => "Auto-generated annual renewal.",
                 ]);
 
                 foreach ($particulars as $particular) {
@@ -141,6 +132,6 @@ class AutoRenewFranchises extends Command
             $franchise->update(['status' => 'Pending Renewal']);
         }
 
-        $this->info("Successfully auto-generated late renewals for the {$fiscalYearString} fiscal year.");
+        $this->info("Successfully auto-generated renewals for the {$fiscalYearString} fiscal year.");
     }
 }

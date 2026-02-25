@@ -570,6 +570,7 @@ class ApplicationController extends Controller
 
         $application->update([
             'status' => 'Pending',
+            'evaluator_status' => 'Pending',
             'remarks' => 'Application compliance submitted. Waiting for re-evaluation.'
         ]);
 
@@ -593,5 +594,66 @@ class ApplicationController extends Controller
         ]);
 
         return redirect()->back()->with('success', 'Application cancelled successfully!');
+    }
+    /**
+     * Submit or update documents for an auto-generated Renewal application.
+     */
+    public function submitRenewalDocuments(Request $request, Application $application)
+    {
+        // 1. Security Check: Ensure the user owns this application
+        abort_if($application->user_id !== Auth::id(), 403);
+
+        // 2. Validate it is actually a renewal
+        if ($application->application_type !== 'Renewal') {
+            return redirect()->back()->with('error', 'Invalid application type for this action.');
+        }
+
+        // 3. Validate documents
+        $request->validate([
+            'documents'   => 'required|array',
+            'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $requirementId => $file) {
+                    $filePath = $file->store('applications/documents', 'public');
+
+                    // Use updateOrCreate just in case the AutoRenew job already seeded empty records
+                    ApplicationEvaluation::updateOrCreate(
+                        [
+                            'application_id' => $application->id,
+                            'requirement_id' => $requirementId,
+                        ],
+                        [
+                            'file_path'    => $filePath,
+                            'is_compliant' => null, // Reset to pending in case of re-upload
+                            'remarks'      => 'Uploaded by applicant for auto-renewal.'
+                        ]
+                    );
+                }
+            }
+
+            // Update application status to push it to the evaluators
+            $application->update([
+                'status'       => 'Pending', // Assuming 'Pending' means it's now ready for the Evaluator
+                'submitted_at' => now(),
+                'remarks'      => 'Renewal documents submitted. Waiting for initial review.'
+            ]);
+
+            // Note: If your AutoRenewFranchises job did NOT generate the initial Assessment 
+            // for the renewal fee, you will need to generate it here just like the old storeRenewal method did.
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Renewal documents submitted successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Log::error('Submit Renewal Documents Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to submit documents. Please try again.');
+        }
     }
 }

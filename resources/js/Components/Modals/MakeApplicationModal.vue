@@ -21,7 +21,7 @@ const page = usePage();
 
 // --- MODAL STATES ---
 const currentStep = ref(1); 
-const selectedType = ref('renewal');
+const selectedType = ref('change_unit'); // Default changed to change_unit
 const ownerMode = ref('existing');
 const unitMode = ref('existing');
 const barangayQuery = ref('');
@@ -33,15 +33,15 @@ const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null
 const showWarningModal = ref(false);
 const warningMessage = ref('');
 
+// Removed "Renewal" from applicationTypes
 const applicationTypes = [
-    { id: 'renewal', name: 'Renewal', description: 'Renew franchise validity.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
     { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
     { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
 ];
 
 // --- FORMS ---
 const form = useForm({
-    type: 'renewal', 
+    type: 'change_unit', 
     selected_franchise_id: '', 
     remarks: '',
     
@@ -94,18 +94,14 @@ const areAllDocsUploaded = computed(() => {
     return reqs.every(r => form.documents[r.id]);
 });
 
-// Uses pre-calculated server states instead of localized date calculations
+// Removed renewal duplicate checks
 const duplicateApplicationError = computed(() => {
     if (!form.selected_franchise_id) return null;
 
     const selectedFranchise = props.franchises.find(f => f.id == form.selected_franchise_id);
     if (!selectedFranchise) return null;
 
-    if (selectedType.value === 'renewal') {
-        if (selectedFranchise.has_renewal_this_year) {
-            return `A Renewal application for the current fiscal year already exists for this franchise.`;
-        }
-    } else if (selectedType.value === 'change_unit') {
+    if (selectedType.value === 'change_unit') {
         if (selectedFranchise.has_active_change_unit) {
             return `An active Change of Unit application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
         }
@@ -118,7 +114,6 @@ const duplicateApplicationError = computed(() => {
     return null;
 });
 
-// Triggers instantly when a franchise is selected from the dropdown
 const validateFranchiseSelection = () => {
     const error = duplicateApplicationError.value;
     if (error) {
@@ -206,14 +201,6 @@ const submit = () => {
                 closeModal();
             },
         });
-    } else if (selectedType.value === 'renewal') {
-        form.post(route('franchise.applications.store-renewal'), {
-            preserveScroll: true,
-            onSuccess: () => {
-                emit('submit'); 
-                closeModal();
-            },
-        });
     }
 };
 </script>
@@ -254,7 +241,7 @@ const submit = () => {
 
                     <div v-if="currentStep === 2" class="space-y-6">
                         <div v-if="isFranchiseSelectRequired">
-                            <InputLabel value="Select Existing Franchise to Modify/Renew" />
+                            <InputLabel value="Select Existing Franchise to Modify" />
                             <select v-model="form.selected_franchise_id" @change="validateFranchiseSelection" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2 mt-1">
                                 <option value="" disabled>-- Choose Unit --</option>
                                 <option v-for="fran in franchises" :key="fran.id" :value="fran.id">
