@@ -105,6 +105,43 @@ const showErrorModal = ref(false);
 const removeRequirementFile = (reqId) => {
     delete form.requirement_files[reqId];
 };
+// --- Formatters ---
+const formatContactNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/\D/g, ''); // Extract only digits
+    if (parts.length > 11) parts = parts.substring(0, 11); // Max 11 digits
+
+    let formatted = '';
+    if (parts.length > 0) formatted += parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+
+    // Keep the dash if the user explicitly typed it at the correct boundary
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) {
+        formatted += '-';
+    }
+
+    return formatted;
+};
+
+const formatTinNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/\D/g, ''); 
+    if (parts.length > 14) parts = parts.substring(0, 14); // 9 base + up to 5 branch digits
+
+    let formatted = '';
+    if (parts.length > 0) formatted += parts.substring(0, 3);
+    if (parts.length >= 4) formatted += '-' + parts.substring(3, 6);
+    if (parts.length >= 7) formatted += '-' + parts.substring(6, 9);
+    if (parts.length >= 10) formatted += '-' + parts.substring(9, 14);
+
+    // Keep the dash if the user explicitly typed it at the correct boundary
+    if (val.endsWith('-') && (parts.length === 3 || parts.length === 6 || parts.length === 9)) {
+        formatted += '-';
+    }
+
+    return formatted;
+};
 </script>
 
 <template>
@@ -142,9 +179,28 @@ const removeRequirementFile = (reqId) => {
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div><InputLabel value="Email" /><TextInput type="email" v-model="form.email" class="mt-1 block w-full" /><InputError :message="form.errors.email" class="mt-2" /></div>
-                                <div><InputLabel value="Contact No." /><TextInput v-model="form.contact_number" class="mt-1 block w-full" /><InputError :message="form.errors.contact_number" class="mt-2" /></div>
+<div>
+    <InputLabel value="Contact No." />
+    <TextInput 
+        v-model="form.contact_number" 
+        @input="form.contact_number = formatContactNumber($event.target.value)" 
+        placeholder="09XX-XXX-XXXX" 
+        maxlength="13" 
+        class="mt-1 block w-full" 
+    />
+    <InputError :message="form.errors.contact_number" class="mt-2" />
+</div>
                             </div>
-                            <div><InputLabel value="TIN Number" /><TextInput v-model="form.tin_number" class="mt-1 block w-full" /></div>
+<div>
+    <InputLabel value="TIN Number" />
+    <TextInput 
+        v-model="form.tin_number" 
+        @input="form.tin_number = formatTinNumber($event.target.value)" 
+        placeholder="XXX-XXX-XXX-00000" 
+        maxlength="17" 
+        class="mt-1 block w-full" 
+    />
+</div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div class="md:col-span-1"><InputLabel value="Street" /><TextInput v-model="form.street_address" class="mt-1 block w-full" /></div>
                                 <div><InputLabel value="Barangay" /><select v-model="form.barangay" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"><option value="" disabled>Select</option><option v-for="brgy in barangays" :key="brgy.id" :value="brgy.name">{{ brgy.name }}</option></select></div>
