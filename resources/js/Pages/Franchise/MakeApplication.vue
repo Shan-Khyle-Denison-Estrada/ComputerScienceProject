@@ -50,6 +50,23 @@ const appToCancel = ref(null);
 const activeApplications = computed(() => props.applications.filter(app => app.is_active));
 const pastApplications = computed(() => props.applications.filter(app => !app.is_active));
 
+// --- PAGINATION STATE & LOGIC ---
+const itemsPerPage = 6;
+const activePage = ref(1);
+const historyPage = ref(1);
+
+const paginatedActiveApplications = computed(() => {
+    const start = (activePage.value - 1) * itemsPerPage;
+    return activeApplications.value.slice(start, start + itemsPerPage);
+});
+const activeTotalPages = computed(() => Math.ceil(activeApplications.value.length / itemsPerPage) || 1);
+
+const paginatedPastApplications = computed(() => {
+    const start = (historyPage.value - 1) * itemsPerPage;
+    return pastApplications.value.slice(start, start + itemsPerPage);
+});
+const historyTotalPages = computed(() => Math.ceil(pastApplications.value.length / itemsPerPage) || 1);
+
 // --- ACTIONS ---
 const handleCardClick = (app) => {
     if (app.status === 'Returned') {
@@ -163,7 +180,7 @@ const getBadgeStyle = (status) => {
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <tr v-for="app in activeApplications" :key="app.id" 
+                                <tr v-for="app in paginatedActiveApplications" :key="app.id" 
                                     @click="handleCardClick(app)"
                                     class="transition-colors group"
                                     :class="{ 'hover:bg-red-50 cursor-pointer': app.status === 'Returned', 'hover:bg-gray-50': app.status !== 'Returned' }">
@@ -181,16 +198,16 @@ const getBadgeStyle = (status) => {
                                             {{ app.status }}
                                         </span>
                                     </td>
-<td class="px-6 py-4 align-middle">
-    <div class="flex items-center gap-1.5 flex-wrap">
-        <div v-for="stage in approvalStages" :key="stage.key" 
-             :title="`${stage.tooltip}: ${app[stage.key]}`"
-             class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
-             :class="getBadgeStyle(app[stage.key])">
-            {{ stage.label }}
-        </div>
-    </div>
-</td>
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <div v-for="stage in approvalStages" :key="stage.key" 
+                                                :title="`${stage.tooltip}: ${app[stage.key]}`"
+                                                class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
+                                                :class="getBadgeStyle(app[stage.key])">
+                                                {{ stage.label }}
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-3 ml-auto">
@@ -210,6 +227,21 @@ const getBadgeStyle = (status) => {
                                     </td>
                                 </tr>
                             </tbody>
+                            <tfoot v-if="activeTotalPages > 1">
+                                <tr>
+                                    <td colspan="8" class="px-6 py-3 bg-white border-t border-gray-200">
+                                        <div class="flex items-center justify-between w-full">
+                                            <span class="text-sm text-gray-500">
+                                                Showing {{ (activePage - 1) * itemsPerPage + 1 }} to {{ Math.min(activePage * itemsPerPage, activeApplications.length) }} of {{ activeApplications.length }}
+                                            </span>
+                                            <div class="flex gap-2">
+                                                <button @click="activePage--" :disabled="activePage === 1" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                                                <button @click="activePage++" :disabled="activePage === activeTotalPages" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -229,12 +261,11 @@ const getBadgeStyle = (status) => {
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ref No. & Date</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Final Status</th>
-                                    <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-1/4">Progress</th>
                                     <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Latest Remarks</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
-                                <tr v-for="app in pastApplications" :key="app.id" class="hover:bg-gray-50 transition-colors">
+                                <tr v-for="app in paginatedPastApplications" :key="app.id" class="hover:bg-gray-50 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex flex-col"><span class="text-sm font-bold text-gray-900 font-mono">{{ app.ref_no }}</span><span class="text-xs text-gray-500">{{ app.date }}</span></div>
                                     </td>
@@ -249,26 +280,24 @@ const getBadgeStyle = (status) => {
                                             {{ app.status }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 align-middle">
-                                        <div class="w-full">
-                                            <div class="flex justify-between items-end mb-1">
-                                                <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Final</span>
-                                                <span class="text-[10px] text-gray-400 font-mono">100%</span>
-                                            </div>
-                                            <div class="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                                                <div class="h-1.5 rounded-full" 
-                                                    :class="{
-                                                        'bg-green-500': app.status === 'Approved' || app.status === 'Completed',
-                                                        'bg-red-500': app.status === 'Rejected',
-                                                        'bg-gray-400': app.status === 'Cancelled'
-                                                    }"
-                                                    style="width: 100%"></div>
-                                            </div>
-                                        </div>
-                                    </td>
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                 </tr>
                             </tbody>
+                            <tfoot v-if="historyTotalPages > 1">
+                                <tr>
+                                    <td colspan="8" class="px-6 py-3 bg-white border-t border-gray-200">
+                                        <div class="flex items-center justify-between w-full">
+                                            <span class="text-sm text-gray-500">
+                                                Showing {{ (historyPage - 1) * itemsPerPage + 1 }} to {{ Math.min(historyPage * itemsPerPage, pastApplications.length) }} of {{ pastApplications.length }}
+                                            </span>
+                                            <div class="flex gap-2">
+                                                <button @click="historyPage--" :disabled="historyPage === 1" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>
+                                                <button @click="historyPage++" :disabled="historyPage === historyTotalPages" class="px-3 py-1 text-sm border rounded text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>
+                                            </div>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>

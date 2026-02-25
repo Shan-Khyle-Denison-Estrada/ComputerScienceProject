@@ -4,7 +4,7 @@ import Modal from '@/Components/Modal.vue'; // Ensure you have this component
 import PrimaryButton from '@/Components/PrimaryButton.vue'; // Ensure you have this component
 import SecondaryButton from '@/Components/SecondaryButton.vue'; // Ensure you have this component
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 
 const props = defineProps({
     hasFranchise: Boolean,
@@ -25,6 +25,34 @@ const showUnitModal = ref(false);
 const showConfirmDriverModal = ref(false);
 const driverToActivate = ref(null); // Stores the assignment object temporarily
 const processingDriverId = ref(null);
+
+// --- PAGINATION STATE & LOGIC ---
+const currentPage = ref(1);
+const itemsPerPage = 5;
+
+// Reset page to 1 whenever the tab changes
+watch(activeTab, () => {
+    currentPage.value = 1;
+});
+
+// Dynamically grab the dataset for the currently active tab
+const currentTabData = computed(() => {
+    if (!selectedFranchise.value) return [];
+    switch (activeTab.value) {
+        case 'driver': return selectedFranchise.value.driver_assignments || [];
+        case 'payments': return selectedFranchise.value.assessments?.flatMap(a => a.payments) || []; 
+        case 'units': return selectedFranchise.value.unit_history || [];
+        case 'ownership': return selectedFranchise.value.ownership_history || [];
+        default: return [];
+    }
+});
+
+const paginatedTabData = computed(() => {
+    const start = (currentPage.value - 1) * itemsPerPage;
+    return currentTabData.value.slice(start, start + itemsPerPage);
+});
+
+const totalPages = computed(() => Math.ceil(currentTabData.value.length / itemsPerPage) || 1);
 
 // --- INIT ---
 onMounted(() => {
@@ -294,7 +322,7 @@ const getTabLabel = (tabKey) => {
                                         <tr v-if="!selectedFranchise.driver_assignments?.length">
                                             <td colspan="5" class="px-6 py-12 text-center text-gray-400">No assigned drivers recorded.</td>
                                         </tr>
-                                        <tr v-for="assign in selectedFranchise.driver_assignments" :key="assign.id" 
+                                        <tr v-for="assign in paginatedTabData" :key="assign.id" 
                                             class="hover:bg-gray-50 transition-colors"
                                             :class="{'bg-blue-50/30': assign.is_active}">
                                             <td class="px-6 py-4 text-gray-600">{{ formatDate(assign.created_at) }}</td>
@@ -325,6 +353,21 @@ const getTabLabel = (tabKey) => {
                                             </td>
                                         </tr>
                                     </tbody>
+                                    <tfoot v-if="totalPages > 1">
+                                        <tr>
+                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex items-center justify-between w-full">
+                                                    <span class="text-sm text-gray-500">
+                                                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
+                                                    </span>
+                                                    <div class="flex gap-2">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
 
@@ -342,13 +385,28 @@ const getTabLabel = (tabKey) => {
                                         <tr v-if="payments.length === 0">
                                             <td colspan="4" class="px-6 py-12 text-center text-gray-400">No payment history available.</td>
                                         </tr>
-                                        <tr v-for="pay in payments" :key="pay.id" class="hover:bg-gray-50 transition-colors">
+                                        <tr v-for="pay in paginatedTabData" :key="pay.id" class="hover:bg-gray-50 transition-colors">
                                             <td class="px-6 py-4 font-mono text-gray-600">{{ formatDate(pay.assessment_date) }}</td>
                                             <td class="px-6 py-4 text-gray-600">{{ formatDate(pay.created_at) }}</td>
                                             <td class="px-6 py-4 font-medium text-gray-800">{{ pay.particulars_string }}</td>
                                             <td class="px-6 py-4 text-right font-bold text-gray-800">{{ formatCurrency(pay.amount_paid) }}</td>
                                         </tr>
                                     </tbody>
+                                    <tfoot v-if="totalPages > 1">
+                                        <tr>
+                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex items-center justify-between w-full">
+                                                    <span class="text-sm text-gray-500">
+                                                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
+                                                    </span>
+                                                    <div class="flex gap-2">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
 
@@ -366,13 +424,28 @@ const getTabLabel = (tabKey) => {
                                         <tr v-if="!selectedFranchise.unit_history?.length">
                                             <td colspan="4" class="px-6 py-12 text-center text-gray-400">No unit changes recorded.</td>
                                         </tr>
-                                        <tr v-for="h in selectedFranchise.unit_history" :key="h.id" class="hover:bg-gray-50 transition-colors">
+                                        <tr v-for="h in paginatedTabData" :key="h.id" class="hover:bg-gray-50 transition-colors">
                                             <td class="px-6 py-4 text-gray-600">{{ formatDate(h.date_changed) }}</td>
                                             <td class="px-6 py-4 font-mono font-bold text-gray-800">{{ h.new_unit?.plate_number }}</td>
                                             <td class="px-6 py-4 text-gray-600">{{ h.new_unit?.make?.name }}</td>
                                             <td class="px-6 py-4 text-gray-500 italic">{{ h.remarks || '-' }}</td>
                                         </tr>
                                     </tbody>
+                                    <tfoot v-if="totalPages > 1">
+                                        <tr>
+                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex items-center justify-between w-full">
+                                                    <span class="text-sm text-gray-500">
+                                                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
+                                                    </span>
+                                                    <div class="flex gap-2">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
 
@@ -389,12 +462,27 @@ const getTabLabel = (tabKey) => {
                                         <tr v-if="!selectedFranchise.ownership_history?.length">
                                             <td colspan="3" class="px-6 py-12 text-center text-gray-400">No ownership changes recorded.</td>
                                         </tr>
-                                        <tr v-for="hist in selectedFranchise.ownership_history" :key="hist.id" class="hover:bg-gray-50 transition-colors">
+                                        <tr v-for="hist in paginatedTabData" :key="hist.id" class="hover:bg-gray-50 transition-colors">
                                             <td class="px-6 py-4 text-gray-600">{{ formatDate(hist.date_transferred || hist.created_at) }}</td>
                                             <td class="px-6 py-4 font-bold text-gray-800">{{ getOwnerName(hist.new_owner?.user) }}</td>
                                             <td class="px-6 py-4 text-gray-500">{{ hist.previous_owner ? getOwnerName(hist.previous_owner.user) : 'N/A' }}</td>
                                         </tr>
                                     </tbody>
+                                    <tfoot v-if="totalPages > 1">
+                                        <tr>
+                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex items-center justify-between w-full">
+                                                    <span class="text-sm text-gray-500">
+                                                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
+                                                    </span>
+                                                    <div class="flex gap-2">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
                                 </table>
                             </div>
 
