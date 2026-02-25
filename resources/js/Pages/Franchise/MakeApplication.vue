@@ -164,6 +164,14 @@ const getBadgeStyle = (status) => {
     if (status === 'Rejected' || status === 'Returned') return 'bg-red-100 text-red-700 border-red-200';
     return 'bg-gray-100 text-gray-400 border-gray-200'; // Pending or default
 };
+
+const getApprovalStages = (app) => {
+    const appType = app.type || app.application_type;
+    if (appType === 'Change of Unit' || appType === 'Change of Owner') {
+        return approvalStages.filter(stage => stage.key !== 'sp_status');
+    }
+    return approvalStages;
+};
 </script>
 
 <template>
@@ -242,15 +250,15 @@ const getBadgeStyle = (status) => {
                                             {{ app.status }}
                                         </span>
                                     </td>
-                                    <td class="px-6 py-4 align-middle">
-                                        <div class="flex items-center gap-1.5 flex-wrap">
-                                            <div v-for="stage in approvalStages" :key="stage.key" :title="`${stage.tooltip}: ${app[stage.key]}`" 
-                                                class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
-                                                :class="getBadgeStyle(app[stage.key])">
-                                                {{ stage.label }}
-                                            </div>
-                                        </div>
-                                    </td>
+<td class="px-6 py-4 align-middle">
+    <div class="flex items-center gap-1.5 flex-wrap">
+        <div v-for="stage in getApprovalStages(app)" :key="stage.key" :title="`${stage.tooltip}: ${app[stage.key]}`" 
+            class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
+            :class="getBadgeStyle(app[stage.key])">
+            {{ stage.label }}
+        </div>
+    </div>
+</td>
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-3 ml-auto">
