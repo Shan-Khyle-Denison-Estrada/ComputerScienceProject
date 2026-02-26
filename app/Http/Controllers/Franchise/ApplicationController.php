@@ -624,6 +624,7 @@ public function index()
 
         return redirect()->back()->with('success', 'Compliance submitted successfully!');
     }
+
     public function cancelApplication(Request $request, Application $application)
     {
         abort_if($application->user_id !== Auth::id(), 403);
@@ -636,12 +637,39 @@ public function index()
             return redirect()->back()->with('error', 'This application cannot be cancelled in its current state.');
         }
 
-        $application->update([
-            'status' => 'Cancelled',
-            'remarks' => 'Application cancelled by the applicant.'
-        ]);
+        DB::beginTransaction();
 
-        return redirect()->back()->with('success', 'Application cancelled successfully!');
+        try {
+            // 1. Cancel the application
+            $application->update([
+                'status' => 'Cancelled',
+                'remarks' => 'Application cancelled by the applicant.'
+            ]);
+
+            // 2. Handle the Assessment
+            if ($application->assessment) {
+                
+                // OPTION A: Delete the assessment entirely (Uncomment to use)
+                // $application->assessment->particulars()->detach(); // Clean up pivot table first
+                // $application->assessment()->delete();
+                
+                // OPTION B (Recommended): Void the assessment to keep an audit trail
+                $application->assessment()->update([
+                    'assessment_status' => 'Cancelled',
+                    'total_amount_due' => 0, // Optional: zero out the balance
+                    'remarks' => 'Assessment cancelled due to application cancellation.'
+                ]);
+            }
+
+            DB::commit();
+
+            return redirect()->back()->with('success', 'Application and associated assessment cancelled successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            // Log::error('Application Cancellation Failed: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to cancel the application. Please try again.');
+        }
     }
     /**
      * Submit or update documents for an auto-generated Renewal application.
