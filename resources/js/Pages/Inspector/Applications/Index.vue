@@ -51,6 +51,7 @@ watch(search, handleSearch);
                                 <th class="p-4 font-semibold text-sm text-gray-700">Applicant</th>
                                 <th class="p-4 font-semibold text-sm text-gray-700">Type</th>
                                 <th class="p-4 font-semibold text-sm text-gray-700">Status</th>
+                                <th class="p-4 font-semibold text-sm text-gray-700">Remarks</th>
                                 <th class="p-4 font-semibold text-sm text-gray-700">Actions</th>
                             </tr>
                         </thead>
@@ -64,6 +65,7 @@ watch(search, handleSearch);
                                         {{ app.status }}
                                     </span>
                                 </td>
+                                <td class="p-4 text-sm text-gray-900 font-medium">{{ app.remarks }}</td>
                                 <td class="p-4 text-sm">
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('inspector.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Inspect Unit &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('inspector.applications.show-change-of-unit', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Inspect Unit &rarr;</Link>

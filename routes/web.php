@@ -233,13 +233,17 @@ Route::middleware('auth')->group(function () {
 
 // --- CITY ANTI-POLLUTION OFFICER (CAPO) ROUTES ---
 Route::middleware(['auth', 'role:city_anti_pollution_officer'])->group(function () {
-    Route::get('/capo/applications', [CapoApplicationController::class, 'index'])->name('capo.applications.index');
-    Route::get('/capo/applications/renewal/{application}', [CapoApplicationController::class, 'showRenewal'])->name('capo.applications.show');
+    Route::get('/capo/applications', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'index'])->name('capo.applications.index');
+    
+    // View Routes
+    Route::get('/capo/applications/renewal/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showRenewal'])->name('capo.applications.show');
+    Route::get('/capo/applications/change-of-unit/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showChangeOfUnit'])->name('capo.applications.show-change-of-unit');
 
-    Route::post('/capo/applications/renewal/{application}/approve', [CapoApplicationController::class, 'approve'])
-        ->name('capo.applications.renewal.approve');
-    Route::post('/capo/applications/renewal/{application}/reject', [CapoApplicationController::class, 'reject'])
-        ->name('capo.applications.renewal.reject');
+    // Shared Action Routes (Used by both Renewal and Change of Unit)
+    Route::post('/capo/applications/{application}/approve', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'approve'])
+        ->name('capo.applications.approve');
+    Route::post('/capo/applications/{application}/reject', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'reject'])
+        ->name('capo.applications.reject');
 });
 
 // --- EVALUATOR ROUTES ---

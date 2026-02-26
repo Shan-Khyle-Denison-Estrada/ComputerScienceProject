@@ -84,6 +84,7 @@ class InspectorApplicationController extends Controller
             'franchise.currentActiveUnit.newUnit.make', 
             'franchise.zone', 
             'zone',
+            'proposedUnits.make', // <--- Added this to load proposed unit
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
@@ -93,20 +94,13 @@ class InspectorApplicationController extends Controller
 
         $inspectionItems = InspectionItem::all();
 
-        $currentUnitId = null;
-        $unitInspections = [];
-        if ($application->franchise && $application->franchise->currentActiveUnit) {
-            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
-            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
-                ->where('application_id', $application->id) 
-                ->get();
-        }
+        // Get inspections by application ID to ensure we fetch the proposed unit inspections
+        $unitInspections = UnitInspection::where('application_id', $application->id)->get();
 
         return Inertia::render('Inspector/Applications/ShowChangeOfUnit', [
             'application' => $application,
             'inspectionItems' => $inspectionItems,
             'unitInspections' => $unitInspections,
-            'currentUnitId' => $currentUnitId
         ]);
     }
 

@@ -47,6 +47,9 @@ const application = computed(() => {
     const currentActiveUnit = franchise.current_active_unit || {};
     const currentUnitData = currentActiveUnit.new_unit || {};
     const currentMake = currentUnitData.make || {};
+    
+    const proposedUnitData = (app.proposed_units && app.proposed_units.length > 0) ? app.proposed_units[0] : {};
+    const proposedMake = proposedUnitData.make || {};
 
     const mappedAssessment = app.assessment ? {
         id: app.assessment.id,
@@ -131,6 +134,19 @@ const application = computed(() => {
             right_photo: currentUnitData.unit_right_photo ? `/storage/${currentUnitData.unit_right_photo}` : (currentUnitData.right_photo ? `/storage/${currentUnitData.right_photo}` : null)
         },
 
+        proposed_unit: {
+            make: proposedMake.name || 'Not specified',
+            motor_no: proposedUnitData.motor_number || 'Not specified',
+            chassis_no: proposedUnitData.chassis_number || 'Not specified',
+            plate_no: proposedUnitData.plate_number || 'N/A',
+            cr_no: proposedUnitData.cr_number || 'Not specified',
+            year: proposedUnitData.model_year || 'Not specified',
+            front_photo: proposedUnitData.unit_front_photo ? `/storage/${proposedUnitData.unit_front_photo}` : (proposedUnitData.front_photo ? `/storage/${proposedUnitData.front_photo}` : null),
+            back_photo: proposedUnitData.unit_back_photo ? `/storage/${proposedUnitData.unit_back_photo}` : (proposedUnitData.back_photo ? `/storage/${proposedUnitData.back_photo}` : null),
+            left_photo: proposedUnitData.unit_left_photo ? `/storage/${proposedUnitData.unit_left_photo}` : (proposedUnitData.left_photo ? `/storage/${proposedUnitData.left_photo}` : null),
+            right_photo: proposedUnitData.unit_right_photo ? `/storage/${proposedUnitData.unit_right_photo}` : (proposedUnitData.right_photo ? `/storage/${proposedUnitData.right_photo}` : null)
+        },
+
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
             id: evalDoc.id,
             name: evalDoc.requirement ? evalDoc.requirement.name : 'Document',
@@ -192,7 +208,6 @@ const saveInspectionStatus = (rating) => {
     if (selectedInspectionIndex.value === null) return;
     const inspectionItem = inspectionsList.value[selectedInspectionIndex.value];
     
-    // Updated route to the new generic action
     router.post(route('inspector.applications.inspect', application.value.id), {
         inspection_item_id: inspectionItem.id,
         rating: rating,
@@ -205,7 +220,6 @@ const saveInspectionStatus = (rating) => {
 
 const submitApproval = () => {
     approveProcessing.value = true;
-    // Updated route to the new generic action
     router.post(route('inspector.applications.approve', application.value.id), {}, {
         preserveScroll: true,
         onSuccess: () => showApproveModal.value = false,
@@ -216,7 +230,6 @@ const submitApproval = () => {
 const submitReject = () => {
     if(!rejectForm.remarks) return;
     rejectForm.processing = true;
-    // Updated route to the new generic action
     router.post(route('inspector.applications.reject', application.value.id), { remarks: rejectForm.remarks }, {
         preserveScroll: true,
         onSuccess: () => showRejectModal.value = false,
@@ -257,16 +270,16 @@ const isImageUrl = (url) => {
             </div>
         </template>
         
-        <div class="w-full flex flex-row gap-0 h-[calc(100vh-160px)] overflow-hidden relative">
+        <div class="w-full flex flex-row gap-0 h-[calc(100vh-100px)] overflow-hidden relative rounded-lg">
             
             <div class="w-2/3 bg-white shadow-sm border-r border-gray-200 p-6 flex flex-col h-full flex-shrink-0">
                 
                 <div class="border-b border-gray-200 mb-6 flex gap-6 overflow-x-auto pb-1 flex-shrink-0">
                     <button @click="activeTab = 'franchise_overview'" :class="activeTab === 'franchise_overview' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Franchise Overview</button>
-                    <button @click="activeTab = 'unit_details'" :class="activeTab === 'unit_details' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Unit Details</button>
+                    <button @click="activeTab = 'unit_comparison'" :class="activeTab === 'unit_comparison' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Unit Comparison</button>
                     <button @click="activeTab = 'complaints'" :class="activeTab === 'complaints' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Complaints</button>
                     <button @click="activeTab = 'red_flags'" :class="activeTab === 'red_flags' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Red Flags</button>
-                    <button @click="activeTab = 'evaluations'" :class="activeTab === 'evaluations' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Evaluations (Read-Only)</button>
+                    <button @click="activeTab = 'evaluations'" :class="activeTab === 'evaluations' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Evaluations</button>
                     <button @click="activeTab = 'assessment'" :class="activeTab === 'assessment' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Assessment</button>
                 </div>
 
@@ -294,22 +307,59 @@ const isImageUrl = (url) => {
                             </div>
                         </div>
 
-                        <div v-else-if="activeTab === 'unit_details'" class="space-y-6">
-                            <div class="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Make / Model</p><p class="font-medium text-gray-900">{{ application.current_unit.make }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Year</p><p class="font-medium text-gray-900">{{ application.current_unit.year }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Motor No.</p><p class="font-medium text-gray-900">{{ application.current_unit.motor_no }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Chassis No.</p><p class="font-medium text-gray-900">{{ application.current_unit.chassis_no }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Plate Number</p><p class="font-medium text-gray-900">{{ application.current_unit.plate_no }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div>
-                            </div>
-                            <h4 class="font-bold text-gray-700 text-sm mb-3">Unit Photos</h4>
-                            <div class="grid grid-cols-2 gap-4">
-                                <div v-for="view in unitViews" :key="view.key" class="border rounded-lg p-2 bg-gray-50">
-                                    <p class="text-xs font-semibold text-gray-600 mb-2 text-center">{{ view.label }}</p>
-                                    <div class="aspect-video bg-gray-200 rounded flex items-center justify-center overflow-hidden">
-                                        <img v-if="application.current_unit[`${view.key}_photo`]" :src="application.current_unit[`${view.key}_photo`]" class="object-cover w-full h-full" />
-                                        <span v-else class="text-xs text-gray-400">No Image provided</span>
+                        <div v-else-if="activeTab === 'unit_comparison'" class="space-y-6">
+                            <div class="grid grid-cols-2 gap-6">
+                                <div class="bg-gray-50 p-5 rounded-xl border border-gray-200">
+                                    <h4 class="font-bold text-gray-700 text-sm mb-4 border-b border-gray-200 pb-2 flex justify-between items-center">
+                                        <span>Current Unit</span>
+                                        <span class="text-xs font-normal text-gray-500 bg-gray-200 px-2 py-0.5 rounded">To be replaced</span>
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-y-4 gap-x-4 mb-6">
+                                        <div><p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Make / Model</p><p class="font-medium text-sm text-gray-900">{{ application.current_unit.make }}</p></div>
+                                        <div><p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Year</p><p class="font-medium text-sm text-gray-900">{{ application.current_unit.year }}</p></div>
+                                        <div><p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Motor No.</p><p class="font-medium text-sm text-gray-900">{{ application.current_unit.motor_no }}</p></div>
+                                        <div><p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Chassis No.</p><p class="font-medium text-sm text-gray-900">{{ application.current_unit.chassis_no }}</p></div>
+                                        <div><p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">Plate Number</p><p class="font-medium text-sm text-gray-900">{{ application.current_unit.plate_no }}</p></div>
+                                        <div><p class="text-[10px] text-gray-500 uppercase tracking-wider mb-1">CR Number</p><p class="font-medium text-sm text-gray-900">{{ application.current_unit.cr_no }}</p></div>
+                                    </div>
+                                    <h5 class="text-xs font-bold text-gray-500 uppercase mb-3">Unit Photos</h5>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div v-for="view in unitViews" :key="'curr-'+view.key" class="border border-gray-200 rounded-lg p-1.5 bg-white">
+                                            <p class="text-[10px] font-semibold text-gray-500 mb-1 text-center">{{ view.label }}</p>
+                                            <div class="aspect-video bg-gray-100 rounded flex items-center justify-center overflow-hidden">
+                                                <img v-if="application.current_unit[`${view.key}_photo`]" :src="application.current_unit[`${view.key}_photo`]" class="object-cover w-full h-full" />
+                                                <span v-else class="text-[10px] text-gray-400">No Image</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="bg-blue-50 p-5 rounded-xl border border-blue-200 shadow-sm relative">
+                                    <div class="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-6 bg-white border border-gray-200 rounded-full flex items-center justify-center z-10 shadow-sm text-gray-400">
+                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
+                                    </div>
+
+                                    <h4 class="font-bold text-blue-800 text-sm mb-4 border-b border-blue-200 pb-2 flex justify-between items-center">
+                                        <span>Proposed Unit</span>
+                                        <span class="text-xs font-normal text-blue-700 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">New Inspection Required</span>
+                                    </h4>
+                                    <div class="grid grid-cols-2 gap-y-4 gap-x-4 mb-6">
+                                        <div><p class="text-[10px] text-blue-500 uppercase tracking-wider mb-1">Make / Model</p><p class="font-medium text-sm text-blue-900">{{ application.proposed_unit.make }}</p></div>
+                                        <div><p class="text-[10px] text-blue-500 uppercase tracking-wider mb-1">Year</p><p class="font-medium text-sm text-blue-900">{{ application.proposed_unit.year }}</p></div>
+                                        <div><p class="text-[10px] text-blue-500 uppercase tracking-wider mb-1">Motor No.</p><p class="font-medium text-sm text-blue-900">{{ application.proposed_unit.motor_no }}</p></div>
+                                        <div><p class="text-[10px] text-blue-500 uppercase tracking-wider mb-1">Chassis No.</p><p class="font-medium text-sm text-blue-900">{{ application.proposed_unit.chassis_no }}</p></div>
+                                        <div><p class="text-[10px] text-blue-500 uppercase tracking-wider mb-1">Plate Number</p><p class="font-medium text-sm text-blue-900">{{ application.proposed_unit.plate_no }}</p></div>
+                                        <div><p class="text-[10px] text-blue-500 uppercase tracking-wider mb-1">CR Number</p><p class="font-medium text-sm text-blue-900">{{ application.proposed_unit.cr_no }}</p></div>
+                                    </div>
+                                    <h5 class="text-xs font-bold text-blue-500 uppercase mb-3">Unit Photos</h5>
+                                    <div class="grid grid-cols-2 gap-2">
+                                        <div v-for="view in unitViews" :key="'prop-'+view.key" class="border border-blue-100 rounded-lg p-1.5 bg-white">
+                                            <p class="text-[10px] font-semibold text-blue-600 mb-1 text-center">{{ view.label }}</p>
+                                            <div class="aspect-video bg-blue-100/50 rounded flex items-center justify-center overflow-hidden">
+                                                <img v-if="application.proposed_unit[`${view.key}_photo`]" :src="application.proposed_unit[`${view.key}_photo`]" class="object-cover w-full h-full" />
+                                                <span v-else class="text-[10px] text-blue-400">No Image</span>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -354,7 +404,7 @@ const isImageUrl = (url) => {
 
                         <div v-else-if="activeTab === 'evaluations'">
                             <div class="flex items-center justify-between mb-4">
-                                <h3 class="font-bold text-gray-800 text-lg">Document Evaluations</h3>
+                                <h3 class="font-bold text-gray-800 text-lg">Document Evaluations (Read-Only)</h3>
                             </div>
                             <div class="grid grid-cols-1 gap-4">
                                 <div v-for="req in application.evaluation_requirements" :key="req.id" 
@@ -420,7 +470,7 @@ const isImageUrl = (url) => {
                     Inspection Panel
                 </h3>
                 
-                <p class="text-xs text-gray-500 mb-4 flex-shrink-0">Check the unit against the required inspection items below.</p>
+                <p class="text-xs text-gray-500 mb-4 flex-shrink-0">Check the proposed unit against the required inspection items below.</p>
 
                 <div class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mb-6">
                     <div v-for="(item, index) in inspectionsList" :key="item.id" 

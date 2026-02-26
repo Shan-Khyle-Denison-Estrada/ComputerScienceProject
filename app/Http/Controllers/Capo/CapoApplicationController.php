@@ -13,9 +13,9 @@ class CapoApplicationController extends Controller
 {
     public function index(Request $request)
     {
-        // STRICT FILTERING: Renewal, Status Pending, Inspector Approved, CAPO Pending
+        // FILTERING: Renewal or Change of Unit, Status Pending, Inspector Approved, CAPO Pending
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->where('application_type', 'Renewal')
+            ->whereIn('application_type', ['Renewal', 'Change of Unit'])
             ->where('status', 'Pending')
             ->where('inspector_status', 'Approved') // Must be approved by Inspector first
             ->where(function($q) {
@@ -76,11 +76,42 @@ class CapoApplicationController extends Controller
         ]);
     }
 
+    public function showChangeOfUnit(Application $application)
+    {
+        abort_if($application->application_type !== 'Change of Unit', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'proposedUnits.make', // <--- Added to load proposed unit data
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+            'franchise.complaints',
+            'franchise.redFlags.nature'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        // Get inspections by application ID to review the proposed unit
+        $unitInspections = UnitInspection::where('application_id', $application->id)->get();
+
+        return Inertia::render('Capo/Applications/ShowChangeOfUnit', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+        ]);
+    }
+
     public function approve(Application $application)
     {
         $application->update(['capo_status' => 'Approved']);
         
-        return redirect()->back()->with('success', "Renewal has been approved by the City Anti-Pollution Officer.");
+        return redirect()->route('capo.applications.index')
+                         ->with('success', "Application has been approved by the City Anti-Pollution Officer.");
     }
 
     public function reject(Request $request, Application $application)
@@ -89,12 +120,15 @@ class CapoApplicationController extends Controller
             'remarks' => 'required|string|max:1000'
         ]);
 
+        // CRITICAL CHANGE: Returns to inspector, NOT to the applicant.
+        // Overall status stays 'Pending' so the applicant doesn't see 'Returned'
         $application->update([
-            'capo_status' => 'Rejected',
-            'status' => 'Returned',
-            'remarks' => $request->remarks
+            'inspector_status' => 'Pending', // Pushes it back to Inspector's queue
+            'capo_status' => 'Pending',      // Resets CAPO state
+            'remarks' => "CAPO returned to Inspector: " . $request->remarks
         ]);
 
-        return redirect()->back()->with('success', "Renewal has been rejected/returned by the CAPO.");
+        return redirect()->route('capo.applications.index')
+                         ->with('success', "Application has been returned to the Inspector for re-evaluation.");
     }
 }
