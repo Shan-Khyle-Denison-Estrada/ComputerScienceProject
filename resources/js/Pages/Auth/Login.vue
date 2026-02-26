@@ -123,13 +123,13 @@ const submit = () => {
                             <span class="ml-2 text-sm text-gray-600">Remember me</span>
                         </label>
 
-                        <Link
+                        <!-- <Link
                             v-if="canResetPassword"
                             :href="route('password.request')"
                             class="text-sm font-medium text-blue-600 hover:text-blue-500 hover:underline"
                         >
                             Forgot password?
-                        </Link>
+                        </Link> -->
                     </div>
 
                     <PrimaryButton
@@ -141,9 +141,9 @@ const submit = () => {
                     </PrimaryButton>
                 </form>
 
-                <p class="mt-4 text-center text-sm text-gray-500">
+                <!-- <p class="mt-4 text-center text-sm text-gray-500">
                     Having trouble logging in? <a href="#" class="font-medium text-blue-600 hover:text-blue-500">Contact IT Support</a>
-                </p>
+                </p> -->
             </div>
         </div>
     </div>
