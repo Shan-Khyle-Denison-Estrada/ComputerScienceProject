@@ -202,14 +202,22 @@ class EvaluatorApplicationController extends Controller
         $redFlag->update(['status' => 'resolved']);
         return redirect()->back()->with('success', 'Red Flag marked as resolved.');
     }
+
     public function approve(Application $application)
     {
-        $application->update(['evaluator_status' => 'Approved']);
+        $updateData = [
+            'evaluator_status' => 'Approved',
+        ];
+
+        if ($application->application_type === 'Franchise Owner Account') {
+            $updateData['status'] = 'Approved';
+        }
+
+        $application->update($updateData);
         
         return redirect()->route('evaluator.applications.index')
             ->with('success', "Evaluation has been approved successfully.");
     }
-
     public function reject(Request $request, Application $application)
     {
         $request->validate([
