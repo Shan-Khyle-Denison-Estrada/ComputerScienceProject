@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
-    public function index()
+public function index()
     {
         $user = Auth::user();
         $operator = $user->operator; 
@@ -113,7 +113,6 @@ class ApplicationController extends Controller
                 ->first()
                 ?->driver;
 
-            // Pre-calculate existing applications precisely on the server for the frontend to consume instantly
             $franchise->has_renewal_this_year = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Renewal')
                 ->whereNotIn('status', ['Rejected', 'Cancelled'])
@@ -133,8 +132,9 @@ class ApplicationController extends Controller
             return $franchise;
         });
 
+        // UPDATED: Added unitInspections.inspectionItem eager loading
         $applicationsData = Application::where('user_id', $user->id)
-            ->with('evaluations.requirement')
+            ->with(['evaluations.requirement', 'unitInspections.inspectionItem'])
             ->orderBy('created_at', 'desc')
             ->get()
             ->map(function ($app) {
@@ -171,7 +171,16 @@ class ApplicationController extends Controller
                             'status' => $eval->is_compliant === 1 ? 'Approved' : ($eval->is_compliant === 0 ? 'Rejected' : 'Pending'),
                             'remarks' => $eval->remarks,
                         ];
-                    })
+                    }),
+                    // Map the inspection results so Vue can loop over them easily
+                    'unit_inspections' => $app->unitInspections ? $app->unitInspections->map(function($insp) {
+                        return [
+                            'id' => $insp->id,
+                            'name' => $insp->inspectionItem->name ?? 'Inspection Item',
+                            'rating' => $insp->rating,
+                            'remarks' => $insp->remarks,
+                        ];
+                    }) : []
                 ];
             });
 
@@ -694,5 +703,22 @@ public function storeChangeOfUnit(Request $request)
             // Log::error('Submit Renewal Documents Failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to submit documents. Please try again.');
         }
+    }
+
+    public function resubmitForInspection(Application $application)
+    {
+        // Ensure the user actually owns this application
+        if ($application->user_id !== Auth::id()) {
+            abort(403, 'Unauthorized action.');
+        }
+
+        // Reset the statuses so it appears back in the Inspector's queue
+        $application->update([
+            'status' => 'Pending', 
+            'inspector_status' => 'Pending',
+            'remarks' => 'Applicant has addressed the mechanical issues and the unit is ready for re-inspection.'
+        ]);
+
+        return redirect()->back()->with('success', 'Application successfully resubmitted for unit inspection.');
     }
 }

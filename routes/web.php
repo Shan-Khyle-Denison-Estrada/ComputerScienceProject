@@ -220,6 +220,8 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
 
     // NEW: Cancel Application Route
     Route::post('/franchise/applications/{application}/cancel', [FranchiseApplicationController::class, 'cancelApplication'])->name('franchise.applications.cancel');
+
+    Route::post('/franchise/applications/{application}/resubmit-inspection', [FranchiseApplicationController::class, 'resubmitForInspection'])->name('franchise.applications.resubmit-inspection');
 });
 
 // --- PROFILE MANAGEMENT ---
@@ -270,16 +272,18 @@ Route::middleware(['auth', 'role:evaluator'])->group(function () {
 // --- INSPECTOR ROUTES ---
 Route::middleware(['auth', 'role:inspector'])->group(function () {
     Route::get('/inspector/applications', [InspectorApplicationController::class, 'index'])->name('inspector.applications.index');
-    Route::get('/inspector/applications/renewal/{application}', [InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
-
-    Route::post('/inspector/applications/renewal/{application}/approve', [InspectorApplicationController::class, 'approve'])
-        ->name('inspector.applications.renewal.approve');
-    Route::post('/inspector/applications/renewal/{application}/reject', [InspectorApplicationController::class, 'reject'])
-        ->name('inspector.applications.renewal.reject');
     
-    // Specific to Inspector: Evaluating Unit Inspection Items
-    Route::post('/inspector/applications/renewal/{application}/inspect', [InspectorApplicationController::class, 'inspectUnit'])
-        ->name('inspector.applications.renewal.inspect');
+    // View Routes
+    Route::get('/inspector/applications/renewal/{application}', [InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
+    Route::get('/inspector/applications/change-of-unit/{application}', [InspectorApplicationController::class, 'showChangeOfUnit'])->name('inspector.applications.show-change-of-unit');
+
+    // Shared Action Routes (Used by both Renewal and Change of Unit)
+    Route::post('/inspector/applications/{application}/approve', [InspectorApplicationController::class, 'approve'])
+        ->name('inspector.applications.approve');
+    Route::post('/inspector/applications/{application}/reject', [InspectorApplicationController::class, 'reject'])
+        ->name('inspector.applications.reject');
+    Route::post('/inspector/applications/{application}/inspect', [InspectorApplicationController::class, 'inspectUnit'])
+        ->name('inspector.applications.inspect');
 });
 
 // --- REVIEWER ROUTES ---

@@ -15,26 +15,11 @@ const props = defineProps({
         type: Object,
         default: () => ({})
     },
-    barangays: { 
-        type: Array, 
-        default: () => [] 
-    },
-    unitMakes: { 
-        type: Array, 
-        default: () => [] 
-    },
-    operators: { 
-        type: Array, 
-        default: () => [] 
-    },
-    units: { 
-        type: Array, 
-        default: () => [] 
-    },
-    applications: {
-        type: Array,
-        default: () => []
-    }
+    barangays: { type: Array, default: () => [] },
+    unitMakes: { type: Array, default: () => [] },
+    operators: { type: Array, default: () => [] },
+    units: { type: Array, default: () => [] },
+    applications: { type: Array, default: () => [] }
 });
 
 const processSteps = [{ id: 1, label: 'Sub' }, { id: 2, label: 'Rev' }, { id: 3, label: 'Insp/Pay' }, { id: 4, label: 'Done' }];
@@ -45,6 +30,7 @@ const showNewAppModal = ref(false);
 const showComplyModal = ref(false);
 const showCancelModal = ref(false);
 const showSubmitRenewalModal = ref(false);
+const showInspectionFailedModal = ref(false);
 
 const selectedReturnedApp = ref(null); 
 const selectedRenewalApp = ref(null);
@@ -71,27 +57,17 @@ const paginatedPastApplications = computed(() => {
 const historyTotalPages = computed(() => Math.ceil(pastApplications.value.length / itemsPerPage) || 1);
 
 // --- ACTIONS & HELPERS ---
-
-// Helper to determine if an auto-renewal needs documents uploaded
 const isUnsubmittedRenewal = (app) => {
     const isRenewal = app.type === 'Renewal' || app.application_type === 'Renewal';
     if (!isRenewal) return false;
 
-    // If the application has moved past its initial auto-generated state, it has been submitted.
-    // (Our controller changes status to 'Pending' once documents are successfully uploaded)
     const activeStatuses = ['Pending', 'Under Review', 'Inspection', 'Processing', 'For Payment', 'Approved', 'Completed', 'Returned'];
-    
-    if (activeStatuses.includes(app.status)) {
-        return false;
-    }
-
-    // Fallback strictly to the submitted_at timestamp if the backend exposes it
+    if (activeStatuses.includes(app.status)) return false;
     if (app.submitted_at) return false;
 
     return true;
 };
 
-// Helper to determine if a row should have click/hover states
 const isRowInteractive = (app) => {
     if (app.status === 'Returned') return true;
     if (isUnsubmittedRenewal(app)) return true;
@@ -103,16 +79,20 @@ const handleCardClick = (app) => {
 
     if (app.status === 'Returned') {
         selectedReturnedApp.value = app; 
-        showComplyModal.value = true;
+        
+        // CONDITIONAL MODAL LOGIC: Display inspection results if rejected by inspector
+        if (app.inspector_status === 'Rejected') {
+            showInspectionFailedModal.value = true;
+        } else {
+            showComplyModal.value = true; // Fallback to standard document compliance
+        }
     } else if (isUnsubmittedRenewal(app)) { 
         selectedRenewalApp.value = app;
         showSubmitRenewalModal.value = true;
     }
 };
 
-const handleNewApplicationSubmit = () => {
-    showNewAppModal.value = false;
-};
+const handleNewApplicationSubmit = () => showNewAppModal.value = false;
 
 const handleComplianceSubmit = () => {
     showComplyModal.value = false;
@@ -124,31 +104,29 @@ const handleSubmitRenewalSubmit = () => {
     selectedRenewalApp.value = null;
 };
 
-// Open the cancellation modal
 const confirmCancelApplication = (app) => {
     appToCancel.value = app;
     showCancelModal.value = true;
 };
 
-// Execute the cancellation
 const executeCancelApplication = () => {
     if (appToCancel.value) {
         router.post(`/franchise/applications/${appToCancel.value.id}/cancel`, {}, { 
             preserveScroll: true,
-            onSuccess: () => {
-                closeCancelModal();
-            }
+            onSuccess: () => closeCancelModal()
         });
     }
 };
 
-// Close the cancellation modal
 const closeCancelModal = () => {
     showCancelModal.value = false;
     appToCancel.value = null;
 };
 
-const getStepPercentage = (app) => ((app.current_step) / processSteps.length) * 100;
+const closeInspectionFailedModal = () => {
+    showInspectionFailedModal.value = false;
+    selectedReturnedApp.value = null;
+};
 
 const approvalStages = [
     { key: 'evaluator_status', label: 'EVL', tooltip: 'Evaluator' },
@@ -162,7 +140,7 @@ const approvalStages = [
 const getBadgeStyle = (status) => {
     if (status === 'Approved' || status === 'Completed') return 'bg-green-100 text-green-700 border-green-200';
     if (status === 'Rejected' || status === 'Returned') return 'bg-red-100 text-red-700 border-red-200';
-    return 'bg-gray-100 text-gray-400 border-gray-200'; // Pending or default
+    return 'bg-gray-100 text-gray-400 border-gray-200';
 };
 
 const getApprovalStages = (app) => {
@@ -171,6 +149,17 @@ const getApprovalStages = (app) => {
         return approvalStages.filter(stage => stage.key !== 'sp_status');
     }
     return approvalStages;
+};
+
+const resubmitForInspection = () => {
+    if (!selectedReturnedApp.value) return;
+    
+    router.post(`/franchise/applications/${selectedReturnedApp.value.id}/resubmit-inspection`, {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeInspectionFailedModal();
+        }
+    });
 };
 </script>
 
@@ -250,20 +239,20 @@ const getApprovalStages = (app) => {
                                             {{ app.status }}
                                         </span>
                                     </td>
-<td class="px-6 py-4 align-middle">
-    <div class="flex items-center gap-1.5 flex-wrap">
-        <div v-for="stage in getApprovalStages(app)" :key="stage.key" :title="`${stage.tooltip}: ${app[stage.key]}`" 
-            class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
-            :class="getBadgeStyle(app[stage.key])">
-            {{ stage.label }}
-        </div>
-    </div>
-</td>
+                                    <td class="px-6 py-4 align-middle">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <div v-for="stage in getApprovalStages(app)" :key="stage.key" :title="`${stage.tooltip}: ${app[stage.key]}`" 
+                                                class="px-2 py-1 text-[10px] font-bold rounded border cursor-help text-center min-w-[36px] transition-colors"
+                                                :class="getBadgeStyle(app[stage.key])">
+                                                {{ stage.label }}
+                                            </div>
+                                        </div>
+                                    </td>
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-3 ml-auto">
                                             <button v-if="app.status === 'Returned'" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center gap-1">
-                                                Comply
+                                                {{ app.inspector_status === 'Rejected' ? 'View Issues' : 'Comply' }}
                                             </button>
                                             
                                             <button v-if="isUnsubmittedRenewal(app)" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center gap-1">
@@ -366,6 +355,70 @@ const getApprovalStages = (app) => {
             @submit="handleSubmitRenewalSubmit"
         />
 
+<transition name="fade">
+            <div v-if="showInspectionFailedModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeInspectionFailedModal"></div>
+                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+                    
+                    <div class="bg-red-50 px-6 py-4 border-b border-red-100 flex items-center gap-3 flex-shrink-0">
+                        <div class="flex-shrink-0 w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-lg font-bold text-red-800">Unit Inspection Failed</h3>
+                            <p class="text-xs text-red-600">Please fix the mechanical issues and return for re-inspection.</p>
+                        </div>
+                        <button @click="closeInspectionFailedModal" class="text-gray-400 hover:text-red-600 transition-colors p-1 rounded-md hover:bg-red-100 focus:outline-none">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+                    
+                    <div class="px-6 py-4 overflow-y-auto custom-scrollbar flex-1 bg-white space-y-4">
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                            <p class="text-xs text-gray-500 uppercase tracking-wider font-bold mb-1">Inspector's Remarks</p>
+                            <p class="text-sm font-medium text-gray-800">{{ selectedReturnedApp?.remarks }}</p>
+                        </div>
+
+                        <h4 class="font-bold text-gray-700 text-sm border-b pb-2">Itemized Inspection Results</h4>
+                        
+                        <div class="space-y-2">
+                            <template v-if="selectedReturnedApp?.unit_inspections?.length > 0">
+                                <div v-for="item in selectedReturnedApp.unit_inspections" :key="item.id" 
+                                     class="flex flex-col p-3 rounded-lg border"
+                                     :class="item.rating.toLowerCase() === 'fail' || item.rating.toLowerCase() === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'">
+                                    <div class="flex justify-between items-center mb-1">
+                                        <span class="font-bold text-sm" :class="item.rating.toLowerCase() === 'fail' || item.rating.toLowerCase() === 'rejected' ? 'text-red-800' : 'text-green-800'">
+                                            {{ item.name }}
+                                        </span>
+                                        <span class="px-2 py-0.5 text-[10px] font-bold uppercase rounded border"
+                                              :class="item.rating.toLowerCase() === 'fail' || item.rating.toLowerCase() === 'rejected' ? 'bg-red-100 text-red-800 border-red-200' : 'bg-green-100 text-green-800 border-green-200'">
+                                            {{ item.rating }}
+                                        </span>
+                                    </div>
+                                    <span class="text-xs mt-1" :class="item.rating.toLowerCase() === 'fail' || item.rating.toLowerCase() === 'rejected' ? 'text-red-600 font-medium' : 'text-green-700'">
+                                        "{{ item.remarks }}"
+                                    </span>
+                                </div>
+                            </template>
+                            <template v-else>
+                                <p class="text-sm text-gray-500 italic text-center py-4 bg-gray-50 rounded-lg border border-dashed border-gray-200">No specific inspection items recorded.</p>
+                            </template>
+                        </div>
+                    </div>
+
+                    <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end gap-3 flex-shrink-0">
+                        <PrimaryButton type="button" @click="resubmitForInspection" class="bg-blue-600 hover:bg-blue-700">
+                            Unit Fixed, Request Re-inspection
+                        </PrimaryButton>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
         <transition name="fade">
             <div v-if="showCancelModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
                 <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeCancelModal"></div>
@@ -400,3 +453,10 @@ const getApprovalStages = (app) => {
         </transition>
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 5px; height: 5px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
+.custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+</style>

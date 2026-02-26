@@ -14,7 +14,7 @@ class InspectorApplicationController extends Controller
     public function index(Request $request)
     {
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->where('application_type', 'Renewal')
+            ->whereIn('application_type', ['Renewal', 'Change of Unit'])
             ->where('status', 'Pending')
             ->where(function($q) {
                 $q->where('inspector_status', 'Pending')
@@ -74,6 +74,42 @@ class InspectorApplicationController extends Controller
         ]);
     }
 
+    public function showChangeOfUnit(Application $application)
+    {
+        abort_if($application->application_type !== 'Change of Unit', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+            'franchise.complaints',
+            'franchise.redFlags.nature'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        if ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('Inspector/Applications/ShowChangeOfUnit', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
+    }
+
     public function inspectUnit(Request $request, Application $application)
     {
         $request->validate([
@@ -104,7 +140,8 @@ class InspectorApplicationController extends Controller
     {
         $application->update(['inspector_status' => 'Approved']);
         
-        return redirect()->back()->with('success', "Unit Inspection has been approved.");
+        return redirect()->route('inspector.applications.index')
+                         ->with('success', "Unit Inspection has been approved.");
     }
 
     public function reject(Request $request, Application $application)
@@ -119,6 +156,7 @@ class InspectorApplicationController extends Controller
             'remarks' => $request->remarks
         ]);
 
-        return redirect()->back()->with('success', "Unit Inspection has been rejected/returned by the Inspector.");
+        return redirect()->route('inspector.applications.index')
+                         ->with('success', "Application has been returned for physical unit modifications.");
     }
 }

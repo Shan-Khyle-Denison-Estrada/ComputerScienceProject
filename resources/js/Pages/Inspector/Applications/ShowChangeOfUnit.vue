@@ -78,7 +78,7 @@ const application = computed(() => {
 
     return {
         id: app.id,
-        type: app.application_type || 'Renewal',
+        type: app.application_type || 'Change of Unit',
         status: app.status || 'Pending', 
         reference_no: app.reference_number || 'N/A',
         remarks: app.remarks || null,
@@ -143,7 +143,6 @@ const application = computed(() => {
     };
 });
 
-// Map Inspection Items along with their dynamic rating_options
 const inspectionsList = computed(() => {
     return props.inspectionItems.map(item => {
         const found = props.unitInspections.find(i => i.inspection_item_id === item.id);
@@ -157,7 +156,6 @@ const inspectionsList = computed(() => {
     });
 });
 
-// Dynamic Styling Helpers for arbitrary rating strings
 const isPositiveRating = (rating) => ['pass', 'good', 'acceptable', 'passed', 'yes', 'approved'].includes(rating.toLowerCase());
 const isNegativeRating = (rating) => ['fail', 'poor', 'defective', 'failed', 'no', 'bad', 'rejected'].includes(rating.toLowerCase());
 
@@ -181,7 +179,6 @@ const getButtonClass = (option) => {
     return 'bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500';
 };
 
-
 const openInspectionModal = (index) => {
     selectedInspectionIndex.value = index;
     inspectionForm.remarks = inspectionsList.value[index].remarks;
@@ -195,6 +192,7 @@ const saveInspectionStatus = (rating) => {
     if (selectedInspectionIndex.value === null) return;
     const inspectionItem = inspectionsList.value[selectedInspectionIndex.value];
     
+    // Updated route to the new generic action
     router.post(route('inspector.applications.inspect', application.value.id), {
         inspection_item_id: inspectionItem.id,
         rating: rating,
@@ -207,6 +205,7 @@ const saveInspectionStatus = (rating) => {
 
 const submitApproval = () => {
     approveProcessing.value = true;
+    // Updated route to the new generic action
     router.post(route('inspector.applications.approve', application.value.id), {}, {
         preserveScroll: true,
         onSuccess: () => showApproveModal.value = false,
@@ -217,6 +216,7 @@ const submitApproval = () => {
 const submitReject = () => {
     if(!rejectForm.remarks) return;
     rejectForm.processing = true;
+    // Updated route to the new generic action
     router.post(route('inspector.applications.reject', application.value.id), { remarks: rejectForm.remarks }, {
         preserveScroll: true,
         onSuccess: () => showRejectModal.value = false,
@@ -242,12 +242,12 @@ const isImageUrl = (url) => {
 </script>
 
 <template>
-    <Head title="Inspect Renewal Unit" />
+    <Head title="Inspect Change of Unit" />
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Inspect Renewal Unit</h2>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Inspect Change of Unit</h2>
                     <p class="text-sm text-gray-500 mt-1">Application Ref: {{ application.reference_no }}</p>
                 </div>
                 <div class="px-3 py-1 rounded-full text-sm font-semibold border"
@@ -257,7 +257,7 @@ const isImageUrl = (url) => {
             </div>
         </template>
         
-        <div class="w-full flex flex-row gap-0 h-[calc(100vh-100px)] overflow-hidden relative rounded-lg">
+        <div class="w-full flex flex-row gap-0 h-[calc(100vh-160px)] overflow-hidden relative">
             
             <div class="w-2/3 bg-white shadow-sm border-r border-gray-200 p-6 flex flex-col h-full flex-shrink-0">
                 

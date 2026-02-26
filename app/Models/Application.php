@@ -28,6 +28,11 @@ class Application extends Model
         return $this->hasOne(Assessment::class); 
     }
 
+    public function unitInspections()
+    {
+        return $this->hasMany(UnitInspection::class);
+    }
+
     public function getApplicantNameAttribute()
     {
         return "{$this->first_name} {$this->middle_name} {$this->last_name}";
