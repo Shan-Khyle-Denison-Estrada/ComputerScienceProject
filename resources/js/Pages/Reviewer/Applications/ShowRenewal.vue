@@ -161,7 +161,7 @@ const getBorderClass = (rating) => {
 
 const submitApproval = () => {
     approveProcessing.value = true;
-    router.post(route('reviewer.applications.renewal.approve', application.value.id), {}, {
+    router.post(route('reviewer.applications.approve', application.value.id), {}, {
         preserveScroll: true,
         onSuccess: () => showApproveModal.value = false,
         onFinish: () => approveProcessing.value = false
@@ -171,7 +171,7 @@ const submitApproval = () => {
 const submitReject = () => {
     if(!rejectForm.remarks) return;
     rejectForm.processing = true;
-    router.post(route('reviewer.applications.renewal.reject', application.value.id), { remarks: rejectForm.remarks }, {
+    router.post(route('reviewer.applications.reject', application.value.id), { remarks: rejectForm.remarks }, {
         preserveScroll: true,
         onSuccess: () => showRejectModal.value = false,
         onFinish: () => rejectForm.processing = false

@@ -83,7 +83,8 @@ class SpApproverApplicationController extends Controller
     {
         $application->update(['sp_status' => 'Approved']);
         
-        return redirect()->back()->with('success', "Renewal has been approved by the Sangguniang Panlungsod.");
+        return redirect()->route('sp_approver.applications.index')
+        ->with('success', "Renewal has been approved by the Sangguniang Panlungsod.");
     }
 
     public function reject(Request $request, Application $application)
@@ -94,10 +95,11 @@ class SpApproverApplicationController extends Controller
 
         $application->update([
             'sp_status' => 'Rejected',
-            'status' => 'Returned',
+            'status' => 'Rejected',
             'remarks' => $request->remarks
         ]);
 
-        return redirect()->back()->with('success', "Renewal has been rejected/returned by the SP Approver.");
+        return redirect()->route('sp_approver.applications.index')
+        ->with('success', "Renewal has been rejected by the Sangguniang Panlungsod.");
     }
 }
