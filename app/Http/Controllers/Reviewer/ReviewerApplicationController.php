@@ -14,19 +14,24 @@ class ReviewerApplicationController extends Controller
     public function index(Request $request)
     {
         // STRICT FILTERING: 
-        // 1. Renewal & Pending Application Status
-        // 2. Evaluator, Inspector, & CAPO Approved
+        // 1. Pending Application Status
+        // 2. Evaluator, Inspector, & CAPO Approved (Inspector & CAPO conditional)
         // 3. Assessment is Fully Paid
         // 4. Reviewer Status is Pending or Null
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->where('application_type', 'Renewal')
+            ->where('application_type', '!=', 'Franchise Owner Account') 
             ->where('status', 'Pending')
             ->where('evaluator_status', 'Approved')
-            ->where('inspector_status', 'Approved')
-            ->where('capo_status', 'Approved')
+            ->where(function ($q) {
+                $q->where(function ($subQuery) {
+                    $subQuery->whereIn('application_type', ['Renewal', 'Change of Unit'])
+                             ->where('inspector_status', 'Approved')
+                             ->where('capo_status', 'Approved');
+                })
+                ->orWhere('application_type', 'Change of Owner'); 
+            })
             ->whereHas('assessment', function ($q) {
-                // Adjust this if your actual paid value is capitalized differently
-                $q->where('assessment_status', 'paid'); 
+                $q->where('assessment_status', 'Paid'); 
             })
             ->where(function($q) {
                 $q->where('reviewer_status', 'Pending')
@@ -68,7 +73,7 @@ class ReviewerApplicationController extends Controller
         ]);
 
         $inspectionItems = InspectionItem::all();
-
+        
         $currentUnitId = null;
         $unitInspections = [];
         if ($application->franchise && $application->franchise->currentActiveUnit) {
@@ -86,11 +91,65 @@ class ReviewerApplicationController extends Controller
         ]);
     }
 
+    public function showChangeOfUnit(Application $application)
+    {
+        abort_if($application->application_type !== 'Change of Unit', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'proposedUnits.make',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+            'franchise.complaints',
+            'franchise.redFlags.nature'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+        $unitInspections = UnitInspection::where('application_id', $application->id)->get();
+
+        return Inertia::render('Reviewer/Applications/ShowChangeOfUnit', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+        ]);
+    }
+
+public function showChangeOfOwner(Application $application)
+    {
+        abort_if($application->application_type !== 'Change of Owner', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            // Using the standard proposed_owners or proposed_ownerships table.
+            // If the relationship isn't defined, we rely on the generic 'user' 
+            // tied to the application for the applicant's details.
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+            'franchise.complaints',
+            'franchise.redFlags.nature'
+        ]);
+
+        return Inertia::render('Reviewer/Applications/ShowChangeOfOwner', [
+            'application' => $application,
+        ]);
+    }
+
     public function approve(Application $application)
     {
         $application->update(['reviewer_status' => 'Approved']);
         
-        return redirect()->back()->with('success', "Renewal has been approved by the Reviewer.");
+        return redirect()->route('reviewer.applications.index')
+                         ->with('success', "Application has been approved by the Reviewer.");
     }
 
     public function reject(Request $request, Application $application)
@@ -101,10 +160,11 @@ class ReviewerApplicationController extends Controller
 
         $application->update([
             'reviewer_status' => 'Rejected',
-            'status' => 'Returned',
+            'status' => 'Rejected',
             'remarks' => $request->remarks
         ]);
 
-        return redirect()->back()->with('success', "Renewal has been rejected/returned by the Reviewer.");
+        return redirect()->route('reviewer.applications.index')
+                         ->with('success', "Application has been returned.");
     }
 }

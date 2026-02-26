@@ -211,7 +211,7 @@ const isImageUrl = (url) => {
             </div>
         </template>
         
-        <div class="w-full flex flex-row gap-0 h-[calc(100vh-160px)] overflow-hidden relative">
+        <div class="w-full flex flex-row gap-0 h-[calc(100vh-100px)] overflow-hidden relative rounded-lg">
             
             <div class="w-2/3 bg-white shadow-sm border-r border-gray-200 p-6 flex flex-col h-full flex-shrink-0">
                 

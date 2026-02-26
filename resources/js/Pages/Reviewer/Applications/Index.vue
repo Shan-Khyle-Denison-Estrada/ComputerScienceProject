@@ -30,13 +30,13 @@ watch(search, handleSearch);
         </template>
 
         <div class="w-full">
-            <div class="bg-white p-4 mb-4 flex items-center justify-between border-b border-gray-200">
+            <div class="bg-white p-4 mb-4 flex items-center justify-between border-b border-gray-200 rounded-lg">
                 <div class="w-1/3">
                     <TextInput v-model="search" type="text" class="w-full" placeholder="Search Reference No or Name..." />
                 </div>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -59,7 +59,9 @@ watch(search, handleSearch);
                                     </span>
                                 </td>
                                 <td class="p-4 text-sm">
-                                    <Link :href="route('reviewer.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-if="app.application_type === 'Renewal'" :href="route('reviewer.applications.showRenewal', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('reviewer.applications.showChangeOfUnit', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-else-if="app.application_type === 'Change of Owner'" :href="route('reviewer.applications.showChangeOfOwner', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">

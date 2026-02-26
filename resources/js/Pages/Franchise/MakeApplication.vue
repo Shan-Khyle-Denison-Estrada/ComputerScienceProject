@@ -145,10 +145,24 @@ const getBadgeStyle = (status) => {
 
 const getApprovalStages = (app) => {
     const appType = app.type || app.application_type;
-    if (appType === 'Change of Unit' || appType === 'Change of Owner') {
-        return approvalStages.filter(stage => stage.key !== 'sp_status');
-    }
-    return approvalStages;
+
+    // Filter out stages based on the application type
+    return approvalStages.filter(stage => {
+        // Rule 1: Change of Unit and Change of Owner both skip 'sp_status'
+        if ((appType === 'Change of Unit' || appType === 'Change of Owner') && stage.key === 'sp_status') {
+            return false;
+        }
+
+        // Rule 2: Change of Owner specifically skips inspector and capo
+        if (appType === 'Change of Owner') {
+            const excludeForOwner = ['inspector_status', 'capo_status']; // Adjust these keys to match your actual stage keys
+            if (excludeForOwner.includes(stage.key)) {
+                return false;
+            }
+        }
+
+        return true;
+    });
 };
 
 const resubmitForInspection = () => {
