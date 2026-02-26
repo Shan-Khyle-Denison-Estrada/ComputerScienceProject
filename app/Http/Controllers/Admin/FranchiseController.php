@@ -15,6 +15,7 @@ use App\Models\DriverAssignment;
 use App\Models\Complaint;
 use App\Models\NatureOfRedFlag;
 use App\Models\NatureOfComplaint;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -100,7 +101,7 @@ class FranchiseController extends Controller
         return redirect()->route('admin.franchises.index')->with('success', 'Franchise created and QR code generated successfully.');
     }
 
-    public function show(Franchise $franchise)
+public function show(Franchise $franchise)
     {
         // Eager load ALL possible assessment and payment paths
         $franchise->load([
@@ -118,15 +119,15 @@ class FranchiseController extends Controller
         $activeAssignment = $franchise->driverAssignments->where('is_active', true)->first();
         $franchise->active_driver = $activeAssignment ? $activeAssignment->driver : null;
 
-        // 1. Gather all unique assessments for this franchise
+        // Gather all unique assessments for this franchise
         $allAssessments = collect($franchise->assessments)->merge(
             collect($franchise->applications)->map->assessment->filter()
         )->unique('id');
 
-        // 2. Extract all unique payments from these assessments
+        // Extract all unique payments from these assessments
         $allPayments = $allAssessments->flatMap->payments->unique('id')->sortByDesc('created_at')->values();
 
-        // 3. Set Latest Payment Data
+        // Set Latest Payment Data
         $latestPayment = $allPayments->first();
         if ($latestPayment) {
             $franchise->latest_payment = [
@@ -138,7 +139,7 @@ class FranchiseController extends Controller
             $franchise->latest_payment = null;
         }
 
-        // 4. Construct flat payment history for the table
+        // Construct flat payment history for the table
         $franchise->payment_history = $allPayments->map(function($payment) use ($allAssessments) {
             $assessment = $allAssessments->firstWhere('id', $payment->assessment_id);
             return [
@@ -158,6 +159,7 @@ class FranchiseController extends Controller
             'drivers' => Driver::where('status', 'active')->get(),
             'redFlagNatures' => NatureOfRedFlag::all(),
             'complaintNatures' => NatureOfComplaint::all(),
+            'systemSetting' => SystemSetting::first(), // <-- FETCH AND PASS THE SETTINGS
         ]);
     }
 

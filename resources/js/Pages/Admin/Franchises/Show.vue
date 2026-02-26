@@ -5,8 +5,9 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
-import { Head, useForm, Link, router } from '@inertiajs/vue3'; // Added router
-import { ref, computed } from 'vue';
+import FranchiseCertificate from '@/Components/FranchiseCertificate.vue'; // New Import
+import { Head, useForm, Link, router } from '@inertiajs/vue3';
+import { ref, computed, nextTick } from 'vue'; // Added nextTick
 
 const props = defineProps({
     franchise: Object,
@@ -15,6 +16,7 @@ const props = defineProps({
     drivers: Array,
     redFlagNatures: Array,
     complaintNatures: Array,
+    systemSetting: Object,
 });
 
 // --- STATE ---
@@ -25,9 +27,9 @@ const showComplaintModal = ref(false);
 const showZoneModal = ref(false);
 const showUnitDetailsModal = ref(false);
 const activeTab = ref('ownership'); 
-
-// State
 const showRedFlagModal = ref(false);
+const selectedImage = ref(null);
+const printMode = ref('qr'); // New state for print type
 
 // Form
 const redFlagForm = useForm({
@@ -53,8 +55,6 @@ const resolveRedFlag = (id) => {
         });
     }
 };
-
-const selectedImage = ref(null);
 
 // --- FORMS ---
 const transferForm = useForm({
@@ -124,7 +124,6 @@ const submitComplaint = () => {
     });
 };
 
-// NEW: Resolve Complaint Action
 const resolveComplaint = (complaintId) => {
     if (confirm('Are you sure you want to mark this complaint as resolved?')) {
         router.patch(route('admin.complaints.resolve', complaintId), {}, {
@@ -143,7 +142,14 @@ const removeDriver = (assignmentId) => {
     }
 };
 
-const triggerPrint = () => {
+// UPDATED: Modified trigger print to handle different print views
+const triggerPrint = async (mode = 'qr') => {
+    printMode.value = mode;
+    await nextTick(); // Wait for DOM to update with the correct print component
+    
+    // Add a 500ms delay to give the browser time to fetch and render the LGU logo & QR code
+    await new Promise(resolve => setTimeout(resolve, 500)); 
+    
     window.print();
 };
 
@@ -208,6 +214,10 @@ const getDriverName = (driver) => {
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         Make Complaint
                     </SecondaryButton>
+                    <PrimaryButton @click="triggerPrint('certificate')" class="bg-indigo-600 hover:bg-indigo-700">
+                        <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        Print Certificate
+                    </PrimaryButton>
                     <SecondaryButton @click="showChangeUnitModal = true">
                         <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         Change Unit
@@ -273,7 +283,7 @@ const getDriverName = (driver) => {
                                 <span class="text-xs text-gray-500">Scan for verification</span>
                             </div>
                         </div>
-                        <button @click="triggerPrint" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-sm font-bold py-3 rounded-lg transition shadow-sm">
+                        <button @click="triggerPrint('qr')" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-sm font-bold py-3 rounded-lg transition shadow-sm">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                             Print QR Badge
                         </button>
@@ -465,56 +475,56 @@ const getDriverName = (driver) => {
                             </div>
                         </div>
 
-<div v-if="activeTab === 'financials'" class="bg-white rounded-lg shadow-sm border border-gray-200">
-    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
-        <h3 class="text-lg font-medium text-gray-900">Payment Records</h3>
-    </div>
-    
-    <div class="overflow-x-auto">
-        <table class="min-w-full divide-y divide-gray-200">
-            <thead class="bg-gray-50">
-                <tr>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OR Number</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payee</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
-                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment Status</th>
-                </tr>
-            </thead>
-            <tbody class="bg-white divide-y divide-gray-200">
-                <template v-if="franchise.payment_history && franchise.payment_history.length > 0">
-                    <tr v-for="payment in franchise.payment_history" :key="payment.id" class="hover:bg-gray-50 transition-colors">
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.date }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ payment.or_number }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.payee }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
-                            ₱{{ parseFloat(payment.amount_paid).toFixed(2) }}
-                        </td>
-                        <td class="px-6 py-4 whitespace-nowrap">
-                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
-                                  :class="{'bg-green-100 text-green-800': payment.assessment_status.toLowerCase() === 'paid', 
-                                           'bg-yellow-100 text-yellow-800': payment.assessment_status.toLowerCase() !== 'paid'}">
-                                {{ payment.assessment_status }}
-                            </span>
-                        </td>
-                    </tr>
-                </template>
+                        <div v-if="activeTab === 'financials'" class="bg-white rounded-lg shadow-sm border border-gray-200">
+                            <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+                                <h3 class="text-lg font-medium text-gray-900">Payment Records</h3>
+                            </div>
+                            
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OR Number</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payee</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <template v-if="franchise.payment_history && franchise.payment_history.length > 0">
+                                            <tr v-for="payment in franchise.payment_history" :key="payment.id" class="hover:bg-gray-50 transition-colors">
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.date }}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ payment.or_number }}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.payee }}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                                                    ₱{{ parseFloat(payment.amount_paid).toFixed(2) }}
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap">
+                                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                                        :class="{'bg-green-100 text-green-800': payment.assessment_status.toLowerCase() === 'paid', 
+                                                                'bg-yellow-100 text-yellow-800': payment.assessment_status.toLowerCase() !== 'paid'}">
+                                                        {{ payment.assessment_status }}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        </template>
 
-                <tr v-else>
-                    <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
-                        <div class="flex flex-col items-center">
-                            <svg class="h-10 w-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span class="font-medium text-gray-600">No payment records found.</span>
-                            <p class="text-xs mt-1">Payments linked to this franchise will appear here.</p>
+                                        <tr v-else>
+                                            <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
+                                                <div class="flex flex-col items-center">
+                                                    <svg class="h-10 w-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                                    </svg>
+                                                    <span class="font-medium text-gray-600">No payment records found.</span>
+                                                    <p class="text-xs mt-1">Payments linked to this franchise will appear here.</p>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</div>
 
                         <div v-if="activeTab === 'complaints'" class="p-6">
                             <div class="flex justify-between items-center mb-4">
@@ -678,7 +688,7 @@ const getDriverName = (driver) => {
             </div>
 
             <div id="print-area">
-                <div class="w-[300px] bg-white border border-gray-300 p-4 text-center font-sans">
+                <div v-if="printMode === 'qr'" class="w-[300px] bg-white border border-gray-300 p-4 text-center font-sans">
                     <h1 class="text-lg font-bold mb-1">Franchise QR</h1>
                     <div class="mb-4">
                         <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="w-48 h-48 mx-auto" />
@@ -698,6 +708,14 @@ const getDriverName = (driver) => {
                     </div>
                     <div class="text-[10px] text-gray-400">Scan to Verify Validity</div>
                 </div>
+                
+                <FranchiseCertificate
+                    v-if="printMode === 'certificate'"
+                    :franchise="franchise"
+                    :currentOwner="currentOwner"
+                    :currentUnit="currentUnit"
+                    :systemSetting="systemSetting"
+                />
             </div>
 
         </div>
