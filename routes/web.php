@@ -315,14 +315,16 @@ Route::middleware(['auth', 'role:sp_approver'])->group(function () {
 });
 
 // --- TAB APPROVER ROUTES ---
-Route::middleware(['auth', 'role:tab_approver'])->group(function () {
-    Route::get('/tab-approver/applications', [TabApproverApplicationController::class, 'index'])->name('tab_approver.applications.index');
-    Route::get('/tab-approver/applications/renewal/{application}', [TabApproverApplicationController::class, 'showRenewal'])->name('tab_approver.applications.show');
-
-    Route::post('/tab-approver/applications/renewal/{application}/approve', [TabApproverApplicationController::class, 'approve'])
-        ->name('tab_approver.applications.renewal.approve');
-    Route::post('/tab-approver/applications/renewal/{application}/reject', [TabApproverApplicationController::class, 'reject'])
-        ->name('tab_approver.applications.renewal.reject');
+Route::middleware(['auth', 'role:tab_approver'])->prefix('tab-approver')->name('tab_approver.')->group(function () {
+    Route::get('/applications', [TabApproverApplicationController::class, 'index'])->name('applications.index');
+    
+    // Split the show routes based on application type
+    Route::get('/applications/renewal/{application}', [TabApproverApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
+    Route::get('/applications/change-of-unit/{application}', [TabApproverApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
+    Route::get('/applications/change-of-owner/{application}', [TabApproverApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
+    
+    Route::post('/applications/{application}/approve', [TabApproverApplicationController::class, 'approve'])->name('applications.approve');
+    Route::post('/applications/{application}/reject', [TabApproverApplicationController::class, 'reject'])->name('applications.reject');
 });
 
 // --- SHARED APPLICATION ROUTES (Admin & Encoder) ---

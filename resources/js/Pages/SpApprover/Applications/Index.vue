@@ -35,13 +35,13 @@ watch(search, handleSearch);
             {{ $page.props.flash.success }}
         </div>
         <div class="w-full">
-            <div class="bg-white p-4 mb-4 flex items-center justify-between border-b border-gray-200">
+            <div class="bg-white p-4 mb-4 flex items-center justify-between border-b border-gray-200 rounded-lg">
                 <div class="w-1/3">
                     <TextInput v-model="search" type="text" class="w-full" placeholder="Search Reference No or Name..." />
                 </div>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     <table class="w-full text-left border-collapse">
                         <thead>
