@@ -162,7 +162,7 @@ class ApplicationController extends Controller
 
             DB::commit();
 
-            return redirect()->route('home')->with('success', "Application submitted successfully! Ref No: $referenceNumber");
+            return redirect('/')->with('success', "Application submitted successfully! Ref No: $referenceNumber");
 
         } catch (\Exception $e) {
             DB::rollBack();

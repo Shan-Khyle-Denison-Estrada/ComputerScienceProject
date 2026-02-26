@@ -243,21 +243,28 @@ Route::middleware(['auth', 'role:city_anti_pollution_officer'])->group(function 
 // --- EVALUATOR ROUTES ---
 Route::middleware(['auth', 'role:evaluator'])->group(function () {
     Route::get('/evaluator/applications', [EvaluatorApplicationController::class, 'index'])->name('evaluator.applications.index');
-    Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show');
-
-    Route::post('/evaluator/applications/renewal/{application}/approve', [EvaluatorApplicationController::class, 'approve'])
-        ->name('evaluator.applications.renewal.approve');
-    Route::post('/evaluator/applications/renewal/{application}/reject', [EvaluatorApplicationController::class, 'reject'])
-        ->name('evaluator.applications.renewal.reject');
     
-    Route::post('/evaluator/applications/renewal/{application}/evaluate', [EvaluatorApplicationController::class, 'evaluateDocument'])
-        ->name('evaluator.applications.renewal.evaluate');
+    // Application Specific Show Routes
+    Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show'); // Kept original name for backward compatibility
+    Route::get('/evaluator/applications/change-of-owner/{application}', [EvaluatorApplicationController::class, 'showChangeOfOwner'])->name('evaluator.applications.show-change-of-owner');
+    Route::get('/evaluator/applications/change-of-unit/{application}', [EvaluatorApplicationController::class, 'showChangeOfUnit'])->name('evaluator.applications.show-change-of-unit');
+    Route::get('/evaluator/applications/new-franchise/{application}', [EvaluatorApplicationController::class, 'showFranchiseOwnerAccount'])->name('evaluator.applications.show-new-franchise');
 
-    // NEW: Resolve Complaints and Red Flags
-    Route::post('/evaluator/applications/renewal/{application}/complaints/{complaint}/resolve', [EvaluatorApplicationController::class, 'resolveComplaint'])
-        ->name('evaluator.applications.renewal.resolve-complaint');
-    Route::post('/evaluator/applications/renewal/{application}/red-flags/{red_flag}/resolve', [EvaluatorApplicationController::class, 'resolveRedFlag'])
-        ->name('evaluator.applications.renewal.resolve-red-flag');
+    // Generic Action Routes
+    Route::post('/evaluator/applications/{application}/approve', [EvaluatorApplicationController::class, 'approve'])
+        ->name('evaluator.applications.approve');
+    Route::post('/evaluator/applications/{application}/reject', [EvaluatorApplicationController::class, 'reject'])
+        ->name('evaluator.applications.reject');
+    Route::post('/evaluator/applications/{application}/return', [EvaluatorApplicationController::class, 'returnApp'])
+        ->name('evaluator.applications.return');
+    Route::post('/evaluator/applications/{application}/evaluate', [EvaluatorApplicationController::class, 'evaluateDocument'])
+        ->name('evaluator.applications.evaluate');
+
+    // Resolve Complaints and Red Flags
+    Route::post('/evaluator/applications/{application}/complaints/{complaint}/resolve', [EvaluatorApplicationController::class, 'resolveComplaint'])
+        ->name('evaluator.applications.resolve-complaint');
+    Route::post('/evaluator/applications/{application}/red-flags/{red_flag}/resolve', [EvaluatorApplicationController::class, 'resolveRedFlag'])
+        ->name('evaluator.applications.resolve-red-flag');
 });
 
 // --- INSPECTOR ROUTES ---

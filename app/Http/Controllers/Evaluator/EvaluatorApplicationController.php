@@ -17,7 +17,6 @@ class EvaluatorApplicationController extends Controller
     public function index(Request $request)
     {
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->where('application_type', 'Renewal')
             ->where('status', 'Pending')
             ->where(function($q) {
                 $q->where('evaluator_status', 'Pending')
@@ -33,7 +32,7 @@ class EvaluatorApplicationController extends Controller
             });
         }
 
-        $applications = $query->latest()->paginate(10)->withQueryString();
+        $applications = $query->latest()->paginate(7)->withQueryString();
 
         return Inertia::render('Evaluator/Applications/Index', [
             'applications' => $applications,
@@ -77,6 +76,97 @@ class EvaluatorApplicationController extends Controller
         ]);
     }
 
+    public function showChangeOfOwner(Application $application)
+    {
+        abort_if($application->application_type !== 'Change of Owner', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user',
+            'franchise.currentActiveUnit.newUnit.make',
+            'franchise.zone',
+            'franchise.complaints',
+            'franchise.redFlags.nature',
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        if ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('Evaluator/Applications/ShowChangeOfOwner', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
+    }
+
+    public function showChangeOfUnit(Application $application)
+    {
+        abort_if($application->application_type !== 'Change of Unit', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user',
+            'franchise.currentActiveUnit.newUnit.make',
+            'franchise.zone',
+            'franchise.complaints',
+            'franchise.redFlags.nature',
+            'zone',
+            'proposedUnits.make', // <--- CHANGED THIS
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+        
+        $unitInspections = UnitInspection::where('application_id', $application->id)->get();
+
+        return Inertia::render('Evaluator/Applications/ShowChangeOfUnit', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+        ]);
+    }
+
+    public function showFranchiseOwnerAccount(Application $application)
+    {
+        // Assuming your DB stores this type as 'New Franchise'. Adjust if it is strictly 'Franchise Owner Account'
+        abort_if(!in_array($application->application_type, ['New Franchise', 'Franchise Owner Account']), 404);
+
+        $application->load([
+            'user',
+            'zone',
+            'proposedUnits.make',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+        
+        // Fetch inspections tied directly to this application
+        $unitInspections = UnitInspection::where('application_id', $application->id)->get();
+
+        return Inertia::render('Evaluator/Applications/ShowFranchiseOwnerAccount', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+        ]);
+    }
+
     public function evaluateDocument(Request $request, Application $application)
     {
         $request->validate([
@@ -116,7 +206,8 @@ class EvaluatorApplicationController extends Controller
     {
         $application->update(['evaluator_status' => 'Approved']);
         
-        return redirect()->back()->with('success', "Renewal Evaluation has been approved.");
+        return redirect()->route('evaluator.applications.index')
+            ->with('success', "Evaluation has been approved successfully.");
     }
 
     public function reject(Request $request, Application $application)
@@ -127,10 +218,27 @@ class EvaluatorApplicationController extends Controller
 
         $application->update([
             'evaluator_status' => 'Rejected',
-            'status' => 'Returned',
+            'status' => 'Rejected', // Terminal state
             'remarks' => $request->remarks
         ]);
 
-        return redirect()->back()->with('success', "Renewal Evaluation has been rejected/returned by the Evaluator.");
+        return redirect()->route('evaluator.applications.index')
+            ->with('success', "Application has been rejected.");
+    }
+
+    public function returnApp(Request $request, Application $application)
+    {
+        $request->validate([
+            'remarks' => 'required|string|max:1000'
+        ]);
+
+        $application->update([
+            'evaluator_status' => 'Returned', 
+            'status' => 'Returned', // Sent back for correction
+            'remarks' => $request->remarks
+        ]);
+
+        return redirect()->route('evaluator.applications.index')
+            ->with('success', "Application has been returned for corrections.");
     }
 }

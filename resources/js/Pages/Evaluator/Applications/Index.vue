@@ -28,15 +28,20 @@ watch(search, handleSearch);
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">Pending Renewals for Evaluation</h2>
         </template>
-
+        <div v-if="$page.props.flash?.success" class="mb-4 p-4 bg-green-100 border border-green-400 text-green-700 rounded-md flex items-center shadow-sm">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" />
+            </svg>
+            {{ $page.props.flash.success }}
+        </div>
         <div class="w-full">
-            <div class="bg-white p-4 mb-4 flex items-center justify-between border-b border-gray-200">
+            <div class="bg-white p-4 mb-4 flex items-center justify-between border-b border-gray-200 rounded-lg">
                 <div class="w-1/3">
                     <TextInput v-model="search" type="text" class="w-full" placeholder="Search Reference No or Name..." />
                 </div>
             </div>
 
-            <div class="bg-white overflow-hidden shadow-sm">
+            <div class="bg-white overflow-hidden shadow-sm rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
                     <table class="w-full text-left border-collapse">
                         <thead>
@@ -59,7 +64,21 @@ watch(search, handleSearch);
                                     </span>
                                 </td>
                                 <td class="p-4 text-sm">
-                                    <Link :href="route('evaluator.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
+                                    <Link v-if="app.application_type === 'Change of Owner'" 
+                                        :href="route('evaluator.applications.show-change-of-owner', app.id)" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
+                                        
+                                    <Link v-else-if="app.application_type === 'Change of Unit'" 
+                                        :href="route('evaluator.applications.show-change-of-unit', app.id)" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
+                                        
+                                    <Link v-else-if="app.application_type === 'New Franchise' || app.application_type === 'Franchise Owner Account'" 
+                                        :href="route('evaluator.applications.show-new-franchise', app.id)" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
+                                        
+                                    <Link v-else 
+                                        :href="route('evaluator.applications.show', app.id)" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">

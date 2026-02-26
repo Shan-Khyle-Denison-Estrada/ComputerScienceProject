@@ -15,7 +15,7 @@ const props = defineProps({
     currentUnitId: { type: [Number, String], default: null }
 });
 
-const activeTab = ref('franchise_overview'); 
+const activeTab = ref('operator_comparison'); 
 
 // Modals State
 const showRequirementModal = ref(false);
@@ -81,7 +81,7 @@ const application = computed(() => {
 
     return {
         id: app.id,
-        type: app.application_type || 'Renewal',
+        type: app.application_type || 'Change of Owner',
         status: app.status || 'Pending', 
         reference_no: app.reference_number || 'N/A',
         remarks: app.remarks || null,
@@ -114,11 +114,22 @@ const application = computed(() => {
         
         current_owner: {
             first_name: currentUser.first_name || 'Not specified',
+            middle_name: currentUser.middle_name || '',
             last_name: currentUser.last_name || 'Not specified',
             contact: currentUser.contact_number || 'N/A',
             email: currentUser.email || 'N/A',
-            tin_number: currentOperator.tin_number || 'N/A',
+            tin_number: currentOperator.tin_number || 'N/A', 
             address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+        },
+        
+        proposed_owner: {
+            first_name: app.first_name || 'Not specified',
+            middle_name: app.middle_name || '',
+            last_name: app.last_name || 'Not specified',
+            contact: app.contact_number || 'N/A',
+            email: app.email || 'N/A',
+            tin_number: app.tin_number || 'N/A',
+            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
         current_unit: {
@@ -184,6 +195,7 @@ const saveRequirementStatus = (status) => {
 const submitApproval = () => {
     approveProcessing.value = true;
     router.post(route('evaluator.applications.approve', application.value.id), {}, {
+        onSuccess: () => showApproveModal.value = false,
         onFinish: () => approveProcessing.value = false
     });
 };
@@ -192,6 +204,7 @@ const submitReject = () => {
     if(!rejectForm.remarks) return;
     rejectForm.processing = true;
     router.post(route('evaluator.applications.reject', application.value.id), { remarks: rejectForm.remarks }, {
+        onSuccess: () => showRejectModal.value = false,
         onFinish: () => rejectForm.processing = false
     });
 };
@@ -200,6 +213,7 @@ const submitReturn = () => {
     if(!returnForm.remarks) return;
     returnForm.processing = true;
     router.post(route('evaluator.applications.return', application.value.id), { remarks: returnForm.remarks }, {
+        onSuccess: () => showReturnModal.value = false,
         onFinish: () => returnForm.processing = false
     });
 };
@@ -226,22 +240,20 @@ const closeDocumentModal = () => {
     currentDocumentUrl.value = null;
 };
 
-// HELPER: Check if URL is an image to correctly center it instead of loading an unstyled iframe
 const isImageUrl = (url) => {
     if (!url) return false;
     const cleanUrl = url.split('?')[0]; 
     return /\.(jpeg|jpg|gif|png|webp|svg|bmp)$/i.test(cleanUrl);
 };
-
 </script>
 
 <template>
-    <Head title="Evaluate Renewal" />
+    <Head title="Evaluate Change of Owner" />
     <AuthenticatedLayout>
         <template #header>
             <div class="flex items-center justify-between">
                 <div>
-                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Evaluate Renewal</h2>
+                    <h2 class="font-semibold text-xl text-gray-800 leading-tight">Evaluate Change of Owner</h2>
                     <p class="text-sm text-gray-500 mt-1">Application Ref: {{ application.reference_no }}</p>
                 </div>
                 <div class="px-3 py-1 rounded-full text-sm font-semibold border"
@@ -256,7 +268,7 @@ const isImageUrl = (url) => {
             <div class="w-2/3 bg-white shadow-sm border-r border-gray-200 p-6 flex flex-col h-full flex-shrink-0">
                 
                 <div class="border-b border-gray-200 mb-6 flex gap-6 overflow-x-auto pb-1 flex-shrink-0">
-                    <button @click="activeTab = 'franchise_overview'" :class="activeTab === 'franchise_overview' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Franchise Overview</button>
+                    <button @click="activeTab = 'operator_comparison'" :class="activeTab === 'operator_comparison' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Operator Comparison</button>
                     <button @click="activeTab = 'unit_details'" :class="activeTab === 'unit_details' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Unit Details</button>
                     <button @click="activeTab = 'complaints'" :class="activeTab === 'complaints' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Complaints</button>
                     <button @click="activeTab = 'red_flags'" :class="activeTab === 'red_flags' ? 'border-blue-600 text-blue-600 border-b-2 font-semibold' : 'text-gray-500 font-medium hover:text-gray-700'" class="pb-2 whitespace-nowrap transition-colors">Red Flags</button>
@@ -267,23 +279,45 @@ const isImageUrl = (url) => {
                 <div class="flex-1 overflow-y-auto custom-scrollbar pr-2 pb-4">
                     <Transition name="fade" mode="out-in">
                         
-                        <div v-if="activeTab === 'franchise_overview'" class="space-y-8">
-                            <div>
-                                <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg> Franchise Owner</h3>
-                                <div class="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Name</p><p class="font-medium text-gray-900">{{ application.current_owner.first_name }} {{ application.current_owner.last_name }}</p></div>
-                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">TIN Number</p><p class="font-medium text-gray-900">{{ application.current_owner.tin_number }}</p></div>
-                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Contact</p><p class="font-medium text-gray-900">{{ application.current_owner.contact }}</p></div>
-                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Email</p><p class="font-medium text-gray-900">{{ application.current_owner.email }}</p></div>
-                                    <div class="col-span-2"><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Address</p><p class="font-medium text-gray-900">{{ application.current_owner.address }}</p></div>
+                        <div v-if="activeTab === 'operator_comparison'" class="space-y-6">
+                            <div class="bg-blue-50 border border-blue-100 rounded-lg p-6">
+                                <h3 class="font-bold text-blue-900 mb-6 flex items-center gap-2 text-lg">
+                                    <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
+                                    Change of Owner Overview
+                                </h3>
+                                <div class="grid grid-cols-1 xl:grid-cols-2 gap-8 relative">
+                                    <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm">
+                                        <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-4 border-b pb-2 flex justify-between items-center">
+                                            <span>Current Owner</span>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <div><p class="text-xs text-gray-500 mb-1">Full Name</p><p class="font-medium text-gray-900">{{ application.current_owner.first_name }} {{ application.current_owner.last_name }}</p></div>
+                                            <div><p class="text-xs text-gray-500 mb-1">TIN Number</p><p class="font-medium text-gray-900">{{ application.current_owner.tin_number }}</p></div>
+                                            <div><p class="text-xs text-gray-500 mb-1">Contact</p><p class="font-medium text-gray-900">{{ application.current_owner.contact }}</p></div>
+                                            <div><p class="text-xs text-gray-500 mb-1">Address</p><p class="font-medium text-gray-900">{{ application.current_owner.address }}</p></div>
+                                        </div>
+                                    </div>
+
+                                    <div class="bg-white p-5 rounded-lg border-2 border-blue-200 shadow-sm relative">
+                                        <div class="text-[11px] font-bold text-blue-500 uppercase tracking-wider mb-4 border-b border-blue-100 pb-2 flex justify-between items-center">
+                                            <span>Proposed New Owner</span>
+                                        </div>
+                                        <div class="space-y-4">
+                                            <div><p class="text-xs text-gray-500 mb-1">Full Name</p><p class="font-bold text-blue-900">{{ application.proposed_owner.first_name }} {{ application.proposed_owner.middle_name }} {{ application.proposed_owner.last_name }}</p></div>
+                                            <div><p class="text-xs text-gray-500 mb-1">TIN Number</p><p class="font-medium text-gray-900">{{ application.proposed_owner.tin_number }}</p></div>
+                                            <div><p class="text-xs text-gray-500 mb-1">Contact</p><p class="font-medium text-gray-900">{{ application.proposed_owner.contact }}</p></div>
+                                            <div><p class="text-xs text-gray-500 mb-1">Address</p><p class="font-medium text-gray-900">{{ application.proposed_owner.address }}</p></div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
+                            
                             <div>
-                                <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> Processing Details</h3>
+                                <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2"><svg class="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg> Franchise Details</h3>
                                 <div class="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                     <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Zone Assigned</p><p class="font-medium text-gray-900">{{ application.franchise_details.zone }}</p></div>
                                     <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div>
-                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Previous Issue Date</p><p class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</p></div>
+                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Original Issue Date</p><p class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</p></div>
                                 </div>
                             </div>
                         </div>
@@ -509,7 +543,7 @@ const isImageUrl = (url) => {
         <Modal :show="showApproveModal" @close="showApproveModal = false" maxWidth="sm">
             <div class="p-6 text-center">
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Approve Evaluation?</h3>
-                <p class="text-sm text-gray-500 mb-6">Are you sure you want to approve this renewal evaluation?</p>
+                <p class="text-sm text-gray-500 mb-6">Are you sure you want to approve this Change of Owner evaluation?</p>
                 <div class="flex justify-center gap-3">
                     <SecondaryButton @click="showApproveModal = false" class="w-1/2 justify-center" :disabled="approveProcessing">Cancel</SecondaryButton>
                     <PrimaryButton @click="submitApproval" class="w-1/2 justify-center bg-green-600 hover:bg-green-700" :disabled="approveProcessing">

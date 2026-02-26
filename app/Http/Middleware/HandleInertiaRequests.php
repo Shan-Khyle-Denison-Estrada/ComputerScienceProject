@@ -37,6 +37,10 @@ class HandleInertiaRequests extends Middleware
             ],
             // This shares the settings globally to $page.props.settings in Vue
             'settings' => SystemSetting::first() ?? new SystemSetting(),
+            'flash' => [
+            'success' => fn () => $request->session()->get('success'),
+            'error' => fn () => $request->session()->get('error'),
+        ],
         ];
     }
 }
