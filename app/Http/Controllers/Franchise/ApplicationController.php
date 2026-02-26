@@ -215,163 +215,163 @@ public function index()
         }
     }
 
-public function storeChangeOfUnit(Request $request)
-{
-    // 1. Validate the mode and basic required fields (documents and franchise ID)
-    $request->validate([
-        'selected_franchise_id' => 'required|exists:franchises,id',
-        'documents'             => 'required|array',
-        'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-        'unit_mode'             => 'required|in:new,existing', // <--- Accept the mode flag
-    ]);
-
-    $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
-        ->where('application_type', 'Change of Unit')
-        ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
-        ->exists();
-
-    if ($existingApp) {
-         throw ValidationException::withMessages([
-            'selected_franchise_id' => 'An active Change of Unit application already exists for this franchise.',
-        ]);
-    }
-
-    $user = Auth::user();
-    $franchise = Franchise::findOrFail($request->selected_franchise_id);
-
-    // 2. Conditionally validate and extract unit details based on unit_mode
-    if ($request->unit_mode === 'existing') {
+    public function storeChangeOfUnit(Request $request)
+    {
+        // 1. Validate the mode and basic required fields (documents and franchise ID)
         $request->validate([
-            'existing_unit_id' => 'required|exists:units,id',
-        ]);
-        
-        $unit = Unit::findOrFail($request->existing_unit_id);
-        
-        $makeId = $unit->make_id;
-        $modelYear = $unit->model_year;
-        $plateNumber = $unit->plate_number;
-        $motorNumber = $unit->motor_number;
-        $chassisNumber = $unit->chassis_number;
-        $crNumber = $unit->cr_number;
-        
-        // No new photos are uploaded for existing units
-        $frontPath = null;
-        $backPath = null;
-        $leftPath = null;
-        $rightPath = null;
-
-    } else {
-        // Strict validation for New Units
-        $request->validate([
-            'make_id'               => 'required', 
-            'model_year'            => 'required|numeric',
-            'plate_number'          => 'required|string',
-            'motor_number'          => 'required|string',
-            'chassis_number'        => 'required|string',
-            'cr_number'             => 'required|string',
-            'unit_front_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'unit_back_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'unit_left_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
-            'unit_right_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
-        ]);
-        
-        $makeId = $request->make_id;
-        $modelYear = $request->model_year;
-        $plateNumber = $request->plate_number;
-        $motorNumber = $request->motor_number;
-        $chassisNumber = $request->chassis_number;
-        $crNumber = $request->cr_number;
-
-        // Store uploaded photos
-        $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
-        $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
-        $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
-        $rightPath = $request->file('unit_right_photo')->store('units/photos', 'public');
-    }
-
-    DB::beginTransaction();
-
-    try {
-        // Create the application record
-        $application = Application::create([
-            'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
-            'user_id'          => $user->id,
-            'franchise_id'     => $franchise->id,
-            'zone_id'          => $franchise->zone_id,
-            'application_type' => 'Change of Unit',
-            'status'           => 'Pending',
-            'remarks'          => 'Application submitted. Waiting for initial review.',
-            'submitted_at'     => now(),
-            
-            'first_name'       => $user->first_name,
-            'middle_name'      => $user->middle_name,
-            'last_name'        => $user->last_name,
-            'contact_number'   => $user->contact_number,
-            'email'            => $user->email, 
-            'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
-            'street_address'   => $user->street_address ?? $user->address,
-            'barangay'         => $user->barangay,
-            'city'             => $user->city ?? 'Zamboanga City',
+            'selected_franchise_id' => 'required|exists:franchises,id',
+            'documents'             => 'required|array',
+            'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'unit_mode'             => 'required|in:new,existing', // <--- Accept the mode flag
         ]);
 
-        // Insert the proposed unit using the variables extracted above
-        ProposedUnit::create([
-            'application_id'   => $application->id,
-            'make_id'          => $makeId, 
-            'model_year'       => $modelYear,
-            'plate_number'     => $plateNumber,
-            'motor_number'     => $motorNumber,
-            'chassis_number'   => $chassisNumber,
-            'cr_number'        => $crNumber,
-            'unit_front_photo' => $frontPath,
-            'unit_back_photo'  => $backPath,
-            'unit_left_photo'  => $leftPath,
-            'unit_right_photo' => $rightPath,
-        ]);
+        $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
+            ->where('application_type', 'Change of Unit')
+            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+            ->exists();
 
-        // Process Documents
-        if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $requirementId => $file) {
-                $filePath = $file->store('applications/documents', 'public');
-
-                ApplicationEvaluation::create([
-                    'application_id' => $application->id,
-                    'requirement_id' => $requirementId,
-                    'file_path'      => $filePath,
-                    'is_compliant'   => null,
-                    'remarks'        => 'Uploaded upon submission.'
-                ]);
-            }
-        }
-
-        // Process Assessments
-        $particulars = Particular::where('group', 'change_of_unit')->get();
-        if ($particulars->isNotEmpty()) {
-            $totalAmountDue = $particulars->sum('amount');
-            $assessment = Assessment::create([
-                'application_id'    => $application->id,
-                'franchise_id'     => $franchise->id,
-                'assessment_date'   => now(),
-                'total_amount_due'  => $totalAmountDue,
-                'assessment_status' => 'Pending',
-                'remarks'           => 'Auto-generated assessment for Change of Unit Application: ' . $application->reference_number,
+        if ($existingApp) {
+            throw ValidationException::withMessages([
+                'selected_franchise_id' => 'An active Change of Unit application already exists for this franchise.',
             ]);
-            foreach ($particulars as $particular) {
-                $assessment->particulars()->attach($particular->id, [
-                    'quantity' => 1,
-                    'subtotal' => $particular->amount
-                ]);
-            }
         }
 
-        DB::commit();
-        return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
-        
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
+        $user = Auth::user();
+        $franchise = Franchise::findOrFail($request->selected_franchise_id);
+
+        // 2. Conditionally validate and extract unit details based on unit_mode
+        if ($request->unit_mode === 'existing') {
+            $request->validate([
+                'existing_unit_id' => 'required|exists:units,id',
+            ]);
+            
+            $unit = Unit::findOrFail($request->existing_unit_id);
+            
+            $makeId = $unit->make_id;
+            $modelYear = $unit->model_year;
+            $plateNumber = $unit->plate_number;
+            $motorNumber = $unit->motor_number;
+            $chassisNumber = $unit->chassis_number;
+            $crNumber = $unit->cr_number;
+            
+            // No new photos are uploaded for existing units
+            $frontPath = null;
+            $backPath = null;
+            $leftPath = null;
+            $rightPath = null;
+
+        } else {
+            // Strict validation for New Units
+            $request->validate([
+                'make_id'               => 'required', 
+                'model_year'            => 'required|numeric',
+                'plate_number'          => 'required|string',
+                'motor_number'          => 'required|string',
+                'chassis_number'        => 'required|string',
+                'cr_number'             => 'required|string',
+                'unit_front_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'unit_back_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'unit_left_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'unit_right_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            ]);
+            
+            $makeId = $request->make_id;
+            $modelYear = $request->model_year;
+            $plateNumber = $request->plate_number;
+            $motorNumber = $request->motor_number;
+            $chassisNumber = $request->chassis_number;
+            $crNumber = $request->cr_number;
+
+            // Store uploaded photos
+            $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
+            $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
+            $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
+            $rightPath = $request->file('unit_right_photo')->store('units/photos', 'public');
+        }
+
+        DB::beginTransaction();
+
+        try {
+            // Create the application record
+            $application = Application::create([
+                'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
+                'user_id'          => $user->id,
+                'franchise_id'     => $franchise->id,
+                'zone_id'          => $franchise->zone_id,
+                'application_type' => 'Change of Unit',
+                'status'           => 'Pending',
+                'remarks'          => 'Application submitted. Waiting for initial review.',
+                'submitted_at'     => now(),
+                
+                'first_name'       => $user->first_name,
+                'middle_name'      => $user->middle_name,
+                'last_name'        => $user->last_name,
+                'contact_number'   => $user->contact_number,
+                'email'            => $user->email, 
+                'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
+                'street_address'   => $user->street_address ?? $user->address,
+                'barangay'         => $user->barangay,
+                'city'             => $user->city ?? 'Zamboanga City',
+            ]);
+
+            // Insert the proposed unit using the variables extracted above
+            ProposedUnit::create([
+                'application_id'   => $application->id,
+                'make_id'          => $makeId, 
+                'model_year'       => $modelYear,
+                'plate_number'     => $plateNumber,
+                'motor_number'     => $motorNumber,
+                'chassis_number'   => $chassisNumber,
+                'cr_number'        => $crNumber,
+                'unit_front_photo' => $frontPath,
+                'unit_back_photo'  => $backPath,
+                'unit_left_photo'  => $leftPath,
+                'unit_right_photo' => $rightPath,
+            ]);
+
+            // Process Documents
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $requirementId => $file) {
+                    $filePath = $file->store('applications/documents', 'public');
+
+                    ApplicationEvaluation::create([
+                        'application_id' => $application->id,
+                        'requirement_id' => $requirementId,
+                        'file_path'      => $filePath,
+                        'is_compliant'   => null,
+                        'remarks'        => 'Uploaded upon submission.'
+                    ]);
+                }
+            }
+
+            // Process Assessments
+            $particulars = Particular::where('group', 'change_of_unit')->get();
+            if ($particulars->isNotEmpty()) {
+                $totalAmountDue = $particulars->sum('amount');
+                $assessment = Assessment::create([
+                    'application_id'    => $application->id,
+                    'franchise_id'     => $franchise->id,
+                    'assessment_date'   => now(),
+                    'total_amount_due'  => $totalAmountDue,
+                    'assessment_status' => 'Pending',
+                    'remarks'           => 'Auto-generated assessment for Change of Unit Application: ' . $application->reference_number,
+                ]);
+                foreach ($particulars as $particular) {
+                    $assessment->particulars()->attach($particular->id, [
+                        'quantity' => 1,
+                        'subtotal' => $particular->amount
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', 'Change of Unit application submitted successfully!');
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
+        }
     }
-}
 
     public function storeChangeOfOwner(Request $request)
     {
