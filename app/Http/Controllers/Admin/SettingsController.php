@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\SystemSetting;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
@@ -44,6 +45,9 @@ class SettingsController extends Controller
         if ($request->hasFile('lgu_logo')) {
             if ($settings->lgu_logo_path) Storage::disk('public')->delete($settings->lgu_logo_path);
             $validated['lgu_logo_path'] = $request->file('lgu_logo')->store('settings/logos', 'public');
+            
+            // Clear the cached favicon URL so the view picks up the new image instantly
+            Cache::forget('favicon_url');
         }
 
         if ($request->hasFile('office_logo')) {
