@@ -21,6 +21,9 @@ class Assessment extends Model
         'date_approved'
     ];
 
+    // FIX: Append balance to JSON so the Vue frontend can access it
+    protected $appends = ['balance'];
+
     public function application()
     {
         return $this->belongsTo(Application::class); // <-- Changed from Franchise
@@ -33,7 +36,7 @@ class Assessment extends Model
                     ->withTimestamps();
     }
 
-    // NEW: Relationship to Payments
+    // Relationship to Payments
     public function payments()
     {
         return $this->hasMany(Payment::class);
@@ -120,6 +123,7 @@ class Assessment extends Model
             'assessment_status' => 'overdue'
         ]);
     }
+
     public function franchise()
     {
         return $this->belongsTo(Franchise::class);

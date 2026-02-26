@@ -11,6 +11,7 @@ class Payment extends Model
 
     protected $fillable = [
         'assessment_id',
+        'or_number',
         'amount_paid',
         'payee_first_name',
         'payee_middle_name',

@@ -75,7 +75,7 @@ public function store(Request $request)
         $validated = $request->validate([
             'franchise_id' => 'nullable|exists:franchises,id',
             'assessment_date' => 'required|date',
-            'assessment_due' => 'required|date',
+            'assessment_due' => 'nullable|date',
             'remarks' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.particular_id' => 'required|exists:particulars,id',
@@ -109,7 +109,7 @@ public function store(Request $request)
             $assessment = Assessment::create([
                 'franchise_id' => $validated['franchise_id'],
                 'assessment_date' => $validated['assessment_date'],
-                'assessment_due' => $validated['assessment_due'],
+                // 'assessment_due' => $validated['assessment_due'],
                 'total_amount_due' => $baseTotal,
                 'remarks' => $validated['remarks'],
                 'assessment_status' => 'pending'

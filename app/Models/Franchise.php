@@ -4,13 +4,11 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Carbon\Carbon;
 
 class Franchise extends Model
 {
     use HasFactory;
 
-    // Added 'status' to fillable and removed the $appends array
     protected $fillable = [
         'ownership_id', 'active_unit_id', 'zone_id', 
         'date_issued', 'qr_code', 'status' 
@@ -23,11 +21,13 @@ class Franchise extends Model
     public function ownershipHistory() { return $this->hasMany(Ownership::class)->latest(); }
     public function unitHistory() { return $this->hasMany(ActiveUnit::class)->latest(); }
     
+    // Direct link to assessments
     public function assessments() 
     { 
-        return $this->hasManyThrough(Assessment::class, Application::class); 
+        return $this->hasMany(Assessment::class)->latest(); 
     }
 
+    // Link to applications (which in turn have assessments)
     public function applications()
     {
         return $this->hasMany(Application::class);
@@ -68,6 +68,4 @@ class Franchise extends Model
     { 
         return $this->hasMany(RedFlag::class)->latest(); 
     }
-    
-    // NOTE: getStatusAttribute() has been completely removed.
 }

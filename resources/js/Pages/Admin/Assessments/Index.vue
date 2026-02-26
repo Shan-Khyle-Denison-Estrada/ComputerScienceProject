@@ -274,23 +274,23 @@ onUnmounted(() => {
                                 <span class="text-blue-600 font-bold">#{{ assessment.id }}</span>
                                 <div v-if="assessment.remarks" class="text-xs text-gray-400 italic truncate max-w-[150px]">{{ assessment.remarks }}</div>
                             </td>
-<td class="px-6 py-4 font-medium text-gray-900">
-    <span v-if="assessment.franchise_id">
-        {{ assessment.franchise_id }}
-    </span>
-    <span v-else class="text-gray-400 text-xs italic">
-        N/A
-    </span>
-</td>
+                            <td class="px-6 py-4 font-medium text-gray-900">
+                                <span v-if="assessment.franchise_id">
+                                    {{ assessment.franchise_id }}
+                                </span>
+                                <span v-else class="text-gray-400 text-xs italic">
+                                    N/A
+                                </span>
+                            </td>
 
-<td class="px-6 py-4">
-    <span v-if="assessment.application" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-        {{ assessment.application.reference_number }}
-    </span>
-    <span v-else class="text-gray-400 text-xs italic">
-        N/A
-    </span>
-</td>
+                            <td class="px-6 py-4">
+                                <span v-if="assessment.application" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                    {{ assessment.application.reference_number }}
+                                </span>
+                                <span v-else class="text-gray-400 text-xs italic">
+                                    N/A
+                                </span>
+                            </td>
                             <td class="px-6 py-4">
                                 <span class="px-2 py-0.5 rounded-full text-xs font-medium uppercase"
                                     :class="{
@@ -365,45 +365,45 @@ onUnmounted(() => {
                         </h4>
                         
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="col-span-1 md:col-span-2">
+                            <div class="">
                                 <InputLabel>Target Franchise <span class="text-red-500">*</span></InputLabel>
-<div class="relative" ref="dropdownContainer">
-    <input 
-        type="text" 
-        v-model="franchiseQuery" 
-        @focus="showFranchiseDropdown = true" 
-        class="mt-1 block w-full border-gray-300 rounded-md text-sm" 
-        placeholder="Search Franchise or Owner Name..."
-        required
-    />
-    <ul v-if="showFranchiseDropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
-        <li v-if="filteredFranchises.length === 0" class="p-2 text-sm text-gray-500">
-            No franchises found
-        </li>
-        <li 
-            v-for="franchise in filteredFranchises" 
-            :key="franchise.id" 
-            @click="selectFranchise(franchise)"
-            class="p-2 text-sm hover:bg-indigo-50 cursor-pointer text-gray-700"
-        >
-            {{ franchise.id }} - {{ franchise.owner_name }}
-        </li>
-    </ul>
-</div>
-<input type="hidden" v-model="addForm.franchise_id" required />
+                                <div class="relative" ref="dropdownContainer">
+                                    <input 
+                                        type="text" 
+                                        v-model="franchiseQuery" 
+                                        @focus="showFranchiseDropdown = true" 
+                                        class="mt-1 block w-full border-gray-300 rounded-md text-sm" 
+                                        placeholder="Search Franchise or Owner Name..."
+                                        required
+                                    />
+                                    <ul v-if="showFranchiseDropdown" class="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-auto">
+                                        <li v-if="filteredFranchises.length === 0" class="p-2 text-sm text-gray-500">
+                                            No franchises found
+                                        </li>
+                                        <li 
+                                            v-for="franchise in filteredFranchises" 
+                                            :key="franchise.id" 
+                                            @click="selectFranchise(franchise)"
+                                            class="p-2 text-sm hover:bg-indigo-50 cursor-pointer text-gray-700"
+                                        >
+                                            {{ franchise.id }} - {{ franchise.owner_name }}
+                                        </li>
+                                    </ul>
+                                </div>
+                                <input type="hidden" v-model="addForm.franchise_id" required />
                             </div>
 
                             <div>
                                 <InputLabel>Assessment Date <span class="text-red-500">*</span></InputLabel>
                                 <TextInput type="date" class="mt-1 block w-full bg-white" v-model="addForm.assessment_date" required />
                             </div>
-                            <div>
+                            <!-- <div>
                                 <InputLabel>Due Date <span class="text-red-500">*</span></InputLabel>
                                 <TextInput type="date" class="mt-1 block w-full bg-white" v-model="addForm.assessment_due" required />
-                            </div>
+                            </div> -->
 
                             <div class="col-span-1 md:col-span-2">
-                                <InputLabel>Remarks / Project Name <span class="text-red-500">*</span></InputLabel>
+                                <InputLabel>Remarks</InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full bg-white" v-model="addForm.remarks" placeholder="e.g. Annual Renewal Assessment 2024" required />
                             </div>
                         </div>

@@ -375,7 +375,7 @@ const getDriverName = (driver) => {
                                         'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors'
                                     ]"
                                 >
-                                    Assessments & Payments
+                                    Payment Records
                                 </button>
                                 <button 
                                     @click="activeTab = 'complaints'"
@@ -465,48 +465,56 @@ const getDriverName = (driver) => {
                             </div>
                         </div>
 
-                        <div v-if="activeTab === 'financials'" class="p-6">
-                            <h3 class="font-bold text-gray-700 mb-4">Assessments & Payments</h3>
-                            <div class="space-y-4">
-                                <div v-for="assessment in franchise.assessments" :key="assessment.id" class="border border-gray-200 rounded-lg overflow-hidden">
-                                    <div class="bg-gray-50 p-4 flex justify-between items-center border-b border-gray-100">
-                                        <div>
-                                            <div class="text-sm font-bold text-gray-900">{{ assessment.description || 'Assessment' }}</div>
-                                            <div class="text-xs text-gray-500">Due: {{ assessment.due_date }}</div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-sm font-black text-gray-800">₱ {{ Number(assessment.amount).toLocaleString() }}</div>
-                                            <span v-if="assessment.is_paid" class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-bold uppercase">Paid</span>
-                                            <span v-else class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-bold uppercase">Unpaid</span>
-                                        </div>
-                                    </div>
-                                    <div v-if="assessment.payments && assessment.payments.length > 0" class="bg-white">
-                                        <table class="min-w-full divide-y divide-gray-100">
-                                            <thead class="bg-white">
-                                                <tr>
-                                                    <th class="px-6 py-2 text-left text-[10px] uppercase font-bold text-gray-400">OR Number</th>
-                                                    <th class="px-6 py-2 text-left text-[10px] uppercase font-bold text-gray-400">Date Paid</th>
-                                                    <th class="px-6 py-2 text-right text-[10px] uppercase font-bold text-gray-400">Amount Paid</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody class="divide-y divide-gray-50">
-                                                <tr v-for="payment in assessment.payments" :key="payment.id">
-                                                    <td class="px-6 py-2 text-sm text-gray-600 font-mono">{{ payment.or_number }}</td>
-                                                    <td class="px-6 py-2 text-sm text-gray-600">{{ payment.date_paid }}</td>
-                                                    <td class="px-6 py-2 text-sm text-gray-800 text-right font-medium">₱ {{ Number(payment.amount).toLocaleString() }}</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div v-else class="p-4 text-xs text-gray-400 italic text-center">
-                                        No payments recorded for this assessment.
-                                    </div>
-                                </div>
-                                <div v-if="!franchise.assessments || franchise.assessments.length === 0" class="text-center py-8 text-gray-400 italic">
-                                    No financial records found.
-                                </div>
-                            </div>
+<div v-if="activeTab === 'financials'" class="bg-white rounded-lg shadow-sm border border-gray-200">
+    <div class="p-6 border-b border-gray-200 flex justify-between items-center">
+        <h3 class="text-lg font-medium text-gray-900">Payment Records</h3>
+    </div>
+    
+    <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+            <thead class="bg-gray-50">
+                <tr>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">OR Number</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payee</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Amount Paid</th>
+                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assessment Status</th>
+                </tr>
+            </thead>
+            <tbody class="bg-white divide-y divide-gray-200">
+                <template v-if="franchise.payment_history && franchise.payment_history.length > 0">
+                    <tr v-for="payment in franchise.payment_history" :key="payment.id" class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.date }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-medium">{{ payment.or_number }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{{ payment.payee }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-sm text-green-600 font-semibold">
+                            ₱{{ parseFloat(payment.amount_paid).toFixed(2) }}
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap">
+                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full"
+                                  :class="{'bg-green-100 text-green-800': payment.assessment_status.toLowerCase() === 'paid', 
+                                           'bg-yellow-100 text-yellow-800': payment.assessment_status.toLowerCase() !== 'paid'}">
+                                {{ payment.assessment_status }}
+                            </span>
+                        </td>
+                    </tr>
+                </template>
+
+                <tr v-else>
+                    <td colspan="5" class="px-6 py-8 text-center text-sm text-gray-500">
+                        <div class="flex flex-col items-center">
+                            <svg class="h-10 w-10 text-gray-300 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span class="font-medium text-gray-600">No payment records found.</span>
+                            <p class="text-xs mt-1">Payments linked to this franchise will appear here.</p>
                         </div>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
 
                         <div v-if="activeTab === 'complaints'" class="p-6">
                             <div class="flex justify-between items-center mb-4">
