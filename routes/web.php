@@ -122,9 +122,9 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/unit-makes/{unitMake}', [UnitMakeController::class, 'destroy'])->name('admin.unit-makes.destroy');
 
     // 11. Franchise Management Routes
-    Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
+    // Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
     Route::post('/admin/franchises', [FranchiseController::class, 'store'])->name('admin.franchises.store');
-    Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
+    // Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
     Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
 
     // 12. Franchise Actions
@@ -374,6 +374,13 @@ Route::middleware(['auth', 'role:collector'])->group(function () {
     Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
     Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
     Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
+});
+
+// --- SHARED ROUTES: Admin & Releaser ---
+// Both can view the franchise show page
+Route::middleware(['auth', 'role:admin,releaser'])->group(function () {
+    Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
+    Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
 });
 
 require __DIR__.'/auth.php';

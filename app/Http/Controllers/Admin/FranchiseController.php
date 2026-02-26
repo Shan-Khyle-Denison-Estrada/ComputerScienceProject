@@ -48,6 +48,7 @@ class FranchiseController extends Controller
             'drivers' => Driver::with('user')->get(),
             'zones' => Zone::orderBy('description')->get(),
             'filters' => $request->only(['search']),
+            'userRole' => auth()->user()->role->value ?? auth()->user()->role,
         ]);
     }
 
@@ -101,7 +102,7 @@ class FranchiseController extends Controller
         return redirect()->route('admin.franchises.index')->with('success', 'Franchise created and QR code generated successfully.');
     }
 
-public function show(Franchise $franchise)
+    public function show(Franchise $franchise)
     {
         // Eager load ALL possible assessment and payment paths
         $franchise->load([
@@ -160,6 +161,7 @@ public function show(Franchise $franchise)
             'redFlagNatures' => NatureOfRedFlag::all(),
             'complaintNatures' => NatureOfComplaint::all(),
             'systemSetting' => SystemSetting::first(), // <-- FETCH AND PASS THE SETTINGS
+            'userRole' => auth()->user()->role->value ?? auth()->user()->role,
         ]);
     }
 
