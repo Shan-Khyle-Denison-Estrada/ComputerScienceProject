@@ -211,6 +211,11 @@ class FranchiseController extends Controller
         });
     }
 
+    public function verify()
+    {
+        return Inertia::render('Verify');
+    }
+
     public function publicShow($id)
     {
         $franchise = Franchise::with([
