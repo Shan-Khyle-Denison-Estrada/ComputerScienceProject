@@ -21,12 +21,12 @@ use App\Models\Particular;
 use App\Models\SystemSetting;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log; // Optional, but highly recommended for catching the exact error
+use Illuminate\Support\Facades\Log; 
 use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
-public function index()
+    public function index()
     {
         $user = Auth::user();
         $operator = $user->operator; 
@@ -60,14 +60,27 @@ public function index()
             ];
         });
 
-        $units = Unit::with('make')->get()->map(function($unit) {
-            return [
-                'id' => $unit->id,
-                'plate' => $unit->plate_number,
-                'make' => $unit->make ? $unit->make->name : 'Unknown',
-                'motor' => $unit->motor_number,
-            ];
-        });
+        // UPDATED: Find all currently active unit IDs across all franchises
+        $activeUnitIds = Franchise::with('currentActiveUnit')->get()->map(function($f) {
+            if ($f->currentActiveUnit) {
+                // Safely grab the unit ID depending on your exact column name
+                return $f->currentActiveUnit->new_unit_id ?? $f->currentActiveUnit->unit_id;
+            }
+            return null;
+        })->filter()->toArray();
+
+        // UPDATED: Only pass units that are NOT currently active
+        $units = Unit::with('make')
+            ->whereNotIn('id', $activeUnitIds)
+            ->get()
+            ->map(function($unit) {
+                return [
+                    'id' => $unit->id,
+                    'plate' => $unit->plate_number,
+                    'make' => $unit->make ? $unit->make->name : 'Unknown',
+                    'motor' => $unit->motor_number,
+                ];
+            });
 
         $franchises = Franchise::whereHas('currentOwnership', function ($query) use ($operator) {
             $query->where('new_operator_id', $operator->id);
@@ -132,7 +145,6 @@ public function index()
             return $franchise;
         });
 
-        // UPDATED: Added unitInspections.inspectionItem eager loading
         $applicationsData = Application::where('user_id', $user->id)
             ->with(['evaluations.requirement', 'unitInspections.inspectionItem'])
             ->orderBy('created_at', 'desc')
@@ -172,7 +184,6 @@ public function index()
                             'remarks' => $eval->remarks,
                         ];
                     }),
-                    // Map the inspection results so Vue can loop over them easily
                     'unit_inspections' => $app->unitInspections ? $app->unitInspections->map(function($insp) {
                         return [
                             'id' => $insp->id,
@@ -217,12 +228,11 @@ public function index()
 
     public function storeChangeOfUnit(Request $request)
     {
-        // 1. Validate the mode and basic required fields (documents and franchise ID)
         $request->validate([
             'selected_franchise_id' => 'required|exists:franchises,id',
             'documents'             => 'required|array',
             'documents.*'           => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
-            'unit_mode'             => 'required|in:new,existing', // <--- Accept the mode flag
+            'unit_mode'             => 'required|in:new,existing', 
         ]);
 
         $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
@@ -239,7 +249,6 @@ public function index()
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);
 
-        // 2. Conditionally validate and extract unit details based on unit_mode
         if ($request->unit_mode === 'existing') {
             $request->validate([
                 'existing_unit_id' => 'required|exists:units,id',
@@ -254,14 +263,14 @@ public function index()
             $chassisNumber = $unit->chassis_number;
             $crNumber = $unit->cr_number;
             
-            // No new photos are uploaded for existing units
-            $frontPath = null;
-            $backPath = null;
-            $leftPath = null;
-            $rightPath = null;
+            // FETCH EXISTING PHOTOS: Don't let them be null
+            $frontPath = $unit->unit_front_photo ?? null;
+            $backPath  = $unit->unit_back_photo ?? null;
+            $leftPath  = $unit->unit_left_photo ?? null;
+            $rightPath = $unit->unit_right_photo ?? null;
 
         } else {
-            // Strict validation for New Units
+            // Require photos upload only if unit is completely new
             $request->validate([
                 'make_id'               => 'required', 
                 'model_year'            => 'required|numeric',
@@ -282,7 +291,7 @@ public function index()
             $chassisNumber = $request->chassis_number;
             $crNumber = $request->cr_number;
 
-            // Store uploaded photos
+            // Store newly uploaded photos
             $frontPath = $request->file('unit_front_photo')->store('units/photos', 'public');
             $backPath  = $request->file('unit_back_photo')->store('units/photos', 'public');
             $leftPath  = $request->file('unit_left_photo')->store('units/photos', 'public');
@@ -292,7 +301,6 @@ public function index()
         DB::beginTransaction();
 
         try {
-            // Create the application record
             $application = Application::create([
                 'reference_number' => 'APP-' . date('Y') . '-' . strtoupper(Str::random(6)),
                 'user_id'          => $user->id,
@@ -314,7 +322,6 @@ public function index()
                 'city'             => $user->city ?? 'Zamboanga City',
             ]);
 
-            // Insert the proposed unit using the variables extracted above
             ProposedUnit::create([
                 'application_id'   => $application->id,
                 'make_id'          => $makeId, 
@@ -329,7 +336,6 @@ public function index()
                 'unit_right_photo' => $rightPath,
             ]);
 
-            // Process Documents
             if ($request->hasFile('documents')) {
                 foreach ($request->file('documents') as $requirementId => $file) {
                     $filePath = $file->store('applications/documents', 'public');
@@ -344,7 +350,6 @@ public function index()
                 }
             }
 
-            // Process Assessments
             $particulars = Particular::where('group', 'change_of_unit')->get();
             if ($particulars->isNotEmpty()) {
                 $totalAmountDue = $particulars->sum('amount');
@@ -493,7 +498,6 @@ public function index()
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Log::error('Change of Owner Application Failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
         }
     }
@@ -588,7 +592,6 @@ public function index()
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Log::error('Renewal Application Failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
         }
     }
@@ -610,7 +613,7 @@ public function index()
                     ->where('application_id', $application->id)
                     ->update([
                         'file_path' => $filePath,
-                        'is_compliant' => null, // Reset to pending
+                        'is_compliant' => null, 
                         'remarks' => 'Resubmitted by applicant.'
                     ]);
             }
@@ -640,23 +643,15 @@ public function index()
         DB::beginTransaction();
 
         try {
-            // 1. Cancel the application
             $application->update([
                 'status' => 'Cancelled',
                 'remarks' => 'Application cancelled by the applicant.'
             ]);
 
-            // 2. Handle the Assessment
             if ($application->assessment) {
-                
-                // OPTION A: Delete the assessment entirely (Uncomment to use)
-                // $application->assessment->particulars()->detach(); // Clean up pivot table first
-                // $application->assessment()->delete();
-                
-                // OPTION B (Recommended): Void the assessment to keep an audit trail
                 $application->assessment()->update([
                     'assessment_status' => 'Cancelled',
-                    'total_amount_due' => 0, // Optional: zero out the balance
+                    'total_amount_due' => 0, 
                     'remarks' => 'Assessment cancelled due to application cancellation.'
                 ]);
             }
@@ -667,24 +662,18 @@ public function index()
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Log::error('Application Cancellation Failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to cancel the application. Please try again.');
         }
     }
-    /**
-     * Submit or update documents for an auto-generated Renewal application.
-     */
+
     public function submitRenewalDocuments(Request $request, Application $application)
     {
-        // 1. Security Check: Ensure the user owns this application
         abort_if($application->user_id !== Auth::id(), 403);
 
-        // 2. Validate it is actually a renewal
         if ($application->application_type !== 'Renewal') {
             return redirect()->back()->with('error', 'Invalid application type for this action.');
         }
 
-        // 3. Validate documents
         $request->validate([
             'documents'   => 'required|array',
             'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
@@ -697,7 +686,6 @@ public function index()
                 foreach ($request->file('documents') as $requirementId => $file) {
                     $filePath = $file->store('applications/documents', 'public');
 
-                    // Use updateOrCreate just in case the AutoRenew job already seeded empty records
                     ApplicationEvaluation::updateOrCreate(
                         [
                             'application_id' => $application->id,
@@ -705,22 +693,18 @@ public function index()
                         ],
                         [
                             'file_path'    => $filePath,
-                            'is_compliant' => null, // Reset to pending in case of re-upload
+                            'is_compliant' => null, 
                             'remarks'      => 'Uploaded by applicant for auto-renewal.'
                         ]
                     );
                 }
             }
 
-            // Update application status to push it to the evaluators
             $application->update([
-                'status'       => 'Pending', // Assuming 'Pending' means it's now ready for the Evaluator
+                'status'       => 'Pending', 
                 'submitted_at' => now(),
                 'remarks'      => 'Renewal documents submitted. Waiting for initial review.'
             ]);
-
-            // Note: If your AutoRenewFranchises job did NOT generate the initial Assessment 
-            // for the renewal fee, you will need to generate it here just like the old storeRenewal method did.
 
             DB::commit();
 
@@ -728,19 +712,16 @@ public function index()
 
         } catch (\Exception $e) {
             DB::rollBack();
-            // Log::error('Submit Renewal Documents Failed: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to submit documents. Please try again.');
         }
     }
 
     public function resubmitForInspection(Application $application)
     {
-        // Ensure the user actually owns this application
         if ($application->user_id !== Auth::id()) {
             abort(403, 'Unauthorized action.');
         }
 
-        // Reset the statuses so it appears back in the Inspector's queue
         $application->update([
             'status' => 'Pending', 
             'inspector_status' => 'Pending',

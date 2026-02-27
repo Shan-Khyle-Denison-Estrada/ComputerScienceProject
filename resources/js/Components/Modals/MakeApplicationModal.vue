@@ -21,7 +21,7 @@ const page = usePage();
 
 // --- MODAL STATES ---
 const currentStep = ref(1); 
-const selectedType = ref('change_unit'); // Default changed to change_unit
+const selectedType = ref('change_unit'); 
 const ownerMode = ref('existing');
 const unitMode = ref('existing');
 const barangayQuery = ref('');
@@ -33,7 +33,6 @@ const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null
 const showWarningModal = ref(false);
 const warningMessage = ref('');
 
-// Removed "Renewal" from applicationTypes
 const applicationTypes = [
     { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
     { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
@@ -95,7 +94,6 @@ const areAllDocsUploaded = computed(() => {
     return reqs.every(r => form.documents[r.id]);
 });
 
-// Removed renewal duplicate checks
 const duplicateApplicationError = computed(() => {
     if (!form.selected_franchise_id) return null;
 
@@ -142,8 +140,10 @@ const isStep2Valid = computed(() => {
 
     if (isUnitRequired.value) {
         if (unitMode.value === 'existing' && !form.existing_unit_id) return false;
+        
         if (unitMode.value === 'new') {
             if (!form.make_id || !form.model_year || !form.plate_number || !form.motor_number || !form.chassis_number || !form.cr_number) return false;
+            // Photos are ONLY strictly required to be uploaded if the user is registering a brand NEW unit
             if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) return false;
         }
     }

@@ -12,6 +12,7 @@ import ChangeOfOwnerModal from '@/Components/Modals/ChangeOfOwnerModal.vue';
 const props = defineProps({
     application: Object,
     isEncoder: { type: Boolean, default: false },
+    operatorExists: { type: Boolean, default: false }
 });
 
 // --- STATE ---
@@ -638,7 +639,12 @@ const saveRequirementStatus = (status) => {
             </div>
         </Transition>
 
-        <ChangeOfOwnerModal :show="showChangeOwnerModal" :application="application" @close="showChangeOwnerModal = false" />
+        <ChangeOfOwnerModal 
+            :show="showChangeOwnerModal" 
+            :application="application"
+            :operatorExists="operatorExists" 
+            @close="showChangeOwnerModal = false" 
+        />
 
     </AuthenticatedLayout>
 </template>

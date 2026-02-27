@@ -16,7 +16,7 @@ use Inertia\Inertia;
 
 class ApplicationChangeOfUnitShowController extends Controller
 {
-    public function show(Application $application)
+public function show(Application $application)
     {
         abort_if($application->application_type !== 'Change of Unit', 404);
 
@@ -38,11 +38,24 @@ class ApplicationChangeOfUnitShowController extends Controller
         $inspectionItems = InspectionItem::all();
         $unitMakes = UnitMake::orderBy('name', 'asc')->get();
 
+        // NEW: Automatically detect if the proposed unit already exists by Plate Number
+        $proposedUnit = $application->proposedUnits()->first();
+        $unitExists = false;
+        $existingUnit = null;
+        
+        if ($proposedUnit && $proposedUnit->plate_number) {
+            // Change exists() to first() to get the actual unit's data (including photos)
+            $existingUnit = Unit::where('plate_number', $proposedUnit->plate_number)->first();
+            $unitExists = $existingUnit ? true : false;
+        }
+
         return Inertia::render('Admin/Applications/ShowChangeOfUnit', [
             'application' => $application,
             'inspectionItems' => $inspectionItems,
             'unitMakes' => $unitMakes,
             'isEncoder' => $isEncoder,
+            'unitExists' => $unitExists, // <-- Pass it to the view
+            'existingUnit' => $existingUnit,
         ]);
     }
 
@@ -130,7 +143,6 @@ class ApplicationChangeOfUnitShowController extends Controller
         return redirect()->back()->with('success', 'Application returned for compliance.');
     }
 
-    // NEW: Finalize the Unit changes into the Master Database
     public function finalizeApplication(Request $request, Application $application)
     {
         $request->validate([
@@ -149,37 +161,39 @@ class ApplicationChangeOfUnitShowController extends Controller
 
         $proposedUnit = $application->proposedUnits()->first();
 
-        // 1. Resolve photo paths: Use new file if uploaded by admin, else fallback to applicant's proposed photo.
+        // Resolve photo paths
         $frontPhoto = $request->hasFile('front_photo') ? $request->file('front_photo')->store('units/photos', 'public') : $proposedUnit->unit_front_photo;
         $backPhoto = $request->hasFile('back_photo') ? $request->file('back_photo')->store('units/photos', 'public') : $proposedUnit->unit_back_photo;
         $leftPhoto = $request->hasFile('left_photo') ? $request->file('left_photo')->store('units/photos', 'public') : $proposedUnit->unit_left_photo;
         $rightPhoto = $request->hasFile('right_photo') ? $request->file('right_photo')->store('units/photos', 'public') : $proposedUnit->unit_right_photo;
 
-        // 2. Perform updates safely via Transaction
         DB::transaction(function () use ($request, $application, $frontPhoto, $backPhoto, $leftPhoto, $rightPhoto) {
             
-            // Create brand new official Unit
-            $newUnit = Unit::create([
-                'make_id' => $request->make_id,
-                'model_year' => $request->model_year,
-                'plate_number' => $request->plate_number,
-                'motor_number' => $request->motor_number,
-                'chassis_number' => $request->chassis_number,
-                'unit_front_photo' => $frontPhoto,
-                'unit_back_photo' => $backPhoto,
-                'unit_left_photo' => $leftPhoto,
-                'unit_right_photo' => $rightPhoto,
-            ]);
+            // FIX: Search by Plate Number specifically
+            $newUnit = Unit::updateOrCreate(
+                [
+                    'plate_number' => $request->plate_number, // Search key
+                ],
+                [
+                    'make_id' => $request->make_id,
+                    'model_year' => $request->model_year,
+                    'motor_number' => $request->motor_number,
+                    'chassis_number' => $request->chassis_number,
+                    'unit_front_photo' => $frontPhoto,
+                    'unit_back_photo' => $backPhoto,
+                    'unit_left_photo' => $leftPhoto,
+                    'unit_right_photo' => $rightPhoto,
+                ]
+            );
 
             $franchise = $application->franchise;
             
-            // Identify the previous unit to map the history log properly
             $previousUnitId = null;
             if ($franchise->active_unit_id) {
                 $previousUnitId = $franchise->currentActiveUnit->new_unit_id ?? null;
             }
 
-            // Create the historical active unit log
+            // Create the historical active unit log pointing to the found/created unit
             $activeUnit = ActiveUnit::create([
                 'franchise_id' => $franchise->id,
                 'new_unit_id' => $newUnit->id,

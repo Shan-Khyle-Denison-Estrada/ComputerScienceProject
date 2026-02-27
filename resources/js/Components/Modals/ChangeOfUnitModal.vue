@@ -7,12 +7,21 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useForm } from '@inertiajs/vue3';
 import { ref, watch } from 'vue';
 
+// Add the existingUnit prop
 const props = defineProps({
     show: Boolean,
     application: Object,
     unitMakes: {
         type: Array,
         default: () => []
+    },
+    unitExists: {
+        type: Boolean,
+        default: false
+    },
+    existingUnit: { // Add this prop
+        type: Object,
+        default: () => null
     }
 });
 
@@ -44,7 +53,7 @@ const form = useForm({
     existing_right_photo: ''
 });
 
-// Watch for the modal opening to Auto-fill the inputs and image previews
+// Update your watch function to handle the photo logic
 watch(() => props.show, (isOpen) => {
     if (isOpen && props.application?.raw_proposed_unit) {
         
@@ -55,18 +64,24 @@ watch(() => props.show, (isOpen) => {
         form.motor_number = props.application.raw_proposed_unit.motor_number;
         form.chassis_number = props.application.raw_proposed_unit.chassis_number;
         
-        // Feed the existing photo strings to the backend so it doesn't force re-upload
-        form.existing_front_photo = props.application.raw_proposed_unit.front_photo;
-        form.existing_back_photo = props.application.raw_proposed_unit.back_photo;
-        form.existing_left_photo = props.application.raw_proposed_unit.left_photo;
-        form.existing_right_photo = props.application.raw_proposed_unit.right_photo;
+        // Determine which unit to pull the photos from:
+        // Prioritize the existing unit from the database if detected, otherwise fallback to the proposed unit
+        const sourceUnit = (props.unitExists && props.existingUnit) 
+            ? props.existingUnit 
+            : props.application.raw_proposed_unit;
 
-        // Render the image previews on the frontend
+        // Note: Using || handles edge cases depending on your DB column naming (unit_front_photo vs front_photo)
+        form.existing_front_photo = sourceUnit.unit_front_photo || sourceUnit.front_photo;
+        form.existing_back_photo = sourceUnit.unit_back_photo || sourceUnit.back_photo;
+        form.existing_left_photo = sourceUnit.unit_left_photo || sourceUnit.left_photo;
+        form.existing_right_photo = sourceUnit.unit_right_photo || sourceUnit.right_photo;
+
+        // Render the image previews on the frontend dynamically based on the source 
         previews.value = {
-            front: props.application.raw_proposed_unit.front_photo || null,
-            back: props.application.raw_proposed_unit.back_photo || null,
-            left: props.application.raw_proposed_unit.left_photo || null,
-            right: props.application.raw_proposed_unit.right_photo || null,
+            front: form.existing_front_photo ? `/storage/${form.existing_front_photo}` : null,
+            back: form.existing_back_photo ? `/storage/${form.existing_back_photo}` : null,
+            left: form.existing_left_photo ? `/storage/${form.existing_left_photo}` : null,
+            right: form.existing_right_photo ? `/storage/${form.existing_right_photo}` : null,
         };
         
         form.change_date = new Date().toISOString().split('T')[0];
@@ -91,7 +106,7 @@ const handleFileChange = (event, side) => {
 };
 
 const submit = () => {
-    // NEW: Posts directly to the application finalize endpoint
+    // Posts directly to the application finalize endpoint
     form.post(route('admin.applications.change-of-unit.finalize', props.application.id), {
         onSuccess: () => emit('close')
     });
@@ -109,11 +124,19 @@ const submit = () => {
             </div>
 
             <form @submit.prevent="submit">
-                <div class="mb-6">
-                    <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
-                        <p class="text-sm font-medium text-blue-800 mb-2">Notice: Form Autofilled</p>
-                        <p class="text-xs text-blue-600">This form has been automatically populated with the proposed unit details and photos.</p>
+                
+                <div class="mb-6 p-4 rounded-lg border" :class="unitExists ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'">
+                    <InputLabel value="System Detection" class="text-sm font-bold mb-1" :class="unitExists ? 'text-green-900' : 'text-blue-900'" />
+                    <div class="flex items-center gap-2">
+                        <svg v-if="unitExists" class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <svg v-else class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="text-sm font-semibold" :class="unitExists ? 'text-green-800' : 'text-blue-800'">
+                            {{ unitExists ? 'Existing Unit Found' : 'New Unit Setup' }}
+                        </span>
                     </div>
+                    <p class="text-xs mt-2" :class="unitExists ? 'text-green-700' : 'text-blue-700'">
+                        {{ unitExists ? 'The Plate Number matches an existing unit in the master database. The system will safely update its details and attach it to this franchise.' : 'No existing unit found for this Plate Number. A brand new unit record will be created in the master database.' }}
+                    </p>
                 </div>
 
                 <div class="space-y-4 mb-6">
@@ -136,7 +159,7 @@ const submit = () => {
                     <div class="grid grid-cols-3 gap-4">
                         <div>
                             <InputLabel value="Plate Number" class="text-xs mb-0" />
-                            <TextInput v-model="form.plate_number" class="block w-full text-sm py-1.5 uppercase" required />
+                            <TextInput v-model="form.plate_number" class="block w-full text-sm py-1.5 uppercase bg-gray-50 text-gray-500" readonly required />
                         </div>
                         <div>
                             <InputLabel value="Motor Number" class="text-xs mb-0" />
@@ -161,7 +184,7 @@ const submit = () => {
                                         <svg class="mx-auto h-6 w-6 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                         </svg>
-                                        <span class="mt-1 block text-[10px] text-gray-500">Change</span>
+                                        <span class="mt-1 block text-[10px] text-gray-500">Upload</span>
                                     </div>
                                     <input type="file" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept="image/*" @change="(e) => handleFileChange(e, side)" />
                                 </div>

@@ -20,6 +20,8 @@ const props = defineProps({
         default: () => []
     },
     isEncoder: { type: Boolean, default: false },
+    unitExists: { type: Boolean, default: false },
+    existingUnit: { type: Object, default: () => null },
 });
 
 // --- STATE ---
@@ -890,6 +892,8 @@ const saveInspectionStatus = () => {
             :show="showChangeUnitModal" 
             :application="application" 
             :unitMakes="unitMakes"
+            :unitExists="unitExists"
+            :existingUnit="existingUnit" 
             @close="showChangeUnitModal = false" 
         />
 

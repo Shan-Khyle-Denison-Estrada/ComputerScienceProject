@@ -33,9 +33,13 @@ class ApplicationChangeOfOwnerShowController extends Controller
             'assessment.payments'
         ]);
 
+        // NEW: Automatically detect if the proposed owner already exists by TIN
+        $operatorExists = \App\Models\Operator::where('tin_number', $application->tin_number)->exists();
+
         return Inertia::render('Admin/Applications/ShowChangeOfOwner', [
             'application' => $application,
             'isEncoder' => $isEncoder,
+            'operatorExists' => $operatorExists, // <-- Pass it to the view
         ]);
     }
 
@@ -95,16 +99,16 @@ class ApplicationChangeOfOwnerShowController extends Controller
         return redirect()->back()->with('success', 'Application returned for compliance.');
     }
 
-    // Finalize Ownership Transfer in Database
+// Finalize Ownership Transfer in Database
     public function finalizeApplication(Request $request, Application $application)
     {
-        // Check if user already exists to determine if password is required
-        $userExists = User::where('email', $application->email)->exists();
+        // Check if operator already exists by TIN number to determine if password is required
+        $operatorExists = Operator::where('tin_number', $application->tin_number)->exists();
 
         $request->validate([
             'change_date' => 'required|date',
             'remarks' => 'nullable|string',
-            'password' => $userExists ? 'nullable|min:8|confirmed' : 'required|min:8|confirmed',
+            'password' => $operatorExists ? 'nullable|min:8|confirmed' : 'required|min:8|confirmed',
         ], [
             'password.required' => 'A password must be set because this operator does not have an account yet.'
         ]);
@@ -114,38 +118,53 @@ class ApplicationChangeOfOwnerShowController extends Controller
             $previousOwnership = $franchise->currentOwnership;
             $previousOperatorId = $previousOwnership ? $previousOwnership->new_operator_id : null;
 
-            // 1. Attempt to find an existing user by the exact email provided in the application
-            $user = User::where('email', $application->email)->first();
+            // FIX: 1. Attempt to find existing Operator directly by TIN Number 
+            $operator = Operator::where('tin_number', $application->tin_number)->first();
 
-            if (!$user) {
-                // Create brand new User for the new owner using the exact submitted password
-                $user = User::create([
-                    'first_name' => $application->first_name,
-                    'middle_name' => $application->middle_name,
-                    'last_name' => $application->last_name,
-                    'email' => $application->email,
-                    'contact_number' => $application->contact_number,
-                    'street_address' => $application->street_address,
-                    'barangay' => $application->barangay,
-                    'city' => $application->city,
-                    'password' => Hash::make($request->password), 
-                    'role' => 'franchise_owner',
-                    'status' => 'active',
-                ]);
-            } else if ($request->filled('password')) {
-                // Optional: Update existing user's password if the admin deliberately inputted a new one
-                $user->update([
-                    'password' => Hash::make($request->password)
+            if ($operator) {
+                // Operator already exists, just fetch their associated user
+                $user = $operator->user;
+                
+                // Optional: Update existing user's password if the admin inputted a new one
+                if ($request->filled('password')) {
+                    $user->update([
+                        'password' => Hash::make($request->password)
+                    ]);
+                }
+            } else {
+                // Operator does NOT exist. We need to create User and Operator.
+                // Fallback check: Does a user with this email exist without an operator profile?
+                $user = User::where('email', $application->email)->first();
+
+                if (!$user) {
+                    // Create brand new User for the new owner
+                    $user = User::create([
+                        'first_name' => $application->first_name,
+                        'middle_name' => $application->middle_name,
+                        'last_name' => $application->last_name,
+                        'email' => $application->email,
+                        'contact_number' => $application->contact_number,
+                        'street_address' => $application->street_address,
+                        'barangay' => $application->barangay,
+                        'city' => $application->city,
+                        'password' => Hash::make($request->password), 
+                        'role' => 'franchise_owner',
+                        'status' => 'active',
+                    ]);
+                } else if ($request->filled('password')) {
+                    $user->update([
+                        'password' => Hash::make($request->password)
+                    ]);
+                }
+
+                // Create the brand new Operator record
+                $operator = Operator::create([
+                    'user_id' => $user->id,
+                    'tin_number' => $application->tin_number
                 ]);
             }
 
-            // 2. Locate or create the Operator record
-            $operator = Operator::firstOrCreate(
-                ['user_id' => $user->id],
-                ['tin_number' => $application->tin_number]
-            );
-
-            // 3. Create the historical Ownership record
+            // 3. Create the historical Ownership record using the found or created $operator->id
             $newOwnership = Ownership::create([
                 'franchise_id' => $franchise->id,
                 'new_operator_id' => $operator->id,
