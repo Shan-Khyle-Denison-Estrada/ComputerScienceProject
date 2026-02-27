@@ -386,7 +386,7 @@ onUnmounted(() => {
                                             @click="selectFranchise(franchise)"
                                             class="p-2 text-sm hover:bg-indigo-50 cursor-pointer text-gray-700"
                                         >
-                                            {{ franchise.id }} - {{ franchise.owner_name }}
+                                            {{ franchise.franchise_number }} - {{ franchise.owner_name }}
                                         </li>
                                     </ul>
                                 </div>

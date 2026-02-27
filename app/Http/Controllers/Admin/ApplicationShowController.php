@@ -254,6 +254,7 @@ class ApplicationShowController extends Controller
 
             // Franchise / Unit Info
             'franchises' => 'required|array|min:1',
+            'franchises.*.franchise_number' => 'required|string|unique:franchises,franchise_number',
             'franchises.*.zone_id' => 'required|exists:zones,id',
             'franchises.*.date_issued' => 'required|date',
             'franchises.*.make_id' => 'required|exists:unit_makes,id',
@@ -350,8 +351,10 @@ class ApplicationShowController extends Controller
                         'condition' => 'Good',
                     ], $unitPhotos)); // [!code focus] Merge photos into creation array
 
-                    // 2. Create Franchise
-                    $franchiseNumber = 'FR-' . strtoupper(uniqid()); 
+                    // Check if the frontend provided a number, otherwise generate one
+                    $franchiseNumber = !empty($franchiseData['franchise_number']) 
+                        ? $franchiseData['franchise_number'] 
+                        : $this->generateFranchiseNumber(); // Or whatever your current auto-gen logic is
                     
                     $franchise = Franchise::create([
                         'franchise_number' => $franchiseNumber,

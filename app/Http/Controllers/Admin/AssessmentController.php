@@ -47,7 +47,7 @@ class AssessmentController extends Controller
         $particulars = Particular::orderBy('group')->orderBy('name')->get();
         
         // Load franchise data safely with mapping
-$franchises = Franchise::with('currentOwnership.newOwner.user')
+    $franchises = Franchise::with('currentOwnership.newOwner.user')
     ->get()
     ->map(function ($franchise) {
         // Safely dig through the relationships
