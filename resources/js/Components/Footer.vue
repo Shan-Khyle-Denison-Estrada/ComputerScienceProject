@@ -39,9 +39,7 @@ const settings = computed(() => page.props.settings);
                 <div>
                     <h3 class="text-sm font-semibold text-white uppercase tracking-wider mb-4">Portals</h3>
                     <ul class="space-y-3">
-                        <li><Link :href="route('login')" class="hover:text-blue-400 transition-colors text-sm">Franchise Owner Login</Link></li>
-                        <li><Link :href="route('login')" class="hover:text-blue-400 transition-colors text-sm">Administrator Login</Link></li>
-                        <li><Link href="/track" class="hover:text-blue-400 transition-colors text-sm">Track Application</Link></li>
+                        <li><Link :href="route('login')" class="hover:text-blue-400 transition-colors text-sm">Already have an account?</Link></li>
                     </ul>
                 </div>
 

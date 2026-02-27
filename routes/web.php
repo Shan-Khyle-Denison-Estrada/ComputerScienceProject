@@ -37,8 +37,8 @@ use Inertia\Inertia;
 
 Route::get('/', function () {
     return Inertia::render('Index', [
-        'activeFranchisesCount' => \App\Models\Franchise::count(),
-        // Removed settings from here, it's globally shared now!
+        'renewedFranchisesSum' => \App\Models\Franchise::where('status', 'Renewed')
+            ->count(), // Replace 'amount' with your actual column name
     ]);
 });
 
