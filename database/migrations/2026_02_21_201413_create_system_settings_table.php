@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             
             // Operations
-            $table->string('fiscal_year_end')->default('01-01');
+            $table->string('annual_renewal_due')->default('01-01');
             $table->decimal('surcharge_rate', 5, 2)->default(25.00);
             $table->decimal('interest_rate', 5, 2)->default(2.00);
             
