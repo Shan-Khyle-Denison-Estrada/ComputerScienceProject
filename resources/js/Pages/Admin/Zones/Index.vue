@@ -314,7 +314,13 @@ const deleteBarangay = (id) => {
                 <form @submit.prevent="submitAdd" class="space-y-5">
                     <div>
                         <InputLabel>Description / Name <span class="text-red-500">*</span></InputLabel>
-                        <TextInput type="text" class="mt-1 block w-full" v-model="addForm.description" @blur="applySentenceCase(addForm, 'description')" required placeholder="e.g., Downtown zone" />
+                        <TextInput 
+                            type="text" 
+                            class="mt-1 block w-full uppercase" 
+                            v-model="addForm.description" 
+                            required 
+                            placeholder="DOWNTOWN ZONE" 
+                        />
                     </div>
                     <div>
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>
@@ -382,7 +388,13 @@ const deleteBarangay = (id) => {
                 <form @submit.prevent="submitEdit" class="space-y-5">
                     <div>
                         <InputLabel>Description / Name <span class="text-red-500">*</span></InputLabel>
-                        <TextInput type="text" class="mt-1 block w-full" v-model="editForm.description" @blur="applySentenceCase(editForm, 'description')" required />
+                        <TextInput 
+                            type="text" 
+                            class="mt-1 block w-full uppercase" 
+                            v-model="editForm.description" 
+                            required 
+                            placeholder="DOWNTOWN ZONE" 
+                        />
                     </div>
                     <div>
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>

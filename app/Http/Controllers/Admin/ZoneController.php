@@ -60,7 +60,8 @@ class ZoneController extends Controller
         ]);
 
         // Apply Sentence Case
-        $validated['description'] = Str::ucfirst(Str::lower($validated['description']));
+        // Use this for ALL CAPS (e.g., "DOWNTOWN ZONE")
+        $validated['description'] = \Illuminate\Support\Str::upper($validated['description']);
         $validated['color'] = Str::ucfirst(Str::lower($validated['color']));
 
         $zone->update($validated);
