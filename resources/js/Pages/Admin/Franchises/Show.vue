@@ -219,14 +219,14 @@ const getDriverName = (driver) => {
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         Print Certificate
                     </PrimaryButton>
-                    <SecondaryButton @click="showChangeUnitModal = true">
+                    <!-- <SecondaryButton @click="showChangeUnitModal = true">
                         <svg class="w-4 h-4 mr-2 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" /></svg>
                         Change Unit
-                    </SecondaryButton>
-                    <PrimaryButton @click="showTransferModal = true" class="bg-gray-800 hover:bg-gray-700">
+                    </SecondaryButton> -->
+                    <!-- <PrimaryButton @click="showTransferModal = true" class="bg-gray-800 hover:bg-gray-700">
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                         Transfer Ownership
-                    </PrimaryButton>
+                    </PrimaryButton> -->
                 </div>
             </div>
 
@@ -336,7 +336,7 @@ const getDriverName = (driver) => {
                             
                             <div v-if="franchise.latest_payment">
                                 <div class="font-black text-lg text-gray-900 mb-1">
-                                    ₱ {{ Number(franchise.latest_payment.amount).toLocaleString() }}
+                                    <span class="font-normal">₱</span> {{ Number(franchise.latest_payment.amount).toLocaleString() }}
                                 </div>
                                 <div class="text-xs text-gray-500">
                                     OR# {{ franchise.latest_payment.or_number }} • {{ franchise.latest_payment.date }}
@@ -450,7 +450,7 @@ const getDriverName = (driver) => {
                         <div v-if="activeTab === 'drivers'" class="p-6">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="font-bold text-gray-700">Current Assignments</h3>
-                                <button @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
+                                <button v-if="userRole === 'encoder'" @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
                                     + Assign Driver
                                 </button>
                             </div>

@@ -43,6 +43,18 @@ const showAddOwnerDropdown = ref(false);
 const showAddBarangayDropdown = ref(false);
 const showEditBarangayDropdown = ref(false);
 
+const handleAddOwnerBlur = () => {
+    setTimeout(() => { showAddOwnerDropdown.value = false; }, 200);
+};
+
+const handleAddBarangayBlur = () => {
+    setTimeout(() => { showAddBarangayDropdown.value = false; }, 200);
+};
+
+const handleEditBarangayBlur = () => {
+    setTimeout(() => { showEditBarangayDropdown.value = false; }, 200);
+};
+
 // --- COMPUTED ---
 const filteredAddOwners = computed(() => {
     if (!addOwnerSearch.value) return props.franchiseOwners;
@@ -239,7 +251,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
-                <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
+                <PrimaryButton v-if="$page.props.auth.user.role === 'encoder'" @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     Add Driver
                 </PrimaryButton>
@@ -322,46 +334,81 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
             </div>
         </div>
 
-        <Modal :show="showLicenseModal" @close="closeLicenseModal" maxWidth="4xl">
-            <div class="p-8">
-                <div class="flex justify-between items-center mb-6 border-b pb-4">
-                    <div>
-                        <h2 class="text-2xl font-bold text-gray-900">Driver License</h2>
-                        <p class="text-gray-500 font-mono text-lg mt-1">License No: {{ selectedLicense.number }}</p>
-                    </div>
-                    <button @click="closeLicenseModal" class="text-gray-400 hover:text-gray-600 p-2 rounded-full hover:bg-gray-100">
-                        <svg class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
+<Transition
+            enter-active-class="ease-out duration-300"
+            enter-from-class="opacity-0"
+            enter-to-class="opacity-100"
+            leave-active-class="ease-in duration-200"
+            leave-from-class="opacity-100"
+            leave-to-class="opacity-0"
+        >
+            <div v-show="showLicenseModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto overflow-x-hidden bg-gray-900/75 backdrop-blur-sm p-4 sm:p-6 lg:p-8" @click.self="closeLicenseModal">
                 
-                <div class="flex flex-col gap-10 items-center bg-gray-50 p-8 rounded-xl border border-gray-200">
-                    <div class="flex flex-col items-center w-full">
-                        <h3 class="text-lg font-bold text-gray-700 mb-3 self-start">Front Side</h3>
-                        <div class="w-full max-w-lg aspect-[1.58/1] bg-white border-2 border-gray-300 rounded-xl shadow-md overflow-hidden flex items-center justify-center">
-                            <img v-if="selectedLicense.front" :src="selectedLicense.front" class="w-full h-full object-cover" />
-                            <div v-else class="text-gray-400 flex flex-col items-center p-10">
-                                <svg class="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                <span class="text-lg">No Front Photo</span>
+                <Transition
+                    enter-active-class="ease-out duration-300"
+                    enter-from-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                    enter-to-class="opacity-100 translate-y-0 sm:scale-100"
+                    leave-active-class="ease-in duration-200"
+                    leave-from-class="opacity-100 translate-y-0 sm:scale-100"
+                    leave-to-class="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95"
+                >
+                    <div v-if="showLicenseModal" class="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+                        
+                        <div class="flex justify-between items-center p-6 border-b border-gray-100 bg-white z-10">
+                            <div>
+                                <h2 class="text-2xl font-bold text-gray-900 tracking-tight">Driver License</h2>
+                                <p class="text-gray-500 font-mono text-sm mt-1 flex items-center gap-2">
+                                    <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2" /></svg>
+                                    License No: <span class="font-semibold text-gray-700">{{ selectedLicense.number }}</span>
+                                </p>
                             </div>
+                            <button @click="closeLicenseModal" class="text-gray-400 hover:text-gray-700 hover:bg-gray-100 p-2.5 rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <span class="sr-only">Close</span>
+                                <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
                         </div>
-                    </div>
 
-                    <div class="flex flex-col items-center w-full border-t border-gray-200 pt-8">
-                        <h3 class="text-lg font-bold text-gray-700 mb-3 self-start">Back Side</h3>
-                        <div class="w-full max-w-lg aspect-[1.58/1] bg-white border-2 border-gray-300 rounded-xl shadow-md overflow-hidden flex items-center justify-center">
-                            <img v-if="selectedLicense.back" :src="selectedLicense.back" class="w-full h-full object-cover" />
-                            <div v-else class="text-gray-400 flex flex-col items-center p-10">
-                                <svg class="h-16 w-16 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                <span class="text-lg">No Back Photo</span>
+                        <div class="flex-1 overflow-y-auto p-6 md:p-8 bg-gray-50/50">
+                            <div class="flex flex-col gap-10 items-center max-w-2xl mx-auto">
+                                
+                                <div class="w-full flex flex-col items-center">
+                                    <div class="flex items-center gap-3 mb-4 w-full">
+                                        <span class="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Front Side</span>
+                                        <div class="h-px bg-gray-200 flex-1"></div>
+                                    </div>
+                                    <div class="w-full aspect-[1.58/1] bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex items-center justify-center transition-transform duration-300 hover:shadow-md hover:scale-[1.02]">
+                                        <img v-if="selectedLicense.front" :src="selectedLicense.front" class="w-full h-full object-cover" alt="License Front" />
+                                        <div v-else class="text-gray-400 flex flex-col items-center p-10 bg-gray-50 w-full h-full justify-center">
+                                            <svg class="h-12 w-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            <span class="text-sm font-medium">No Front Photo Provided</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="w-full flex flex-col items-center">
+                                    <div class="flex items-center gap-3 mb-4 w-full">
+                                        <span class="bg-gray-200 text-gray-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider">Back Side</span>
+                                        <div class="h-px bg-gray-200 flex-1"></div>
+                                    </div>
+                                    <div class="w-full aspect-[1.58/1] bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden flex items-center justify-center transition-transform duration-300 hover:shadow-md hover:scale-[1.02]">
+                                        <img v-if="selectedLicense.back" :src="selectedLicense.back" class="w-full h-full object-cover" alt="License Back" />
+                                        <div v-else class="text-gray-400 flex flex-col items-center p-10 bg-gray-50 w-full h-full justify-center">
+                                            <svg class="h-12 w-12 mb-3 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                            <span class="text-sm font-medium">No Back Photo Provided</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
                             </div>
                         </div>
+
+                        <div class="p-5 border-t border-gray-100 bg-white flex justify-end z-10">
+                            <SecondaryButton @click="closeLicenseModal" class="!px-6 !py-2.5 shadow-sm hover:bg-gray-50">Close View</SecondaryButton>
+                        </div>
                     </div>
-                </div>
-                <div class="mt-8 flex justify-end">
-                    <SecondaryButton @click="closeLicenseModal" class="!px-6 !py-3">Close</SecondaryButton>
-                </div>
+                </Transition>
             </div>
-        </Modal>
+        </Transition>
 
         <Modal :show="showAddModal" @close="closeAddModal" maxWidth="2xl">
             <div class="p-6">
@@ -379,7 +426,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                         <div class="w-full md:w-2/3 relative">
                             <InputLabel>Assign Franchise Owner <span class="text-red-500">*</span></InputLabel>
                             <div class="relative mt-1">
-                                <TextInput type="text" class="w-full pr-10" v-model="addOwnerSearch" placeholder="Search owner..." @focus="showAddOwnerDropdown = true" @blur="setTimeout(() => showAddOwnerDropdown = false, 200)" />
+                                <TextInput type="text" class="w-full pr-10" v-model="addOwnerSearch" placeholder="Search owner..." @focus="showAddOwnerDropdown = true" @blur="handleAddOwnerBlur" />
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
                             </div>
                             <div v-if="showAddOwnerDropdown && filteredAddOwners.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
@@ -399,7 +446,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="relative">
                             <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.barangay" placeholder="Select or type barangay" @focus="showAddBarangayDropdown = true" @blur="setTimeout(() => showAddBarangayDropdown = false, 200)" required />
+                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.barangay" placeholder="Select or type barangay" @focus="showAddBarangayDropdown = true" @blur="handleAddBarangayBlur" required />
                             <div v-if="showAddBarangayDropdown && filteredAddBarangays.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                 <div v-for="brgy in filteredAddBarangays" :key="brgy.id" @click="selectAddBarangay(brgy.name)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700">{{ brgy.name }}</div>
                             </div>
@@ -466,7 +513,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div class="relative">
                             <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.barangay" placeholder="Select or type barangay" @focus="showEditBarangayDropdown = true" @blur="setTimeout(() => showEditBarangayDropdown = false, 200)" required />
+                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.barangay" placeholder="Select or type barangay" @focus="showEditBarangayDropdown = true" @blur="handleEditBarangayBlur" required />
                             <div v-if="showEditBarangayDropdown && filteredEditBarangays.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
                                 <div v-for="brgy in filteredEditBarangays" :key="brgy.id" @click="selectEditBarangay(brgy.name)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700">{{ brgy.name }}</div>
                             </div>

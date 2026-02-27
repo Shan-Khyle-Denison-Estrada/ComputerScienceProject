@@ -92,16 +92,16 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::put('/admin/franchise-owners/{user}', [FranchiseOwnerController::class, 'update'])->name('admin.franchise-owners.update');
 
     // 5. Driver Management
-    Route::resource('admin/drivers', DriverController::class)
-        ->names([
-            'index'   => 'admin.drivers.index',
-            'store'   => 'admin.drivers.store',
-            'create'  => 'admin.drivers.create',
-            'show'    => 'admin.drivers.show',
-            'update'  => 'admin.drivers.update',
-            'destroy' => 'admin.drivers.destroy',
-            'edit'    => 'admin.drivers.edit',
-        ]);
+    // Route::resource('admin/drivers', DriverController::class)
+    //     ->names([
+    //         'index'   => 'admin.drivers.index',
+    //         'store'   => 'admin.drivers.store',
+    //         'create'  => 'admin.drivers.create',
+    //         'show'    => 'admin.drivers.show',
+    //         'update'  => 'admin.drivers.update',
+    //         'destroy' => 'admin.drivers.destroy',
+    //         'edit'    => 'admin.drivers.edit',
+    //     ]);
 
     // // 6. Payment Routes
     // Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
@@ -350,6 +350,9 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
     // Change of Unit
     Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])->name('admin.applications.change-of-unit.show');
     Route::post('/applications/change-of-unit/{application}/finalize', [ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-unit.finalize');
+
+    Route::get('admin/drivers', [DriverController::class, 'index'])->name('admin.drivers.index');
+    Route::get('admin/drivers/{driver}', [DriverController::class, 'show'])->name('admin.drivers.show');
 });
 
 // --- SHARED ROUTES: Admin & Collector ---
@@ -378,9 +381,19 @@ Route::middleware(['auth', 'role:collector'])->group(function () {
 
 // --- SHARED ROUTES: Admin & Releaser ---
 // Both can view the franchise show page
-Route::middleware(['auth', 'role:admin,releaser'])->group(function () {
+Route::middleware(['auth', 'role:admin,releaser,encoder'])->group(function () {
     Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
     Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
+});
+
+// --- ENCODER ONLY ROUTES ---
+// Only encoders can create, store, edit, update, and delete drivers
+Route::middleware(['auth', 'role:encoder'])->group(function () {
+    Route::get('admin/drivers/create', [DriverController::class, 'create'])->name('admin.drivers.create');
+    Route::post('admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
+    Route::get('admin/drivers/{driver}/edit', [DriverController::class, 'edit'])->name('admin.drivers.edit');
+    Route::put('admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update');
+    Route::delete('admin/drivers/{driver}', [DriverController::class, 'destroy'])->name('admin.drivers.destroy');
 });
 
 require __DIR__.'/auth.php';

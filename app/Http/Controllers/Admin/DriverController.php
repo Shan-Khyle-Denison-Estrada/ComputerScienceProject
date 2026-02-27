@@ -30,7 +30,7 @@ class DriverController extends Controller
             $query->where('status', $request->status);
         }
 
-        $drivers = $query->latest()->paginate(5)->withQueryString();
+        $drivers = $query->latest()->paginate(6)->withQueryString();
 
         // Fetch Data for Dropdowns
         $franchiseOwners = User::where('role', 'franchise_owner')->get(); 
