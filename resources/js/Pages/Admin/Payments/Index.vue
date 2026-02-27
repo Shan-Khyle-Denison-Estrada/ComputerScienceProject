@@ -43,7 +43,9 @@ const filteredAssessments = computed(() => {
     const query = assessmentQuery.value.toLowerCase();
     
     return props.assessments.filter(a => {
-        const matchRef = a.application_reference_id && a.application_reference_id.toLowerCase().includes(query);
+        // Use the new reference_number or fallback to ASM format
+        const ref = a.reference_number || a.application_reference_id || `ASM-${a.id}`;
+        const matchRef = ref.toLowerCase().includes(query);
         const matchLabel = a.label && a.label.toLowerCase().includes(query);
         return matchRef || matchLabel;
     });
@@ -52,11 +54,14 @@ const filteredAssessments = computed(() => {
 // --- WATCHERS ---
 watch(assessmentQuery, (newVal) => {
     if (selectedAssessmentDetails.value) {
-        const currentRef = selectedAssessmentDetails.value.application_reference_id || selectedAssessmentDetails.value.label;
+        const currentRef = selectedAssessmentDetails.value.reference_number 
+            || selectedAssessmentDetails.value.application_reference_id 
+            || `ASM-${selectedAssessmentDetails.value.id}`;
+            
         if (newVal !== currentRef) {
             selectedAssessmentDetails.value = null;
             addForm.assessment_id = '';
-            addForm.amount_paid = ''; // Reset amount if they clear the assessment
+            addForm.amount_paid = ''; 
         }
     }
 });
@@ -68,13 +73,14 @@ const selectBarangay = (name) => {
     showBarangayDropdown.value = false;
 };
 
+// --- SELECTION ACTIONS ---
 const selectAssessment = (assessment) => {
     addForm.assessment_id = assessment.id;
-    assessmentQuery.value = assessment.application_reference_id || assessment.label;
+    assessmentQuery.value = assessment.reference_number 
+        || assessment.application_reference_id 
+        || `ASM-${assessment.id}`;
     
-    // Set to empty string to force user to manually type the exact amount
     addForm.amount_paid = ''; 
-    
     selectedAssessmentDetails.value = assessment;
     showAssessmentDropdown.value = false;
 };
@@ -234,14 +240,14 @@ const resetFilters = () => {
                                 <div class="text-sm">{{ payment.payee_barangay }}, {{ payment.payee_city }}</div>
                                 <div class="text-xs text-gray-400">{{ payment.payee_street_address }}</div>
                             </td>
-                            <td class="px-6 py-4">
-                                <span v-if="payment.assessment_id" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                    #{{ payment.application_reference_id || payment.assessment_id }}
-                                </span>
-                                <span v-else class="text-gray-400 text-xs italic">
-                                    N/A
-                                </span>
-                            </td>
+<td class="px-6 py-4">
+    <span v-if="payment.assessment_id" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+        #{{ payment.application_reference_id || `ASM-${payment.assessment_id}` }}
+    </span>
+    <span v-else class="text-gray-400 text-xs italic">
+        N/A
+    </span>
+</td>
                             <td class="px-6 py-4 font-mono font-medium text-gray-900">
                                 {{ formatCurrency(payment.amount_paid) }}
                             </td>
@@ -298,23 +304,23 @@ const resetFilters = () => {
                             <form @submit.prevent="submitAdd" class="space-y-6">
                                 
                                 <div class="bg-blue-50/50 p-5 rounded-xl border border-blue-100">
-                                    <h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
-                                        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                        </svg>
-                                        Search Application
-                                    </h4>
-                                    <div class="relative">
-                                        <InputLabel>Application Reference ID</InputLabel>
-                                        <TextInput 
-                                            type="text" 
-                                            class="mt-1 block w-full bg-white" 
-                                            v-model="assessmentQuery" 
-                                            @focus="showAssessmentDropdown = true"
-                                            @input="showAssessmentDropdown = true"
-                                            placeholder="e.g. APP-2023-001..." 
-                                            autocomplete="off"
-                                        />
+<h4 class="text-xs font-bold text-blue-800 uppercase tracking-wider mb-3 flex items-center gap-2">
+    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+    </svg>
+    Search Assessment / Application
+</h4>
+<div class="relative">
+    <InputLabel>Reference Number</InputLabel>
+    <TextInput 
+        type="text" 
+        class="mt-1 block w-full bg-white" 
+        v-model="assessmentQuery" 
+        @focus="showAssessmentDropdown = true"
+        @input="showAssessmentDropdown = true"
+        placeholder="e.g. APP-2023-001 or ASM-000012..." 
+        autocomplete="off"
+    />
                                         <div v-if="showAssessmentDropdown && filteredAssessments.length > 0" class="absolute z-30 w-full bg-white border border-gray-200 mt-1 rounded-lg shadow-xl max-h-56 overflow-y-auto">
                                             <div 
                                                 v-for="assessment in filteredAssessments" 
@@ -322,7 +328,9 @@ const resetFilters = () => {
                                                 @click="selectAssessment(assessment)"
                                                 class="px-4 py-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
                                             >
-                                                <div class="font-medium text-sm text-gray-900">{{ assessment.application_reference_id || 'No Ref ID' }}</div>
+                                                <div class="font-medium text-sm text-gray-900">
+    {{ assessment.reference_number || assessment.application_reference_id || `ASM-${assessment.id}` }}
+</div>
                                                 <div class="text-xs text-gray-500">{{ assessment.label }} &bull; Balance: {{ formatCurrency(assessment.balance) }}</div>
                                             </div>
                                         </div>
@@ -459,8 +467,10 @@ const resetFilters = () => {
                             <div v-if="selectedAssessmentDetails" class="flex-1 flex flex-col">
                                 
                                 <div class="mb-5 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
-                                    <p class="text-xs text-gray-500 mb-1">Application Reference</p>
-                                    <p class="font-mono font-bold text-blue-600 text-lg">{{ selectedAssessmentDetails.application_reference_id || 'N/A' }}</p>
+<p class="text-xs text-gray-500 mb-1">Reference Number</p>
+<p class="font-mono font-bold text-blue-600 text-lg">
+    {{ selectedAssessmentDetails.reference_number || selectedAssessmentDetails.application_reference_id || `ASM-${selectedAssessmentDetails.id}` }}
+</p>
                                     
                                     <p class="text-xs text-gray-500 mt-3 mb-1">Description / Project</p>
                                     <p class="text-sm text-gray-800 font-medium leading-snug">{{ selectedAssessmentDetails.label || 'N/A' }}</p>

@@ -35,7 +35,12 @@ class PaymentController extends Controller
                     return [
                         'id' => $assessment->id,
                         // 2. Grab the reference_number from the loaded Application relationship
-                        'application_reference_id' => $assessment->application ? $assessment->application->reference_number : null, 
+                        // Provide a fallback reference if it's a standalone assessment
+                        'reference_number' => $assessment->application 
+                            ? $assessment->application->reference_number 
+                            : 'ASM-' . str_pad($assessment->id, 6, '0', STR_PAD_LEFT),
+                        // Keep this for backward compatibility if needed by other components, or remove it
+                        'application_reference_id' => $assessment->application ? $assessment->application->reference_number : null,
                         'label' => $assessment->remarks ?? 'Application Assessment',
                         'balance' => $assessment->balance,
                         'total_amount' => $assessment->total_amount_due,
