@@ -133,7 +133,7 @@ class FranchiseController extends Controller
         if ($latestPayment) {
             $franchise->latest_payment = [
                 'amount' => $latestPayment->amount_paid,
-                'or_number' => str_pad($latestPayment->id, 6, '0', STR_PAD_LEFT),
+                'or_number' => $latestPayment->or_number, // <-- Updated to use actual or_number
                 'date' => $latestPayment->created_at->format('M d, Y')
             ];
         } else {
@@ -146,7 +146,7 @@ class FranchiseController extends Controller
             return [
                 'id' => $payment->id,
                 'date' => $payment->created_at->format('M d, Y'),
-                'or_number' => str_pad($payment->id, 6, '0', STR_PAD_LEFT),
+                'or_number' => $payment->or_number,
                 'payee' => trim("{$payment->payee_first_name} {$payment->payee_last_name}"),
                 'amount_paid' => $payment->amount_paid,
                 'assessment_status' => $assessment ? ucfirst($assessment->assessment_status) : 'Unknown',

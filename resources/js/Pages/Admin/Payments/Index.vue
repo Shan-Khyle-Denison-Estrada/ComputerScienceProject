@@ -194,7 +194,7 @@ const resetFilters = () => {
                     />
                 </div>
 
-                <button 
+                <!-- <button 
                     @click="openFilterModal"
                     class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative"
                 >
@@ -202,7 +202,7 @@ const resetFilters = () => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                     </svg>
                     <span v-if="filterForm.city" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
-                </button>
+                </button> -->
 
                 <PrimaryButton v-if="userRole === 'collector'" @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -218,6 +218,7 @@ const resetFilters = () => {
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
+                            <th class="px-6 py-4">OR Number</th>
                             <th class="px-6 py-4">Payee Details</th>
                             <th class="px-6 py-4">Location</th>
                             <th class="px-6 py-4">Assessment / Ref ID</th>
@@ -227,11 +228,11 @@ const resetFilters = () => {
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="payment in payments.data" :key="payment.id" class="hover:bg-gray-50 transition-colors group">
+                            <td class="px-6 py-4 text-gray-500 text-xs">
+                                {{ payment.or_number || 'N/A' }}
+                            </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
-                                    <div class="h-10 w-10 flex-shrink-0 rounded-full bg-green-100 flex items-center justify-center border border-gray-200 text-green-700 font-bold text-lg">
-                                        ₱
-                                    </div>
                                     <div class="ml-4">
                                         <div class="font-medium text-gray-900">
                                             {{ payment.payee_last_name }}, {{ payment.payee_first_name }}

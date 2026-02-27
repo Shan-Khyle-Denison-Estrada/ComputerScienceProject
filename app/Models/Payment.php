@@ -22,15 +22,16 @@ class Payment extends Model
         'payee_city',
     ];
 
-    // Scope for handling Search and Filtering
+// Scope for handling Search and Filtering
     public function scopeFilter($query, array $filters)
     {
-        // Search by Payee Name or Contact Number
+        // Search by Payee Name, Contact Number, or OR Number
         $query->when($filters['search'] ?? null, function ($query, $search) {
             $query->where(function ($q) use ($search) {
                 $q->where('payee_first_name', 'like', '%'.$search.'%')
                   ->orWhere('payee_last_name', 'like', '%'.$search.'%')
-                  ->orWhere('payee_contact_number', 'like', '%'.$search.'%');
+                  ->orWhere('payee_contact_number', 'like', '%'.$search.'%')
+                  ->orWhere('or_number', 'like', '%'.$search.'%'); // <-- ADDED THIS LINE
             });
         });
 

@@ -329,7 +329,7 @@ const getDriverName = (driver) => {
                                     <span class="font-normal">₱</span> {{ Number(franchise.latest_payment.amount).toLocaleString() }}
                                 </div>
                                 <div class="text-xs text-gray-500">
-                                    OR# {{ franchise.latest_payment.or_number }} • {{ franchise.latest_payment.date }}
+                                    {{ franchise.latest_payment.or_number }} • {{ franchise.latest_payment.date }}
                                 </div>
                             </div>
                             <div v-else class="py-1">

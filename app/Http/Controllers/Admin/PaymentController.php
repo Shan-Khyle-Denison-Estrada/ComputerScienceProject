@@ -28,25 +28,25 @@ class PaymentController extends Controller
         // NEW: Fetch Pending/Overdue Assessments with their current balance
         // We eagerly load payments to calculate the balance on the fly if needed, 
         // or rely on a raw query for performance. Here we use Eloquent for simplicity.
-$assessments = Assessment::whereIn('assessment_status', ['pending', 'overdue'])
-    ->with(['application', 'particulars']) // <-- 1. Eager load relationships
-    ->get()
-    ->map(function ($assessment) {
-        return [
-            'id' => $assessment->id,
-            // 2. Grab the reference_number from the loaded Application relationship
-            'application_reference_id' => $assessment->application ? $assessment->application->reference_number : null, 
-            'label' => $assessment->remarks ?? 'Application Assessment',
-            'balance' => $assessment->balance,
-            'total_amount' => $assessment->total_amount_due,
-            // 3. Map the particulars and grab the subtotal from the pivot table
-'particulars' => $assessment->particulars->map(function ($particular) {
-    return [
-        'name' => $particular->name,
-        'quantity' => $particular->pivot->quantity, // <-- ADD THIS LINE
-        'amount' => $particular->pivot->subtotal 
-    ];
-})
+            $assessments = Assessment::whereIn('assessment_status', ['pending', 'overdue'])
+                ->with(['application', 'particulars']) // <-- 1. Eager load relationships
+                ->get()
+                ->map(function ($assessment) {
+                    return [
+                        'id' => $assessment->id,
+                        // 2. Grab the reference_number from the loaded Application relationship
+                        'application_reference_id' => $assessment->application ? $assessment->application->reference_number : null, 
+                        'label' => $assessment->remarks ?? 'Application Assessment',
+                        'balance' => $assessment->balance,
+                        'total_amount' => $assessment->total_amount_due,
+                        // 3. Map the particulars and grab the subtotal from the pivot table
+            'particulars' => $assessment->particulars->map(function ($particular) {
+                return [
+                    'name' => $particular->name,
+                    'quantity' => $particular->pivot->quantity, // <-- ADD THIS LINE
+                    'amount' => $particular->pivot->subtotal 
+                ];
+            })
         ];
     });
 
@@ -59,7 +59,7 @@ $assessments = Assessment::whereIn('assessment_status', ['pending', 'overdue'])
         ]);
     }
 
-    public function store(Request $request)
+public function store(Request $request)
     {
         $validated = $request->validate([
             'assessment_id' => 'nullable|exists:assessments,id', // Validate it exists
@@ -74,10 +74,18 @@ $assessments = Assessment::whereIn('assessment_status', ['pending', 'overdue'])
         ]);
 
         DB::transaction(function () use ($validated) {
-            // 1. Create Payment
+            // 1. Generate auto or_number
+            // lockForUpdate() prevents race conditions if multiple payments happen simultaneously
+            $latestPayment = Payment::lockForUpdate()->latest('id')->first();
+            $nextSequence = $latestPayment ? $latestPayment->id + 1 : 1;
+            
+            // Format example: OR-20231024-0001
+            $validated['or_number'] = 'OR-' . now()->format('Ymd') . '-' . str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
+
+            // 2. Create Payment
             Payment::create($validated);
 
-            // 2. Update Assessment Status if applicable
+            // 3. Update Assessment Status if applicable
             if (!empty($validated['assessment_id'])) {
                 $assessment = Assessment::with('payments')->find($validated['assessment_id']);
                 
