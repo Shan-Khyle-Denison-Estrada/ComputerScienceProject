@@ -6,7 +6,7 @@ import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputError from '@/Components/InputError.vue';
-import { useForm, Head } from '@inertiajs/vue3';
+import { useForm, Head, router } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 const props = defineProps({
@@ -38,7 +38,7 @@ const form = useForm({
 
     units: [
         {
-            make_id: '', zone_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
+            make_id: '', zone_id: '', franchise_number: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
             unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
             cr_photo: null, or_photo: null, franchise_certificate_photo: null
         }
@@ -52,7 +52,7 @@ const form = useForm({
 
 const addUnit = () => {
     form.units.push({
-        make_id: '', zone_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
+        make_id: '', zone_id: '', franchise_number: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
         unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
         cr_photo: null, or_photo: null, franchise_certificate_photo: null
     });
@@ -96,11 +96,20 @@ const submit = () => {
         onSuccess: () => {
             // If it succeeds, ensure the modal is closed
             showErrorModal.value = false;
+            showSuccessModal.value = true; // Trigger success modal
+            form.reset(); // Optional: clears the form behind the modal
         }
     });
 };
 
+// 4. Add the redirect function for the modal button
+const goToHome = () => {
+    showSuccessModal.value = false;
+    router.visit('/'); // Redirects to home AFTER they see the modal
+};
+
 const showErrorModal = ref(false);
+const showSuccessModal = ref(false);
 
 const removeRequirementFile = (reqId) => {
     delete form.requirement_files[reqId];
@@ -179,28 +188,28 @@ const formatTinNumber = (val) => {
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div><InputLabel value="Email" /><TextInput type="email" v-model="form.email" class="mt-1 block w-full" /><InputError :message="form.errors.email" class="mt-2" /></div>
-<div>
-    <InputLabel value="Contact No." />
-    <TextInput 
-        v-model="form.contact_number" 
-        @input="form.contact_number = formatContactNumber($event.target.value)" 
-        placeholder="09XX-XXX-XXXX" 
-        maxlength="13" 
-        class="mt-1 block w-full" 
-    />
-    <InputError :message="form.errors.contact_number" class="mt-2" />
-</div>
+                                <div>
+                                    <InputLabel value="Contact No." />
+                                    <TextInput 
+                                        v-model="form.contact_number" 
+                                        @input="form.contact_number = formatContactNumber($event.target.value)" 
+                                        placeholder="09XX-XXX-XXXX" 
+                                        maxlength="13" 
+                                        class="mt-1 block w-full" 
+                                    />
+                                    <InputError :message="form.errors.contact_number" class="mt-2" />
+                                </div>
                             </div>
-<div>
-    <InputLabel value="TIN Number" />
-    <TextInput 
-        v-model="form.tin_number" 
-        @input="form.tin_number = formatTinNumber($event.target.value)" 
-        placeholder="XXX-XXX-XXX-00000" 
-        maxlength="17" 
-        class="mt-1 block w-full" 
-    />
-</div>
+                            <div>
+                                <InputLabel value="TIN Number" />
+                                <TextInput 
+                                    v-model="form.tin_number" 
+                                    @input="form.tin_number = formatTinNumber($event.target.value)" 
+                                    placeholder="XXX-XXX-XXX-00000" 
+                                    maxlength="17" 
+                                    class="mt-1 block w-full" 
+                                />
+                            </div>
                             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                                 <div class="md:col-span-1"><InputLabel value="Street" /><TextInput v-model="form.street_address" class="mt-1 block w-full" /></div>
                                 <div><InputLabel value="Barangay" /><select v-model="form.barangay" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"><option value="" disabled>Select</option><option v-for="brgy in barangays" :key="brgy.id" :value="brgy.name">{{ brgy.name }}</option></select></div>
@@ -229,13 +238,17 @@ const formatTinNumber = (val) => {
                                 <div v-show="expandedUnitIndex === index" class="p-6 bg-gray-50 border-t border-gray-100">
                                     <div class="mb-6 bg-white p-4 rounded border border-blue-100"><InputLabel value="Target Zone" /><select v-model="unit.zone_id" class="mt-1 block w-full border-blue-300 rounded-md"><option value="" disabled>Select Zone</option><option v-for="zone in zones" :key="zone.id" :value="zone.id">{{ zone.description }} ({{ zone.color }})</option></select><InputError :message="form.errors[`units.${index}.zone_id`]" class="mt-2" /></div>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                        <div>
+                                            <InputLabel value="Franchise No." />
+                                            <TextInput v-model="unit.franchise_number" class="mt-1 block w-full"/>
+                                            <InputError :message="form.errors[`units.${index}.franchise_number`]" class="mt-2" />
+                                        </div>
                                         <div><InputLabel value="Make" /><select v-model="unit.make_id" class="mt-1 block w-full border-gray-300 rounded-md"><option value="" disabled>Select</option><option v-for="make in unitMakes" :key="make.id" :value="make.id">{{ make.name }}</option></select></div>
                                         <div><InputLabel value="Model Year" /><TextInput type="number" v-model="unit.model_year" class="mt-1 block w-full" /></div>
-                                        <div><InputLabel value="Plate No." /><TextInput v-model="unit.plate_number" class="mt-1 block w-full" /></div>
+                                        <div><InputLabel value="Plate No." /><TextInput v-model="unit.plate_number" class="mt-1 block w-full" /></div>                                        <div><InputLabel value="Motor No." /><TextInput v-model="unit.motor_number" class="mt-1 block w-full" /></div>
+                                        <div><InputLabel value="CR Number" /><TextInput v-model="unit.cr_number" class="mt-1 block w-full" /></div>
                                     </div>
                                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                                        <div><InputLabel value="Motor No." /><TextInput v-model="unit.motor_number" class="mt-1 block w-full" /></div>
-                                        <div><InputLabel value="CR Number" /><TextInput v-model="unit.cr_number" class="mt-1 block w-full" /></div>
                                         <div><InputLabel value="Chassis No." /><TextInput v-model="unit.chassis_number" class="mt-1 block w-full" /></div>
                                     </div>
                                     <div class="border-t border-gray-200 pt-4">
@@ -443,36 +456,58 @@ const formatTinNumber = (val) => {
         <Footer />
     </div>
     <div v-if="showErrorModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
-    
-    <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 m-4 relative">
-        
-        <div class="flex items-center justify-between mb-5">
-            <h3 class="text-xl font-bold text-red-600 flex items-center" id="modal-title">
-                <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                Submission Failed
-            </h3>
-            <button @click="showErrorModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-            </button>
-        </div>
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 m-4 relative">
+            
+            <div class="flex items-center justify-between mb-5">
+                <h3 class="text-xl font-bold text-red-600 flex items-center" id="modal-title">
+                    <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                    Submission Failed
+                </h3>
+                <button @click="showErrorModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
 
-        <div class="mb-6 max-h-64 overflow-y-auto pr-2">
-            <p class="text-sm text-gray-700 mb-3">Please correct the following issues before continuing:</p>
-            <ul class="list-disc list-inside space-y-2">
-                <li v-for="(error, field) in form.errors" :key="field" class="text-sm text-red-500">
-                    {{ error }}
-                </li>
-            </ul>
-        </div>
+            <div class="mb-6 max-h-64 overflow-y-auto pr-2">
+                <p class="text-sm text-gray-700 mb-3">Please correct the following issues before continuing:</p>
+                <ul class="list-disc list-inside space-y-2">
+                    <li v-for="(error, field) in form.errors" :key="field" class="text-sm text-red-500">
+                        {{ error }}
+                    </li>
+                </ul>
+            </div>
 
-        <div class="flex justify-end border-t pt-4">
-            <button @click="showErrorModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 transition-colors">
-                Got it, let me fix them
-            </button>
+            <div class="flex justify-end border-t pt-4">
+                <button @click="showErrorModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 transition-colors">
+                    Got it, let me fix them
+                </button>
+            </div>
+            
         </div>
-        
     </div>
-</div>
+
+    <div v-if="showSuccessModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center transform transition-all">
+            
+            <div class="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-green-50 mb-6">
+                <svg class="h-10 w-10 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path>
+                </svg>
+            </div>
+
+            <h3 class="text-2xl font-extrabold text-gray-900 mb-2">Application Submitted!</h3>
+            
+            <p class="text-gray-600 mb-8 leading-relaxed">
+                {{ $page.props.flash?.success || 'Your franchise application has been successfully submitted and is now pending evaluation.' }}
+            </p>
+
+            <button @click="goToHome" class="w-full inline-flex justify-center items-center rounded-xl bg-green-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200">
+                Return to Homepage
+                <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+            </button>
+            
+        </div>
+    </div>
 </template>
 
 <style scoped>

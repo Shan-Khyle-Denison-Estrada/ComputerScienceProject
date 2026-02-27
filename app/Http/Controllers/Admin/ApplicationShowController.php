@@ -36,7 +36,8 @@ class ApplicationShowController extends Controller
             'user',
             'zone', 
             'franchise.zone',
-            'proposedUnits.make', 
+            'proposedUnits.make',
+            'proposedUnits.zone',
             'evaluations.requirement'
         ])->findOrFail($id);
 
@@ -63,9 +64,11 @@ class ApplicationShowController extends Controller
             $franchises = $application->proposedUnits->map(function ($unit) use ($application) {
                 return [
                     'id' => $unit->id,
+                    'franchise_number' => $unit->franchise_number ?? 'N/A',
                     'make_id' => $unit->make_id,
-                    'zone_id' => $application->zone_id,
-                    'zone_name' => $application->zone->description ?? 'N/A', 
+// 🚨 FIX: Prioritize the unit's zone_id, fallback to application's zone_id if missing
+    'zone_id' => $unit->zone_id ?? $application->zone_id,
+    'zone_name' => $unit->zone->description ?? $application->zone->description ?? 'N/A',
                     'date_issued' => 'Pending',
                     'make_name' => $unit->make->name ?? 'N/A',
                     'model_year' => $unit->model_year,
@@ -353,7 +356,7 @@ class ApplicationShowController extends Controller
                     $franchise = Franchise::create([
                         'franchise_number' => $franchiseNumber,
                         'zone_id' => $franchiseData['zone_id'],
-                        'status' => 'active', 
+                        'status' => 'Renewed', 
                         'date_issued' => $franchiseData['date_issued'],
                         'expiry_date' => now()->addYear(), 
                     ]);
@@ -389,7 +392,7 @@ class ApplicationShowController extends Controller
 
                 // D. Finalize Application
                 $application->update([
-                    'status' => 'processed', 
+                    'status' => 'Completed', 
                     'franchise_id' => isset($franchise) ? $franchise->id : null,
                 ]);
 

@@ -61,6 +61,7 @@ class ApplicationController extends Controller
             'units' => 'required|array|min:1',
             'units.*.make_id' => 'required|exists:unit_makes,id',
             'units.*.zone_id' => 'required|exists:zones,id',
+            'units.*.franchise_number' => 'nullable|string|max:255',
             'units.*.motor_number' => 'required|string|max:255',
             'units.*.chassis_number' => 'required|string|max:255',
             'units.*.model_year' => 'required|integer|min:1900|max:'.(date('Y')+1),
@@ -70,7 +71,7 @@ class ApplicationController extends Controller
             'units.*.unit_back_photo' => 'required|image|max:5120',
             'units.*.unit_left_photo' => 'required|image|max:5120',
             'units.*.unit_right_photo' => 'required|image|max:5120',
-// CHANGED: Allow documents (PDFs) for Certificates and Registrations
+            // CHANGED: Allow documents (PDFs) for Certificates and Registrations
             'units.*.cr_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'units.*.or_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'units.*.franchise_certificate_photo' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
@@ -97,7 +98,6 @@ class ApplicationController extends Controller
             $application = Application::create([
                 'reference_number' => $referenceNumber,
                 'user_id' => auth()->id() ?? null,
-                'zone_id' => $validated['units'][0]['zone_id'], // Primary zone from first unit
                 'application_type' => 'Franchise Owner Account',
                 'status' => 'Pending',
                 'first_name' => $validated['first_name'],
@@ -144,6 +144,7 @@ class ApplicationController extends Controller
                     'application_id' => $application->id,
                     'make_id' => $unitData['make_id'],
                     'zone_id' => $unitData['zone_id'],
+                    'franchise_number' => $unitData['franchise_number'] ?? null,
                     'plate_number' => $unitData['plate_number'] ?? 'To Follow',
                     'motor_number' => $unitData['motor_number'],
                     'cr_number' => $unitData['cr_number'],
@@ -162,7 +163,7 @@ class ApplicationController extends Controller
 
             DB::commit();
 
-            return redirect('/')->with('success', "Application submitted successfully! Ref No: $referenceNumber");
+            return back()->with('success', "Application submitted successfully! Ref No: $referenceNumber");
 
         } catch (\Exception $e) {
             DB::rollBack();

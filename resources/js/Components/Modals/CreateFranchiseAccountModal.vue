@@ -58,7 +58,11 @@ const filteredBarangays = computed(() => {
 });
 
 const getZoneName = (id) => {
-    const zone = (props.zones.length ? props.zones : dummyZones).find(z => z.id === id);
+    // Safely check if zones is paginated (.data) or a normal array
+    const zoneList = props.zones?.data || (props.zones?.length ? props.zones : dummyZones);
+    
+    // Use String() wrapper to guarantee matching
+    const zone = zoneList.find(z => String(z.id) === String(id));
     return zone ? (zone.name || zone.description) : 'No Zone';
 };
 
@@ -87,7 +91,7 @@ const toggleFranchise = (index) => {
 const addFranchise = () => {
     franchiseUIStates.value.forEach(state => state.isExpanded = false);
     form.franchises.push({
-        zone_id: '', date_issued: new Date().toISOString().split('T')[0],
+        franchise_number: '', zone_id: '', date_issued: new Date().toISOString().split('T')[0],
         make_id: '', model_year: '', plate_number: '', cr_number: '',
         motor_number: '', chassis_number: '',
         unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
@@ -160,7 +164,11 @@ function populateForm(app) {
     form.owner_photo_path = user.user_photo_path || user.photo_path || '';
 
     // 2. FRANCHISE INFO
-    const sourceUnits = app.franchises || [];
+const sourceUnits = (app.proposed_units && app.proposed_units.length > 0) 
+        ? app.proposed_units 
+        : ((app.proposedUnits && app.proposedUnits.length > 0) 
+            ? app.proposedUnits 
+            : (app.franchises || []));
     
     // Clear and Rebuild
     form.franchises = [];
@@ -169,8 +177,9 @@ function populateForm(app) {
     if (sourceUnits.length > 0) {
         sourceUnits.forEach(unit => {
             form.franchises.push({
-                zone_id: unit.zone_id,
-                make_id: unit.make_id,
+                franchise_number: unit.franchise_number || '', // Mapped Franchise Number
+                zone_id: unit.zone_id || '',
+                make_id: unit.make_id || '',
                 plate_number: unit.plate_number || '',
                 chassis_number: unit.chassis_number || '',
                 motor_number: unit.motor_number || '',
@@ -178,7 +187,7 @@ function populateForm(app) {
                 model_year: unit.model_year || '',
                 date_issued: new Date().toISOString().split('T')[0],
                 // We send the existing paths (strings) to the backend
-// [!code ++] CAPTURE RAW PATHS
+                // [!code ++] CAPTURE RAW PATHS
                 unit_front_photo_path: unit.unit_front_photo_path || '', 
                 unit_back_photo_path: unit.unit_back_photo_path || '',   
                 unit_left_photo_path: unit.unit_left_photo_path || '',   
@@ -198,6 +207,8 @@ function populateForm(app) {
         });
     } else {
         form.franchises.push({
+            franchise_number: '',
+            zone_id: '',
             date_issued: new Date().toISOString().split('T')[0] // Default for empty form
         });
         franchiseUIStates.value.push({ isExpanded: true, previews: {} });
@@ -261,19 +272,13 @@ function populateForm(app) {
                             <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Address</h3>
                             <div class="grid grid-cols-3 gap-3">
                                 <div><InputLabel value="Street Address" class="text-[11px]" /><TextInput v-model="form.street_address" class="w-full text-xs py-1.5" /></div>
-<div>
-    <InputLabel value="Barangay" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
-    
-    <select 
-        v-model="form.barangay_id" 
-        class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5"
-    >
-        <option value="" disabled>Select Barangay</option>
-        <option v-for="b in barangays" :key="b.id" :value="b.id">
-            {{ b.name }}
-        </option>
-    </select>
-</div>
+                                <div>
+                                    <InputLabel value="Barangay" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.barangay_id" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5">
+                                        <option value="" disabled>Select Barangay</option>
+                                        <option v-for="b in barangays" :key="b.id" :value="b.id">{{ b.name }}</option>
+                                    </select>
+                                </div>
                                 <div><InputLabel value="City" class="text-[11px]" /><TextInput v-model="form.city" class="w-full text-xs py-1.5 bg-gray-50"/></div>
                             </div>
                         </div>
@@ -306,20 +311,26 @@ function populateForm(app) {
                         <div v-show="franchiseUIStates[index].isExpanded" class="p-4 border-t border-gray-100 bg-white animate-fade-in">
                             <div class="grid grid-cols-4 gap-4">
                                 <div>
+                                    <InputLabel value="Franchise Number" class="text-[10px]" />
+                                    <TextInput v-model="franchise.franchise_number" placeholder="Optional" class="w-full text-xs py-1.5 uppercase font-mono" />
+                                </div>
+                                <div>
                                     <InputLabel value="Zone" class="text-[10px]" />
                                     <select v-model="franchise.zone_id" class="w-full text-xs py-1.5 border-gray-300 rounded shadow-sm focus:border-blue-500">
                                         <option value="" disabled>Select</option>
-                                        <option v-for="z in (props.zones.length ? props.zones : dummyZones)" :key="z.id" :value="z.id">{{ z.name || z.description }}</option>
+                                        <option v-for="z in (props.zones.data || props.zones || dummyZones)" :key="z.id" :value="z.id">
+                                            {{ z.description || z.name }}
+                                        </option>
                                     </select>
                                 </div>
-<div>
-            <InputLabel value="Date Issued" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
-            <TextInput 
-                type="date" 
-                v-model="franchise.date_issued" 
-                class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5"
-            />
-        </div>
+                                <div>
+                                    <InputLabel value="Date Issued" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <TextInput 
+                                        type="date" 
+                                        v-model="franchise.date_issued" 
+                                        class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5"
+                                    />
+                                </div>
                                 <div>
                                     <InputLabel value="Make / Brand" class="text-[10px]" />
                                     <select v-model="franchise.make_id" class="w-full text-xs py-1.5 border-gray-300 rounded shadow-sm">
@@ -337,39 +348,39 @@ function populateForm(app) {
 
                             <div class="mt-4 pt-3 border-t border-gray-100">
                                 <span class="text-[9px] font-bold text-gray-400 uppercase block mb-2">Unit Photos</span>
-<div class="grid grid-cols-4 gap-2 mt-4">
-    <div class="border p-2 rounded text-center">
-        <span class="text-[10px] font-bold text-gray-500">Front</span>
-        <div v-if="franchiseUIStates[index]?.previews?.front">
-            <img :src="franchiseUIStates[index].previews.front" class="h-16 w-full object-cover rounded" />
-        </div>
-        <div v-else class="text-xs text-gray-400 italic">No Image</div>
-    </div>
+                                <div class="grid grid-cols-4 gap-2 mt-4">
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Front</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.front">
+                                            <img :src="franchiseUIStates[index].previews.front" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
 
-    <div class="border p-2 rounded text-center">
-        <span class="text-[10px] font-bold text-gray-500">Back</span>
-        <div v-if="franchiseUIStates[index]?.previews?.back">
-            <img :src="franchiseUIStates[index].previews.back" class="h-16 w-full object-cover rounded" />
-        </div>
-        <div v-else class="text-xs text-gray-400 italic">No Image</div>
-    </div>
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Back</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.back">
+                                            <img :src="franchiseUIStates[index].previews.back" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
 
-    <div class="border p-2 rounded text-center">
-        <span class="text-[10px] font-bold text-gray-500">Left</span>
-        <div v-if="franchiseUIStates[index]?.previews?.left">
-            <img :src="franchiseUIStates[index].previews.left" class="h-16 w-full object-cover rounded" />
-        </div>
-        <div v-else class="text-xs text-gray-400 italic">No Image</div>
-    </div>
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Left</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.left">
+                                            <img :src="franchiseUIStates[index].previews.left" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
 
-    <div class="border p-2 rounded text-center">
-        <span class="text-[10px] font-bold text-gray-500">Right</span>
-        <div v-if="franchiseUIStates[index]?.previews?.right">
-            <img :src="franchiseUIStates[index].previews.right" class="h-16 w-full object-cover rounded" />
-        </div>
-        <div v-else class="text-xs text-gray-400 italic">No Image</div>
-    </div>
-</div>
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Right</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.right">
+                                            <img :src="franchiseUIStates[index].previews.right" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

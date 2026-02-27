@@ -137,7 +137,7 @@ const deleteNature = (id) => {
                     <tbody class="bg-white divide-y divide-gray-200">
                         <tr v-for="flag in redFlags.data" :key="flag.id" class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
-                                FR-{{ flag.franchise_id }}
+                                FR-{{ flag.franchise?.franchise_number || 'Unknown' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
                                 <span class="px-2 py-1 rounded-md bg-red-50 text-red-700 border border-red-200 text-xs font-bold">

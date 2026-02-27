@@ -275,8 +275,8 @@ onUnmounted(() => {
                                 <div v-if="assessment.remarks" class="text-xs text-gray-400 italic truncate max-w-[150px]">{{ assessment.remarks }}</div>
                             </td>
                             <td class="px-6 py-4 font-medium text-gray-900">
-                                <span v-if="assessment.franchise_id">
-                                    {{ assessment.franchise_id }}
+                                <span v-if="assessment.franchise?.franchise_number">
+                                    {{ assessment.franchise?.franchise_number }}
                                 </span>
                                 <span v-else class="text-gray-400 text-xs italic">
                                     N/A

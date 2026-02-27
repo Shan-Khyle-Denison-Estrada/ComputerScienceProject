@@ -153,7 +153,7 @@ const deleteNature = (id) => {
                             </td>
                             <td class="px-6 py-4">
                                 <Link :href="route('admin.franchises.show', complaint.franchise_id)" class="font-bold text-blue-600 hover:underline">
-                                    Franchise #{{ complaint.franchise_id }}
+                                    Franchise #{{ complaint.franchise?.franchise_number || 'Unknown' }}
                                 </Link>
                                 <div v-if="complaint.franchise?.current_active_unit?.new_unit" class="text-xs text-gray-500 mt-1">
                                     Plate: {{ complaint.franchise.current_active_unit.new_unit.plate_number }}

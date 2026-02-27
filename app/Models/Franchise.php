@@ -10,7 +10,7 @@ class Franchise extends Model
     use HasFactory;
 
     protected $fillable = [
-        'ownership_id', 'active_unit_id', 'zone_id', 
+        'franchise_number', 'ownership_id', 'active_unit_id', 'zone_id', 
         'date_issued', 'qr_code', 'status' 
     ];
 

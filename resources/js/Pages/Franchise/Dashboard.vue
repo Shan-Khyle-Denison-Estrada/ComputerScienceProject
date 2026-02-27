@@ -161,7 +161,7 @@ const getTabLabel = (tabKey) => {
                             : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50'"
                     >
                         <div class="flex justify-between items-center mb-2">
-                            <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">ID: {{ fran.id }}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">ID: {{ fran.franchise_number || 'N/A' }}</span>
                             <div class="w-2 h-2 rounded-full shadow-sm" :class="{
                                 'bg-emerald-500': fran.status === 'renewed',
                                 'bg-amber-500': fran.status === 'pending renewal',
@@ -200,7 +200,7 @@ const getTabLabel = (tabKey) => {
                                     <span class="px-3 py-1 rounded-full text-xs font-bold uppercase border tracking-wide" :class="getStatusClasses(selectedFranchise.status)">
                                         {{ selectedFranchise.status }}
                                     </span>
-                                    <span class="text-gray-400 text-sm font-medium">Franchise #{{ selectedFranchise.id }}</span>
+                                    <span class="text-gray-400 text-sm font-medium">Franchise #{{ selectedFranchise.franchise_number || 'N/A' }}</span>
                                 </div>
                                 
                                 <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Plate Number</div>

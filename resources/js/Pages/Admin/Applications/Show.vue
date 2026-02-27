@@ -401,8 +401,8 @@ const formatCurrency = (value) => {
                                         @click="openFranchiseModal(franchise)">
                                         <div class="flex items-center gap-4">
                                             <div>
-                                                <p class="text-sm font-bold text-gray-900">Make: {{ franchise.make_name }}</p>
-                                                <p class="text-xs text-gray-500">Model: {{ franchise.model_year }} | Plate: {{ franchise.plate_number }}</p>
+                                                <p class="text-sm font-bold text-gray-900">Franchise Number: {{ franchise.franchise_number }}</p>
+                                                <p class="text-xs text-gray-500">Plate: {{ franchise.plate_number }}</p>
                                             </div>
                                         </div>
                                         <div>
@@ -562,7 +562,7 @@ const formatCurrency = (value) => {
                             <div class="flex justify-between items-center mb-6">
                                 <div>
                                     <h2 class="text-lg font-bold text-gray-900">Franchise Details</h2>
-                                    <p class="text-sm text-gray-500">{{ selectedFranchise.zone_name }}</p>
+                                    <p class="text-sm text-gray-500">{{ selectedFranchise.franchise_number }}</p>
                                 </div>
                                 <div class="text-right">
                                     <span class="px-3 py-1 bg-blue-100 text-blue-800 font-mono font-bold rounded-lg text-sm">{{ selectedFranchise.plate_number || 'NO PLATE' }}</span>

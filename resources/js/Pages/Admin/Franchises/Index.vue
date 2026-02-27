@@ -127,7 +127,7 @@ const handleSearch = () => {
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="franchise in franchises.data" :key="franchise.id" class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4">
-                                <div class="font-bold text-blue-600 text-base">#{{ franchise.id }}</div>
+                                <div class="font-bold text-blue-600 text-base">#{{ franchise.franchise_number || 'N/A' }}</div>
                                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase"
                                     :class="{
                                         'bg-green-100 text-green-800': franchise.status === 'renewed',
