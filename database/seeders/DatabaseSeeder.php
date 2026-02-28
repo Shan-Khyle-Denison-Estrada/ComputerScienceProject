@@ -14,34 +14,27 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // 1. Super Admin
-        User::create([
-            'first_name' => 'System',
-            'last_name' => 'Admin',
-            'email' => 'admin@tricycle.com',
-            'password' => Hash::make('password'),
-            'role' => UserRole::ADMIN,
-            'user_photo' => null,
-            'contact_number' => '09451830519',
-            'street_address' => 'Estrada Drive',
-            'barangay' => 'San Roque',
-            'city' => 'Zamboanga City',
-            'status' => 'active',
+        // 1. Seed the Barangays first
+        $this->call([
+            BarangaySeeder::class,
         ]);
 
-        // 2. Franchise Owner
-        User::create([
-            'first_name' => 'Tricy',
-            'last_name' => 'Owner',
-            'email' => 'owner@tricycle.com',
-            'password' => Hash::make('password'),
-            'role' => UserRole::ADMIN,
-            'user_photo' => null,
-            'contact_number' => '09451830519',
-            'street_address' => 'Mormons Drive',
-            'barangay' => 'Tetuan',
-            'city' => 'Zamboanga City',
-            'status' => 'active',
-        ]);
+        // 2. Safely create or update the Super Admin
+        // updateOrCreate ensures we don't get a "Duplicate Entry" SQL error on future deployments
+        User::updateOrCreate(
+            ['email' => 'admin@tricycle.com'], // The unique identifier to check
+            [
+                'first_name' => 'System',
+                'last_name' => 'Admin',
+                'password' => Hash::make('password'), // You can change this later in the UI
+                'role' => UserRole::ADMIN,
+                'user_photo' => null,
+                'contact_number' => '09451830519',
+                'street_address' => 'Estrada Drive',
+                'barangay' => 'San Roque',
+                'city' => 'Zamboanga City',
+                'status' => 'active',
+            ]
+        );
     }
 }
