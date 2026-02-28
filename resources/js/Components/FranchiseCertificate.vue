@@ -61,7 +61,7 @@ const ownerAddress = computed(() => {
                     <div v-else class="w-full h-full border-2 border-dashed border-gray-400 flex items-center justify-center text-[8px] font-bold text-gray-400 uppercase tracking-widest text-center">
                         NO QR
                     </div>
-                    <p>{{ franchise.id }}</p>
+                    <p>{{ franchise.franchise_number }}</p>
                     <p>{{ franchise.zone.color }}</p>
                 </div>
             </div>

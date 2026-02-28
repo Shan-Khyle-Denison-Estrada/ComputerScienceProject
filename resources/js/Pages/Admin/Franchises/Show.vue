@@ -171,7 +171,7 @@ const getDriverName = (driver) => {
 </script>
 
 <template>
-    <Head :title="`Franchise FR-${franchise.id}`" />
+    <Head :title="`Franchise FR-${franchise.franchise_number}`" />
 
     <AuthenticatedLayout>
         <div class="screen-content">
@@ -186,7 +186,7 @@ const getDriverName = (driver) => {
                         </ol>
                     </nav>
                     <div class="flex items-center gap-4">
-                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Franchise #{{ franchise.id }}</h1>
+                        <h1 class="text-3xl font-bold text-gray-900 tracking-tight">Franchise #{{ franchise.franchise_number }}</h1>
                         <span class="px-3 py-1 rounded-full text-xs font-bold uppercase border tracking-wide" :class="statusColor">
                             {{ franchise.status }}
                         </span>
@@ -684,7 +684,7 @@ const getDriverName = (driver) => {
                     <div class="mb-4">
                         <img v-if="franchise.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" class="w-48 h-48 mx-auto" />
                     </div>
-                    <div class="text-2xl font-black mb-1">FR #{{ franchise.id }}</div>
+                    <div class="text-2xl font-black mb-1">FR #{{ franchise.franchise_number }}</div>
                     <div class="text-sm uppercase mb-4">{{ franchise.zone?.description }}</div>
                     
                     <div class="border-t border-b border-gray-200 py-2 mb-2 text-left text-xs">
