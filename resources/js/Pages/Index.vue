@@ -93,10 +93,10 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                     </Link>
                 </div>
 
-                <div class="mt-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 bg-slate-900/40 sm:bg-slate-900/30 w-full max-w-full sm:w-fit p-4 sm:py-2 sm:px-4 rounded-lg backdrop-blur-sm border border-white/5 overflow-hidden box-border">
+                <div class="mt-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-3 bg-slate-900/40 sm:bg-slate-900/30 w-full max-w-full sm:w-fit p-4 sm:py-2 sm:px-4 rounded-lg backdrop-blur-sm border border-white/5 overflow-hidden box-border">
                     
-                    <div class="flex items-start gap-2 text-xs sm:text-sm text-slate-300">
-                        <svg class="w-4 h-4 text-slate-400 shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="flex items-center justify-center gap-2 text-xs sm:text-sm text-slate-300 text-center sm:text-left">
+                        <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <span class="whitespace-normal break-words leading-snug">
