@@ -226,7 +226,7 @@ const isImageUrl = (url) => {
                                 </h3>
                                 <div class="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
                                     <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Zone Assigned</p><p class="font-medium text-gray-900">{{ application.franchise_details.zone }}</p></div>
-                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div>
+                                    <!-- <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div> -->
                                     <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Previous Issue Date</p><p class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</p></div>
                                 </div>
                             </div>
