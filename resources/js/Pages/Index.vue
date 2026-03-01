@@ -100,15 +100,15 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                         <span class="whitespace-normal break-words leading-snug">
-                            Existing franchise owner without an account? Existing franchise owner without an account?
+                            Existing franchise owner without an account?
                         </span>
                     </div>
 
-                    <!-- <div class="mt-1 sm:mt-0">
+                    <div class="mt-1 sm:mt-0">
                         <Link :href="route('apply')" class="inline-block text-xs sm:text-sm font-bold text-white hover:underline transition-all theme-hover-text">
                             Register here.
                         </Link>
-                    </div> -->
+                    </div>
 
                 </div>
             </div>
