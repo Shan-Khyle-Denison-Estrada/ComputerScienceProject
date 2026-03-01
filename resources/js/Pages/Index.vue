@@ -93,14 +93,14 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                     </Link>
                 </div>
 
-                <div class="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-2 text-xs sm:text-sm text-slate-300 bg-slate-900/40 sm:bg-slate-900/30 w-full sm:w-max px-4 py-3 sm:py-2 rounded-lg backdrop-blur-sm border border-white/5">
-                    <div class="flex items-start sm:items-center gap-2">
-                        <svg class="w-4 h-4 text-slate-400 shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Existing franchise owner without an account?</span>
+                <div class="mt-6 w-full sm:w-auto sm:inline-block px-4 py-3 rounded-lg bg-slate-900/40 sm:bg-slate-900/30 backdrop-blur-sm border border-white/5">
+                    <div class="text-xs sm:text-sm text-slate-300 leading-relaxed text-left sm:text-center">
+                        <svg class="w-4 h-4 text-slate-400 inline-block align-middle mb-0.5 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="inline">Existing franchise owner without an account?</span>
+                        <Link :href="route('apply')" class="font-bold text-white hover:underline transition-all theme-hover-text ml-1 inline-block mt-1 sm:mt-0">
+                            Register here.
+                        </Link>
                     </div>
-                    <Link :href="route('apply')" class="font-bold text-white hover:underline transition-all theme-hover-text pl-6 sm:pl-0 block sm:inline mt-1 sm:mt-0">
-                        Register here.
-                    </Link>
                 </div>
             </div>
         </div>
