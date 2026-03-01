@@ -94,11 +94,11 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                 </div>
 
                 <div class="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-1 sm:gap-2 text-xs sm:text-sm text-slate-300 bg-slate-900/40 sm:bg-slate-900/30 w-full sm:w-max px-4 py-3 sm:py-2 rounded-lg backdrop-blur-sm border border-white/5">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                        <span>Existing franchise owner without an account?</span>
+                    <div class="flex items-start sm:items-center gap-2">
+                        <svg class="w-4 h-4 text-slate-400 shrink-0 mt-0.5 sm:mt-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="flex-1 leading-snug">Existing franchise owner without an account?</span>
                     </div>
-                    <Link :href="route('apply')" class="font-bold text-white hover:underline transition-all theme-hover-text ml-6 sm:ml-0">
+                    <Link :href="route('apply')" class="font-bold text-white hover:underline transition-all theme-hover-text ml-6 sm:ml-0 whitespace-nowrap shrink-0">
                         Register here.
                     </Link>
                 </div>
