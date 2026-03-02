@@ -9,6 +9,7 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 // Run the auto-renewal check every day at midnight
-Schedule::command('franchise:auto-renew')->daily();
+// Schedule::command('franchise:auto-renew')->daily();
+Schedule::command('franchise:auto-renew')->dailyAt('11:00');
 
 Schedule::command('assessments:update-penalties')->daily();
