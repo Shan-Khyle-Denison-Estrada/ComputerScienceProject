@@ -10,6 +10,10 @@ Artisan::command('inspire', function () {
 
 // Run the auto-renewal check every day at midnight
 // Schedule::command('franchise:auto-renew')->daily();
-Schedule::command('franchise:auto-renew')->dailyAt('11:00');
+Schedule::command('franchise:auto-renew')
+    ->dailyAt('11:00')
+    ->onOneServer();
 
-Schedule::command('assessments:update-penalties')->daily();
+Schedule::command('assessments:update-penalties')
+    ->daily()
+    ->onOneServer();
