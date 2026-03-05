@@ -115,6 +115,7 @@ class AutoRenewFranchises extends Command
             if ($particulars->isNotEmpty()) {
                 $assessment = Assessment::create([
                     'application_id'    => $application->id,
+                    'franchise_id'      => $franchise->id,
                     'assessment_date'   => now(),
                     'assessment_due'    => $deadlineDate, 
                     'total_amount_due'  => $totalAmountDue,
