@@ -119,6 +119,7 @@ const application = computed(() => {
         
         franchise_details: {
             id: franchise.id,
+            franchise_number: franchise.franchise_number || 'N/A',
             zone: franchise.zone?.description || app.zone?.description || 'N/A',
             date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
             status: franchise.status || 'N/A',
@@ -455,8 +456,8 @@ const saveInspectionStatus = () => {
                                         <svg class="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                     </div>
                                     <div class="space-y-3">
-                                        <div class="flex justify-between text-sm"><span class="text-gray-500">Franchise ID</span><span class="font-bold text-gray-900 font-mono">#{{ application.franchise_details.id }}</span></div>
-                                        <div class="flex justify-between text-sm"><span class="text-gray-500">MTFRB Case No.</span><span class="font-bold text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</span></div>
+                                        <div class="flex justify-between text-sm"><span class="text-gray-500">Franchise Number</span><span class="font-bold text-gray-900 font-mono">#{{ application.franchise_details.franchise_number }}</span></div>
+                                        <!-- <div class="flex justify-between text-sm"><span class="text-gray-500">MTFRB Case No.</span><span class="font-bold text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</span></div> -->
                                         <div class="flex justify-between text-sm"><span class="text-gray-500">Zone</span><span class="font-bold text-gray-900">{{ application.franchise_details.zone }}</span></div>
                                         <div class="flex justify-between text-sm"><span class="text-gray-500">Current Expiration / Issue</span><span class="font-bold text-gray-900">{{ application.franchise_details.date_issued }}</span></div>
                                         <div class="flex justify-between items-center text-sm pt-2 border-t border-gray-100">
