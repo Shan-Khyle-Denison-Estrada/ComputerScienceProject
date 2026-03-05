@@ -14,5 +14,4 @@ Schedule::command('franchise:auto-renew')
     ->dailyAt('8:35');
 
 Schedule::command('assessments:update-penalties')
-    ->daily()
-    ->onOneServer();
+    ->dailyAt('8:50');
