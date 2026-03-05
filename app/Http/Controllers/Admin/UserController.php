@@ -18,6 +18,9 @@ class UserController extends Controller
     {
         $query = User::query();
 
+        // Optional: Hide Franchise Owners from this specific staff management list
+        // $query->where('role', '!=', UserRole::FRANCHISE_OWNER->value); 
+
         // Handle Search
         if ($request->filled('search')) {
             $search = $request->search;
@@ -55,7 +58,7 @@ class UserController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', Rule::enum(UserRole::class)], 
             'photo' => 'nullable|image|max:2048', 
-            'signature' => 'nullable|image|max:2048', // <-- Added Signature Validation
+            'signature' => 'nullable|image|max:2048', 
         ]);
 
         // Handle Photo Upload
@@ -70,6 +73,15 @@ class UserController extends Controller
             $signaturePath = $request->file('signature')->store('signatures', 'public');
         }
 
+        // --- NEW LOGIC: Ensure only one active SP/TAB Approver ---
+        // Note: New users are active by default in the store method.
+        if (in_array($request->role, ['sp_approver', 'tab_approver'])) {
+            User::where('role', $request->role)
+                ->where('status', 'active')
+                ->update(['status' => 'inactive']);
+        }
+        // ---------------------------------------------------------
+
         User::create([
             'first_name' => $request->first_name,
             'middle_name' => $request->middle_name,
@@ -82,8 +94,8 @@ class UserController extends Controller
             'password' => Hash::make($request->password),
             'role' => $request->role, 
             'user_photo' => $photoPath,
-            'signature_photo' => $signaturePath, // <-- Added to DB Insertion
-            'status' => 'active',
+            'signature_photo' => $signaturePath, 
+            'status' => 'active', // Defaulting to active
         ]);
 
         return back()->with('success', 'User account created successfully.');
@@ -105,7 +117,7 @@ class UserController extends Controller
             'role' => ['required', Rule::enum(UserRole::class)], 
             'status' => 'required|in:active,inactive',
             'photo' => 'nullable|image|max:2048',
-            'signature' => 'nullable|image|max:2048', // <-- Added Signature Validation
+            'signature' => 'nullable|image|max:2048',
         ]);
 
         $data = [
@@ -144,6 +156,16 @@ class UserController extends Controller
             }
             $data['signature_photo'] = $request->file('signature')->store('signatures', 'public');
         }
+
+        // --- NEW LOGIC: Ensure only one active SP/TAB Approver ---
+        // If the user is being set to an active SP or TAB Approver, deactivate others with the same role
+        if (in_array($request->role, ['sp_approver', 'tab_approver']) && $request->status === 'active') {
+            User::where('role', $request->role)
+                ->where('id', '!=', $user->id) // Exclude the user currently being updated
+                ->where('status', 'active')
+                ->update(['status' => 'inactive']);
+        }
+        // ---------------------------------------------------------
 
         $user->update($data);
 
