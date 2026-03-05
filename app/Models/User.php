@@ -18,7 +18,7 @@ class User extends Authenticatable
         'email',
         'password',
         'user_photo',
-        // New Fields
+        'signature_photo',
         'contact_number',
         'street_address',
         'barangay',

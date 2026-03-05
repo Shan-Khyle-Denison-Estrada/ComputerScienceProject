@@ -5,14 +5,14 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import Pagination from '@/Components/Pagination.vue'; // <-- Added Pagination Import
+import Pagination from '@/Components/Pagination.vue'; 
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
-    users: Object, // The paginated users object
-    filters: Object // Search and filter state
+    users: Object, 
+    filters: Object 
 });
 
 // --- STATE MANAGEMENT ---
@@ -21,11 +21,16 @@ const showEditModal = ref(false);
 const showFilterModal = ref(false);
 const search = ref(props.filters.search || '');
 
-// Photo Previews
+// Photo & Signature Previews
 const addPhotoPreview = ref(null);
 const addPhotoInput = ref(null);
 const editPhotoPreview = ref(null);
 const editPhotoInput = ref(null);
+
+const addSignaturePreview = ref(null);
+const addSignatureInput = ref(null);
+const editSignaturePreview = ref(null);
+const editSignatureInput = ref(null);
 
 // --- FORMS ---
 
@@ -43,6 +48,7 @@ const addForm = useForm({
     password: '',
     password_confirmation: '',
     photo: null,
+    signature: null, 
 });
 
 // 2. EDIT USER FORM
@@ -61,6 +67,7 @@ const editForm = useForm({
     password: '', 
     password_confirmation: '',
     photo: null,
+    signature: null,
     _method: 'PUT'
 });
 
@@ -75,6 +82,7 @@ const closeAddModal = () => {
     showAddModal.value = false;
     addForm.reset();
     addPhotoPreview.value = null;
+    addSignaturePreview.value = null;
 };
 
 const triggerAddPhoto = () => addPhotoInput.value.click();
@@ -83,6 +91,15 @@ const handleAddPhotoChange = (event) => {
     if (file) {
         addForm.photo = file;
         addPhotoPreview.value = URL.createObjectURL(file);
+    }
+};
+
+const triggerAddSignature = () => addSignatureInput.value.click();
+const handleAddSignatureChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        addForm.signature = file;
+        addSignaturePreview.value = URL.createObjectURL(file);
     }
 };
 
@@ -111,6 +128,8 @@ const openEditModal = (user) => {
     editForm.status = user.status;
     
     editPhotoPreview.value = user.user_photo ? `/storage/${user.user_photo}` : null;
+    editSignaturePreview.value = user.signature_photo ? `/storage/${user.signature_photo}` : null;
+    
     showEditModal.value = true;
 };
 
@@ -118,6 +137,7 @@ const closeEditModal = () => {
     showEditModal.value = false;
     editForm.reset();
     editPhotoPreview.value = null;
+    editSignaturePreview.value = null;
 };
 
 const triggerEditPhoto = () => editPhotoInput.value.click();
@@ -126,6 +146,15 @@ const handleEditPhotoChange = (event) => {
     if (file) {
         editForm.photo = file;
         editPhotoPreview.value = URL.createObjectURL(file);
+    }
+};
+
+const triggerEditSignature = () => editSignatureInput.value.click();
+const handleEditSignatureChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        editForm.signature = file;
+        editSignaturePreview.value = URL.createObjectURL(file);
     }
 };
 
@@ -215,7 +244,8 @@ const resetFilters = () => {
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
                             <th class="px-6 py-4">User</th>
-                            <th class="px-6 py-4">Contact</th> <th class="px-6 py-4">Role</th>
+                            <th class="px-6 py-4">Contact</th> 
+                            <th class="px-6 py-4">Role</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -346,7 +376,6 @@ const resetFilters = () => {
                         <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
                         <select v-model="addForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                             <option value="admin">Administrator</option>
-                            <option value="franchise_owner">Franchise Owner</option>
                             <option value="collector">Collector (CTO)</option>
                             <option value="evaluator">Evaluator</option>
                             <option value="inspector">Inspector</option>
@@ -357,6 +386,27 @@ const resetFilters = () => {
                             <option value="releaser">Releaser</option>
                             <option value="encoder">Encoder</option>
                         </select>
+                    </div>
+
+                    <div v-if="['sp_approver', 'tab_approver'].includes(addForm.role)" class="border-t pt-4">
+                        <InputLabel>E-Signature Image</InputLabel>
+                        <p class="text-xs text-gray-500 mb-2">Required for SP and TAB Approvers for document signing.</p>
+                        <div class="flex flex-col gap-2 mt-2">
+                            <div 
+                                @click="triggerAddSignature"
+                                class="h-32 w-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 flex flex-col items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-blue-400 overflow-hidden transition"
+                            >
+                                <img v-if="addSignaturePreview" :src="addSignaturePreview" class="h-full w-full object-contain" />
+                                <div v-else class="flex flex-col items-center text-gray-400">
+                                    <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                    <span class="text-sm">Click to upload signature</span>
+                                </div>
+                            </div>
+                            <input type="file" ref="addSignatureInput" class="hidden" accept="image/*" @change="handleAddSignatureChange" />
+                            <SecondaryButton v-if="addSignaturePreview" @click.stop="addSignaturePreview = null; addForm.signature = null" type="button" class="text-xs w-full justify-center">
+                                Remove Signature
+                            </SecondaryButton>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -449,7 +499,15 @@ const resetFilters = () => {
                             <InputLabel>Role <span class="text-red-500">*</span></InputLabel>
                             <select v-model="editForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                 <option value="admin">Administrator</option>
-                                <option value="franchise_owner">Franchise Owner</option>
+                                <option value="collector">Collector (CTO)</option>
+                                <option value="evaluator">Evaluator</option>
+                                <option value="inspector">Inspector</option>
+                                <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
+                                <option value="reviewer">Reviewer (TAB Head)</option>
+                                <option value="sp_approver">SP Approver</option>
+                                <option value="tab_approver">TAB Approver</option>
+                                <option value="releaser">Releaser</option>
+                                <option value="encoder">Encoder</option>
                             </select>
                         </div>
                          <div>
@@ -458,6 +516,26 @@ const resetFilters = () => {
                                  <option value="active">Active</option>
                                  <option value="inactive">Inactive</option>
                              </select>
+                        </div>
+                    </div>
+
+                    <div v-if="['sp_approver', 'tab_approver'].includes(editForm.role)" class="border-t pt-4">
+                        <InputLabel>E-Signature Image</InputLabel>
+                        <div class="flex flex-col gap-2 mt-2">
+                            <div 
+                                @click="triggerEditSignature"
+                                class="h-32 w-full border-2 border-dashed border-gray-300 rounded-lg bg-gray-50 flex items-center justify-center cursor-pointer hover:bg-gray-100 hover:border-blue-400 overflow-hidden relative group transition"
+                            >
+                                <img v-if="editSignaturePreview" :src="editSignaturePreview" class="h-full w-full object-contain" />
+                                <div v-else class="flex flex-col items-center text-gray-400">
+                                    <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" /></svg>
+                                    <span class="text-sm">Click to upload signature</span>
+                                </div>
+                                <div v-if="editSignaturePreview" class="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <span class="text-white text-sm font-semibold">Change Signature</span>
+                                </div>
+                            </div>
+                            <input type="file" ref="editSignatureInput" class="hidden" accept="image/*" @change="handleEditSignatureChange" />
                         </div>
                     </div>
 
