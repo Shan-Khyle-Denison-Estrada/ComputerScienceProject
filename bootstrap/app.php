@@ -11,6 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        
+        // Tell Laravel to trust all proxies (Fixes HTTPS mixed content for Cloudflare/AWS)
+        $middleware->trustProxies(at: '*');
+
         // 1. From the Inertia snippet: Appending middleware to the 'web' group
         $middleware->web(append: [
             \App\Http\Middleware\HandleInertiaRequests::class,
