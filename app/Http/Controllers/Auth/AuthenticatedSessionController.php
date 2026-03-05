@@ -43,7 +43,8 @@ class AuthenticatedSessionController extends Controller
             default => route('login'), 
         };
 
-        return redirect()->intended($url);
+        // Change this line from redirect()->intended($url) to just redirect($url)
+        return redirect($url); 
     }
 
     public function destroy(Request $request): RedirectResponse
