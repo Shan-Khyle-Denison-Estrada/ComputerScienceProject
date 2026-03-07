@@ -14,7 +14,7 @@ class Application extends Model
         'application_type', 'status', 'remarks',
         'evaluator_status', 'inspector_status', 'capo_status', 'reviewer_status', 'sp_status', 'tab_status', // <-- Added TAB Status
         'first_name', 'middle_name', 'last_name', 'contact_number', 'email', 'tin_number',
-        'street_address', 'barangay', 'city', 'submitted_at', 'reviewed_at'
+        'street_address', 'barangay', 'city', 'province', 'submitted_at', 'reviewed_at'
     ];
 
     // Relationships

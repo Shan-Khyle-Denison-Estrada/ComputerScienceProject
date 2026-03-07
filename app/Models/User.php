@@ -23,6 +23,7 @@ class User extends Authenticatable
         'street_address',
         'barangay',
         'city',
+        'province',
         'role',
         'status'
     ];

@@ -4,12 +4,12 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Models\Application;
-use App\Models\ApplicationEvaluation; // Ensure this Model exists
-use App\Models\Barangay;
+use App\Models\ApplicationEvaluation;
 use App\Models\EvaluationRequirement;
 use App\Models\ProposedUnit;
 use App\Models\UnitMake;
 use App\Models\Zone;
+// use App\Models\Barangay; <-- REMOVE THIS
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -19,7 +19,6 @@ class ApplicationController extends Controller
 {
     public function create()
     {
-        // Fetch requirements for the form
         $relevantGroups = ['Franchise Owner Account', 'General', 'New Franchise'];
         
         $requirements = EvaluationRequirement::where('is_active', true)
@@ -29,7 +28,7 @@ class ApplicationController extends Controller
             ->groupBy('group');
 
         return Inertia::render('Apply', [
-            'barangays' => Barangay::orderBy('name')->get(),
+            // 'barangays' => Barangay::orderBy('name')->get(), <-- REMOVE THIS
             'zones' => Zone::all(),
             'unitMakes' => UnitMake::orderBy('name')->get(),
             'requirements' => $requirements,
@@ -38,24 +37,23 @@ class ApplicationController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Fetch requirements to build dynamic validation rules
         $relevantGroups = ['Franchise Owner Account', 'General', 'New Franchise'];
         $requiredDocs = EvaluationRequirement::where('is_active', true)
             ->whereIn('group', $relevantGroups)
             ->get();
 
-        // 2. Define Base Rules
         $rules = [
-            // Applicant
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'contact_number' => 'required|string|max:20',
             'street_address' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255',
+            'province' => 'required|string|max:255', // <-- ADD THIS
             'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
+            // ... (keep the rest of your rules exactly the same)
 
             // Units
             'units' => 'required|array|min:1',
@@ -109,6 +107,7 @@ class ApplicationController extends Controller
                 'street_address' => $validated['street_address'],
                 'barangay' => $validated['barangay'],
                 'city' => $validated['city'],
+                'province' => $validated['province'],
                 'submitted_at' => now(),
             ]);
 
