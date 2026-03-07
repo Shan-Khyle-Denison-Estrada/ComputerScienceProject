@@ -4,14 +4,15 @@ import { ref, computed } from 'vue';
 import NavBar from "../Components/NavBar.vue";
 import Footer from "../Components/Footer.vue";
 
-// Props from Laravel (Settings removed from here)
+// Props from Laravel
 const props = defineProps({
     renewedFranchisesSum: Number,
 });
 
-// Fetch globally shared settings
+// Fetch globally shared settings and auth
 const page = usePage();
 const settings = computed(() => page.props.settings);
+const user = computed(() => page.props.auth?.user); // <-- Added Auth check
 
 // FAQ Logic
 const openFaq = ref(null);
@@ -83,18 +84,23 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                 </p>
                 
                 <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6">
-                    <Link :href="route('login')" class="theme-btn w-full sm:w-auto text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-center transition-all hover:-translate-y-1 shadow-lg flex items-center justify-center gap-2">
+                    
+                    <Link v-if="user" :href="route('dashboard')" class="theme-btn w-full sm:w-auto text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-center transition-all hover:-translate-y-1 shadow-lg flex items-center justify-center gap-2">
+                        My Portal
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                    </Link>
+                    <Link v-else :href="route('login')" class="theme-btn w-full sm:w-auto text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-center transition-all hover:-translate-y-1 shadow-lg flex items-center justify-center gap-2">
                         Access Portal
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                     </Link>
+
                     <Link href="/verify" class="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 text-center transition-all flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                         Scan QR
                     </Link>
                 </div>
 
-                <div class="mt-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-3 bg-slate-900/40 sm:bg-slate-900/30 w-full max-w-full sm:w-fit p-4 sm:py-2 sm:px-4 rounded-lg backdrop-blur-sm border border-white/5 overflow-hidden box-border">
-                    
+                <div v-if="!user" class="mt-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-3 bg-slate-900/40 sm:bg-slate-900/30 w-full max-w-full sm:w-fit p-4 sm:py-2 sm:px-4 rounded-lg backdrop-blur-sm border border-white/5 overflow-hidden box-border">
                     <div class="flex items-center justify-center gap-2 text-xs sm:text-sm text-slate-300 text-center sm:text-left">
                         <svg class="w-4 h-4 text-slate-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
@@ -103,14 +109,13 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                             Existing franchise owner without an account?
                         </span>
                     </div>
-
                     <div class="mt-1 sm:mt-0">
                         <Link :href="route('apply')" class="inline-block text-xs sm:text-sm font-bold text-white hover:underline transition-all theme-hover-text">
                             Register here.
                         </Link>
                     </div>
-
                 </div>
+
             </div>
         </div>
     </div>

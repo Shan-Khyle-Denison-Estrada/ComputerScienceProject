@@ -30,10 +30,31 @@ use App\Http\Controllers\Reviewer\ReviewerApplicationController;
 use App\Http\Controllers\SpApprover\SpApproverApplicationController;
 use App\Http\Controllers\TabApprover\TabApproverApplicationController;
 use App\Http\Controllers\Encoder\EncoderApplicationController;
+use Illuminate\Support\Facades\Auth; // <-- Add this
+use App\Enums\UserRole; // <-- Add this
 use App\Models\Franchise;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// --- THE NEW TRAFFIC DIRECTOR ---
+Route::get('/dashboard', function () {
+    $user = Auth::user();
+    $role = $user->role instanceof UserRole ? $user->role->value : $user->role;
+
+    return match ($role) {
+        UserRole::ADMIN->value => redirect()->route('admin.dashboard'),
+        UserRole::FRANCHISE_OWNER->value => redirect()->route('franchise.dashboard'),
+        UserRole::COLLECTOR->value => redirect()->route('payments.index'),
+        UserRole::EVALUATOR->value => redirect()->route('evaluations.index'),
+        UserRole::INSPECTOR->value => redirect()->route('inspections.index'),
+        UserRole::CITY_ANTI_POLLUTION_OFFICER->value => redirect()->route('capo.inspections.index'),
+        UserRole::REVIEWER->value, UserRole::SP_APPROVER->value, UserRole::TAB_APPROVER->value => redirect()->route('approvals.index'),
+        UserRole::RELEASER->value => redirect()->route('releasing.index'),
+        UserRole::ENCODER->value => redirect()->route('encodes.index'),
+        default => Inertia::render('Dashboard'), // Fallback if a role has no specific route
+    };
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::get('/', function () {
     return Inertia::render('Index', [
