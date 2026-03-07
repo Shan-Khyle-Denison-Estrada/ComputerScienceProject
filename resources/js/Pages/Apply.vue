@@ -274,13 +274,24 @@ const nextStep = () => {
 
 const prevStep = () => { if (currentStep.value > 1) { currentStep.value--; window.scrollTo(0, 0); } };
 
-const submit = () => {
-    // Uncheck agreement if frontend validation fails
+// Modals State
+const showPrivacyModal = ref(false);
+const showErrorModal = ref(false);
+const showSuccessModal = ref(false);
+
+const openPrivacyModal = () => {
+    // Validate final step before showing the privacy modal
     if (!validateStep3()) {
         form.agreed_to_terms = false;
         return;
     }
+    // Show Privacy Modal instead of submitting directly
+    showPrivacyModal.value = true;
+};
 
+const confirmAndSubmit = () => {
+    showPrivacyModal.value = false;
+    
     form.post(route('application.store'), {
         preserveScroll: true,
         onError: () => { 
@@ -300,9 +311,6 @@ const goToHome = () => {
     showSuccessModal.value = false;
     router.visit('/'); 
 };
-
-const showErrorModal = ref(false);
-const showSuccessModal = ref(false);
 
 const formatContactNumber = (val) => {
     if (!val) return '';
@@ -518,7 +526,7 @@ const formatTinNumber = (val) => {
                                         <div><h3 class="font-bold text-gray-700">{{ unit.make_id ? unitMakes.find(m => m.id === unit.make_id)?.name : 'New Unit' }}</h3><p class="text-xs text-gray-500">{{ unit.plate_number || 'No Plate' }}</p></div>
                                     </div>
                                     <div class="flex items-center gap-3">
-                                        <button v-if="form.units.length > 1" @click.stop="removeUnit(index)" class="text-red-500 text-sm font-medium">Remove</button>
+                                        <button v-if="form.units.length > 1" type="button" @click.stop="removeUnit(index)" class="text-red-500 text-sm font-medium">Remove</button>
                                         <svg class="w-5 h-5 text-gray-400 transform transition-transform" :class="{'rotate-180': expandedUnitIndex === index}" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
                                     </div>
                                 </div>
@@ -770,12 +778,12 @@ const formatTinNumber = (val) => {
                     </div>
 
                     <div class="px-8 py-4 bg-gray-50 border-t border-gray-100 flex justify-between items-center relative z-0 rounded-b-2xl">
-                        <SecondaryButton @click="prevStep" :disabled="currentStep === 1" class="!text-gray-500 !border-gray-300" :class="{'opacity-50 pointer-events-none': currentStep === 1}">
+                        <SecondaryButton type="button" @click="prevStep" :disabled="currentStep === 1" class="!text-gray-500 !border-gray-300" :class="{'opacity-50 pointer-events-none': currentStep === 1}">
                             &larr; Back
                         </SecondaryButton>
                         <div class="flex gap-3">
-                            <PrimaryButton v-if="currentStep < 3" @click="nextStep" class="px-8">Next Step &rarr;</PrimaryButton>
-                            <PrimaryButton v-else @click="submit" :disabled="form.processing || !form.agreed_to_terms" class="bg-green-600 hover:bg-green-700 ring-green-500 px-8 disabled:opacity-50">
+                            <PrimaryButton type="button" v-if="currentStep < 3" @click="nextStep" class="px-8">Next Step &rarr;</PrimaryButton>
+                            <PrimaryButton type="button" v-else @click="openPrivacyModal" :disabled="form.processing || !form.agreed_to_terms" class="bg-green-600 hover:bg-green-700 ring-green-500 px-8 disabled:opacity-50">
                                 <span v-if="form.processing">Submitting...</span>
                                 <span v-else>Submit Application</span>
                             </PrimaryButton>
@@ -787,6 +795,47 @@ const formatTinNumber = (val) => {
         <Footer />
     </div>
 
+    <div v-if="showPrivacyModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50" aria-labelledby="privacy-modal-title" role="dialog" aria-modal="true">
+        <div class="bg-white rounded-lg shadow-xl w-full max-w-2xl p-6 m-4 relative animate-fade-in">
+            <div class="flex items-center justify-between mb-5 border-b pb-4">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center" id="privacy-modal-title">
+                    <svg class="w-6 h-6 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+                    Data Privacy Consent
+                </h3>
+                <button type="button" @click="showPrivacyModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <div class="mb-6 max-h-96 overflow-y-auto pr-2 text-gray-600 space-y-4 text-sm leading-relaxed">
+                <p>
+                    In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, we require your explicit consent to collect, process, and store your personal information for the purpose of evaluating and managing your franchise application.
+                </p>
+                <p>
+                    By proceeding, you acknowledge and agree to the following:
+                </p>
+                <ul class="list-disc list-inside space-y-2 ml-2">
+                    <li>The information and documents provided will be used exclusively by the relevant authorities to process, assess, and verify your application.</li>
+                    <li>Your data will be stored securely and retained only for as long as necessary to fulfill the purposes mentioned or as required by law.</li>
+                    <li><strong>Public Transparency:</strong> Certain non-sensitive details regarding your franchise application, such as franchise status, plate numbers, and assigned zones, may be made available to the public for transparency, verification, and regulatory compliance.</li>
+                </ul>
+                <p>
+                    By clicking "I Agree", you declare that the information provided is true and correct, and you authorize the system to process your data as outlined above.
+                </p>
+            </div>
+
+            <div class="flex justify-end gap-3 border-t pt-5">
+                <SecondaryButton type="button" @click="showPrivacyModal = false" class="!text-gray-600 !border-gray-300">
+                    Cancel
+                </SecondaryButton>
+                <PrimaryButton type="button" @click="confirmAndSubmit" class="bg-blue-600 hover:bg-blue-700 px-6">
+                    <span v-if="form.processing">Submitting...</span>
+                    <span v-else>I Agree & Submit</span>
+                </PrimaryButton>
+            </div>
+        </div>
+    </div>
+
     <div v-if="showErrorModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50" aria-labelledby="modal-title" role="dialog" aria-modal="true">
         <div class="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 m-4 relative">
             
@@ -795,7 +844,7 @@ const formatTinNumber = (val) => {
                     <svg class="w-6 h-6 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
                     Submission Failed
                 </h3>
-                <button @click="showErrorModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                <button type="button" @click="showErrorModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
@@ -810,7 +859,7 @@ const formatTinNumber = (val) => {
             </div>
 
             <div class="flex justify-end border-t pt-4">
-                <button @click="showErrorModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 transition-colors">
+                <button type="button" @click="showErrorModal = false" class="px-5 py-2 bg-gray-200 text-gray-800 font-medium rounded-md hover:bg-gray-300 transition-colors">
                     Got it, let me fix them
                 </button>
             </div>
@@ -833,7 +882,7 @@ const formatTinNumber = (val) => {
                 {{ $page.props.flash?.success || 'Your franchise application has been successfully submitted and is now pending evaluation.' }}
             </p>
 
-            <button @click="goToHome" class="w-full inline-flex justify-center items-center rounded-xl bg-green-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200">
+            <button type="button" @click="goToHome" class="w-full inline-flex justify-center items-center rounded-xl bg-green-600 px-6 py-3.5 text-base font-semibold text-white shadow-sm hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition-all duration-200">
                 Return to Homepage
                 <svg class="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
             </button>
@@ -843,22 +892,22 @@ const formatTinNumber = (val) => {
 </template>
 
 <style scoped>
-.animate-fade-in { animation: fadeIn 0.4s ease-out; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-/* Custom Scrollbar for the Dropdowns */
-ul::-webkit-scrollbar {
+/* Custom Scrollbar for the Dropdowns and Modals */
+ul::-webkit-scrollbar, div::-webkit-scrollbar {
     width: 6px;
 }
-ul::-webkit-scrollbar-track {
+ul::-webkit-scrollbar-track, div::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 4px;
 }
-ul::-webkit-scrollbar-thumb {
+ul::-webkit-scrollbar-thumb, div::-webkit-scrollbar-thumb {
     background: #cbd5e1;
     border-radius: 4px;
 }
-ul::-webkit-scrollbar-thumb:hover {
+ul::-webkit-scrollbar-thumb:hover, div::-webkit-scrollbar-thumb:hover {
     background: #94a3b8;
 }
 </style>
