@@ -666,12 +666,12 @@ const formatTinNumber = (val) => {
                                         </div>
                                     </div>
                                     <div class="border-t border-gray-200 pt-4">
-                                        <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase">Photos</h4>
+                                        <h4 class="text-xs font-bold text-gray-500 mb-3 uppercase">Tricycle Unit Photos</h4>
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
                                             <div class="bg-white p-3 border rounded">
                                                 <div class="flex items-start gap-1">
-                                                    <InputLabel value="Front" />
+                                                    <InputLabel value="Tricycle Photo (Front)" />
                                                     <span class="text-red-600 font-bold">*</span>
                                                 </div>
                                                 <div v-if="unit.unit_front_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
@@ -684,7 +684,7 @@ const formatTinNumber = (val) => {
 
                                             <div class="bg-white p-3 border rounded">
                                                 <div class="flex items-start gap-1">
-                                                    <InputLabel value="Back" />
+                                                    <InputLabel value="Tricycle Photo (Back)" />
                                                     <span class="text-red-600 font-bold">*</span>
                                                 </div>
                                                 <div v-if="unit.unit_back_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
@@ -697,7 +697,7 @@ const formatTinNumber = (val) => {
 
                                             <div class="bg-white p-3 border rounded">
                                                 <div class="flex items-start gap-1">
-                                                    <InputLabel value="Left" />
+                                                    <InputLabel value="Tricycle Photo (Left)" />
                                                     <span class="text-red-600 font-bold">*</span>
                                                 </div>
                                                 <div v-if="unit.unit_left_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
@@ -710,7 +710,7 @@ const formatTinNumber = (val) => {
 
                                             <div class="bg-white p-3 border rounded">
                                                 <div class="flex items-start gap-1">
-                                                    <InputLabel value="Right" />
+                                                    <InputLabel value="Tricycle Photo (Right)" />
                                                     <span class="text-red-600 font-bold">*</span>
                                                 </div>
                                                 <div v-if="unit.unit_right_photo" class="mt-2 flex items-center justify-between bg-green-50 p-2 rounded border border-green-200">
