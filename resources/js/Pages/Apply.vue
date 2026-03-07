@@ -8,6 +8,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import InputError from '@/Components/InputError.vue';
 import { useForm, Head, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted } from 'vue';
+import axios from 'axios'; // <-- Import axios for background API calls
 
 const props = defineProps({
     zones: { type: Array, default: () => [] },
@@ -130,6 +131,59 @@ const form = useForm({
     agreed_to_terms: false
 });
 
+// --- OTP & Email Verification State ---
+const isEmailVerified = ref(false);
+const showOtpModal = ref(false);
+const otpCode = ref('');
+const otpError = ref('');
+const isSendingOtp = ref(false);
+const isVerifyingOtp = ref(false);
+
+const handleEmailChange = (event) => {
+    form.clearErrors('email');
+    if (isEmailVerified.value) {
+        isEmailVerified.value = false; // Reset verification if they change the email
+    }
+};
+
+const sendOtp = async () => {
+    isSendingOtp.value = true;
+    otpError.value = '';
+    try {
+        await axios.post(route('application.send-otp'), { email: form.email });
+        showOtpModal.value = true;
+    } catch (error) {
+        form.setError('email', 'Failed to send OTP. Please check your email format or try again later.');
+    } finally {
+        isSendingOtp.value = false;
+    }
+};
+
+const verifyOtp = async () => {
+    isVerifyingOtp.value = true;
+    otpError.value = '';
+    try {
+        await axios.post(route('application.verify-otp'), { 
+            email: form.email, 
+            otp: otpCode.value 
+        });
+        
+        // Success
+        isEmailVerified.value = true;
+        showOtpModal.value = false;
+        otpCode.value = '';
+        
+        // Automatically proceed to next step
+        currentStep.value++;
+        window.scrollTo(0, 0);
+    } catch (error) {
+        otpError.value = error.response?.data?.message || 'Invalid verification code.';
+    } finally {
+        isVerifyingOtp.value = false;
+    }
+};
+
+
 // --- Frontend Validation Logic ---
 const validateStep1 = () => {
     form.clearErrors();
@@ -172,7 +226,6 @@ const validateStep2 = () => {
     form.units.forEach((unit, index) => {
         let unitHasError = false;
 
-        // Details
         if (!unit.zone_id) { form.setError(`units.${index}.zone_id`, 'Target Zone is required.'); isValid = false; unitHasError = true; }
         if (!unit.franchise_number?.toString().trim()) { form.setError(`units.${index}.franchise_number`, 'Franchise No. is required.'); isValid = false; unitHasError = true; }
         if (!unit.make_id) { form.setError(`units.${index}.make_id`, 'Make is required.'); isValid = false; unitHasError = true; }
@@ -182,13 +235,11 @@ const validateStep2 = () => {
         if (!unit.cr_number?.toString().trim()) { form.setError(`units.${index}.cr_number`, 'CR Number is required.'); isValid = false; unitHasError = true; }
         if (!unit.chassis_number?.toString().trim()) { form.setError(`units.${index}.chassis_number`, 'Chassis No. is required.'); isValid = false; unitHasError = true; }
 
-        // Photos
         if (!unit.unit_front_photo) { form.setError(`units.${index}.unit_front_photo`, 'Front photo required.'); isValid = false; unitHasError = true; }
         if (!unit.unit_back_photo) { form.setError(`units.${index}.unit_back_photo`, 'Back photo required.'); isValid = false; unitHasError = true; }
         if (!unit.unit_left_photo) { form.setError(`units.${index}.unit_left_photo`, 'Left photo required.'); isValid = false; unitHasError = true; }
         if (!unit.unit_right_photo) { form.setError(`units.${index}.unit_right_photo`, 'Right photo required.'); isValid = false; unitHasError = true; }
 
-        // Documents
         if (!unit.cr_photo) { form.setError(`units.${index}.cr_photo`, 'CR document required.'); isValid = false; unitHasError = true; }
         if (!unit.or_photo) { form.setError(`units.${index}.or_photo`, 'OR document required.'); isValid = false; unitHasError = true; }
         if (!unit.franchise_certificate_photo) { form.setError(`units.${index}.franchise_certificate_photo`, 'Franchise Certificate required.'); isValid = false; unitHasError = true; }
@@ -259,9 +310,15 @@ const removeRequirementFile = (reqId) => {
     delete form.requirement_files[reqId];
 };
 
-const nextStep = () => { 
+const nextStep = async () => { 
     if (currentStep.value === 1) {
         if (!validateStep1()) return;
+        
+        // Intercept: Require Email Verification before moving to Step 2
+        if (!isEmailVerified.value) {
+            await sendOtp();
+            return; 
+        }
     } else if (currentStep.value === 2) {
         if (!validateStep2()) return;
     }
@@ -280,12 +337,10 @@ const showErrorModal = ref(false);
 const showSuccessModal = ref(false);
 
 const openPrivacyModal = () => {
-    // Validate final step before showing the privacy modal
     if (!validateStep3()) {
         form.agreed_to_terms = false;
         return;
     }
-    // Show Privacy Modal instead of submitting directly
     showPrivacyModal.value = true;
 };
 
@@ -296,7 +351,6 @@ const confirmAndSubmit = () => {
         preserveScroll: true,
         onError: () => { 
             showErrorModal.value = true; 
-            // Uncheck agreement if backend submission fails
             form.agreed_to_terms = false;
         },
         onSuccess: () => {
@@ -396,11 +450,16 @@ const formatTinNumber = (val) => {
                             </div>
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <div>
-                                    <div class="flex items-start gap-1">
-                                        <InputLabel value="Email" />
-                                        <span class="text-red-600 font-bold">*</span>
+                                    <div class="flex items-start justify-between">
+                                        <div class="flex items-start gap-1">
+                                            <InputLabel value="Email" />
+                                            <span class="text-red-600 font-bold">*</span>
+                                        </div>
+                                        <span v-if="isEmailVerified" class="text-xs font-bold text-green-600 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Verified
+                                        </span>
                                     </div>
-                                    <TextInput type="email" v-model="form.email" @input="form.clearErrors('email')" placeholder="e.g. juan.santos@example.com" class="mt-1 block w-full" />
+                                    <TextInput type="email" v-model="form.email" @input="handleEmailChange" :class="{'border-green-500 bg-green-50': isEmailVerified}" placeholder="e.g. juan.santos@example.com" class="mt-1 block w-full transition-colors" />
                                     <InputError :message="form.errors.email" class="mt-2" />
                                 </div>
                                 <div>
@@ -782,10 +841,12 @@ const formatTinNumber = (val) => {
                             &larr; Back
                         </SecondaryButton>
                         <div class="flex gap-3">
-                            <PrimaryButton type="button" v-if="currentStep < 3" @click="nextStep" class="px-8">Next Step &rarr;</PrimaryButton>
+                            <PrimaryButton type="button" v-if="currentStep < 3" @click="nextStep" :disabled="isSendingOtp" class="px-8">
+                                <span v-if="isSendingOtp">Sending Verification...</span>
+                                <span v-else>Next Step &rarr;</span>
+                            </PrimaryButton>
                             <PrimaryButton type="button" v-else @click="openPrivacyModal" :disabled="form.processing || !form.agreed_to_terms" class="bg-green-600 hover:bg-green-700 ring-green-500 px-8 disabled:opacity-50">
-                                <span v-if="form.processing">Submitting...</span>
-                                <span v-else>Submit Application</span>
+                                Submit Application
                             </PrimaryButton>
                         </div>
                     </div>
@@ -793,6 +854,26 @@ const formatTinNumber = (val) => {
             </div>
         </main>
         <Footer />
+    </div>
+
+    <div v-if="showOtpModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 p-4 animate-fade-in">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8 text-center transform transition-all">
+            <h3 class="text-2xl font-extrabold text-gray-900 mb-2">Verify Your Email</h3>
+            <p class="text-gray-600 mb-6 text-sm">
+                We've sent a 6-digit verification code to <strong>{{ form.email }}</strong>. Please enter it below to proceed.
+            </p>
+
+            <TextInput v-model="otpCode" placeholder="Enter 6-digit code" class="mb-4 block w-full text-center text-xl tracking-widest" maxlength="6" />
+            <InputError :message="otpError" class="mb-4 text-center" />
+
+            <div class="flex gap-3 w-full">
+                <SecondaryButton @click="showOtpModal = false; isSendingOtp = false;" class="flex-1 justify-center">Cancel</SecondaryButton>
+                <PrimaryButton @click="verifyOtp" :disabled="isVerifyingOtp || otpCode.length < 6" class="flex-1 justify-center bg-blue-600 hover:bg-blue-700">
+                    <span v-if="isVerifyingOtp">Verifying...</span>
+                    <span v-else>Verify Code</span>
+                </PrimaryButton>
+            </div>
+        </div>
     </div>
 
     <div v-if="showPrivacyModal" class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black bg-opacity-50" aria-labelledby="privacy-modal-title" role="dialog" aria-modal="true">

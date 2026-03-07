@@ -37,6 +37,9 @@ use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
+Route::post('/apply/send-otp', [ApplicationController::class, 'sendOtp'])->name('application.send-otp');
+Route::post('/apply/verify-otp', [ApplicationController::class, 'verifyOtp'])->name('application.verify-otp');  
+
 // --- THE NEW TRAFFIC DIRECTOR ---
 Route::get('/dashboard', function () {
     $user = Auth::user();

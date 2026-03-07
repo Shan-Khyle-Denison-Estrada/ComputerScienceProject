@@ -3,15 +3,17 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ApplicationOtpMail;
 use App\Models\Application;
 use App\Models\ApplicationEvaluation;
 use App\Models\EvaluationRequirement;
 use App\Models\ProposedUnit;
 use App\Models\UnitMake;
 use App\Models\Zone;
-// use App\Models\Barangay; <-- REMOVE THIS
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache; // <-- Import Cache
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -169,5 +171,38 @@ class ApplicationController extends Controller
             // Return the specific error for debugging
             return back()->withErrors(['error' => 'Submission Failed: ' . $e->getMessage()]);
         }
+    }
+    public function sendOtp(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        // Generate a 6-digit OTP
+        $otp = rand(100000, 999999);
+
+        // Store OTP in cache for 10 minutes
+        Cache::put('otp_' . $request->email, $otp, now()->addMinutes(10));
+
+        // Send Email
+        Mail::to($request->email)->send(new ApplicationOtpMail($otp));
+
+        return response()->json(['message' => 'OTP sent successfully']);
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|numeric'
+        ]);
+
+        $cachedOtp = Cache::get('otp_' . $request->email);
+
+        if ($cachedOtp && $cachedOtp == $request->otp) {
+            // OTP is correct, clear it from cache
+            Cache::forget('otp_' . $request->email);
+            return response()->json(['message' => 'Email verified successfully']);
+        }
+
+        return response()->json(['message' => 'Invalid or expired verification code.'], 422);
     }
 }
