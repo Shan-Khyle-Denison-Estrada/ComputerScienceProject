@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
 use App\Mail\ApplicationOtpMail;
+use App\Mail\ApplicationSubmittedMail;
 use App\Models\Application;
 use App\Models\ApplicationEvaluation;
 use App\Models\EvaluationRequirement;
@@ -166,6 +167,11 @@ class ApplicationController extends Controller
 
             DB::commit();
 
+            // SEND EMAIL NOTIFICATION HERE
+            Mail::to($application->email)->send(
+                new \App\Mail\ApplicationSubmittedMail($referenceNumber, $application->first_name)
+            );
+
             return back()->with('success', "Application submitted successfully! Ref No: $referenceNumber");
 
         } catch (\Exception $e) {
@@ -174,6 +180,7 @@ class ApplicationController extends Controller
             return back()->withErrors(['error' => 'Submission Failed: ' . $e->getMessage()]);
         }
     }
+
     public function sendOtp(Request $request)
     {
         $request->validate(['email' => 'required|email']);
