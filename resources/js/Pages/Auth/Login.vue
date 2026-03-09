@@ -34,11 +34,6 @@ const submit = () => {
     <div class="min-h-screen flex bg-white">
         
         <div class="hidden lg:flex w-1/2 bg-gray-900 relative overflow-hidden">
-            <div 
-                class="absolute inset-0 bg-cover bg-center opacity-40" 
-                style="background-image: url('/non_index_bg.png');"
-            ></div>
-            
             <div class="relative z-10 w-full p-12 flex flex-col justify-between text-white">
                 <div class="text-3xl font-bold tracking-wider">
                     TRICY<span class="text-blue-500">SYS</span>
@@ -46,7 +41,7 @@ const submit = () => {
                 
                 <div class="mb-10">
                     <h2 class="text-4xl font-bold leading-tight mb-4">
-                        City Transport <br>Management System
+                        Tricycle Franchise <br>Management System
                     </h2>
                     <p class="text-gray-300 text-lg max-w-md">
                         Secure access for Franchise Owners and City Administrators. Manage units and renewals in one place.
@@ -71,7 +66,7 @@ const submit = () => {
                 
                 <div class="text-center lg:text-left">
                     <div class="lg:hidden mb-8 text-3xl font-bold tracking-wider text-gray-900 inline-block">
-                        TRI<span class="text-blue-600">APP</span>
+                        TRICY<span class="text-blue-600">SYS</span>
                     </div>
                     
                     <h2 class="text-3xl font-bold text-gray-900">Welcome back</h2>
@@ -123,13 +118,13 @@ const submit = () => {
                             <span class="ml-2 text-sm text-gray-600">Remember me</span>
                         </label>
 
-                        <!-- <Link
+                        <Link
                             v-if="canResetPassword"
                             :href="route('password.request')"
                             class="text-sm font-medium text-blue-600 hover:text-blue-500 hover:underline"
                         >
                             Forgot password?
-                        </Link> -->
+                        </Link>
                     </div>
 
                     <PrimaryButton
@@ -140,10 +135,6 @@ const submit = () => {
                         Sign In
                     </PrimaryButton>
                 </form>
-
-                <!-- <p class="mt-4 text-center text-sm text-gray-500">
-                    Having trouble logging in? <a href="#" class="font-medium text-blue-600 hover:text-blue-500">Contact IT Support</a>
-                </p> -->
             </div>
         </div>
     </div>
