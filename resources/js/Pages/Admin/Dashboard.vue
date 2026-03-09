@@ -1,13 +1,31 @@
 <script setup>
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
-import { Head, Link } from '@inertiajs/vue3';
+import { Head, Link, router } from '@inertiajs/vue3';
 import { onMounted, ref, watch } from 'vue';
 import Chart from 'chart.js/auto';
 
 const props = defineProps({
     stats: Object,
-    chart: Object, // Single chart prop
-    recent_payments: Array
+    chart: Object,
+    recent_payments: Array,
+    available_fiscal_years: Array,
+    filters: Object
+});
+
+// Reactive Filters
+const selectedFiscalYear = ref(props.filters.fiscal_year);
+const selectedPeriod = ref(props.filters.chart_period);
+
+// Watch Filters and Fetch Data
+watch([selectedFiscalYear, selectedPeriod], () => {
+    router.get(window.location.pathname, {
+        fiscal_year: selectedFiscalYear.value,
+        chart_period: selectedPeriod.value
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        only: ['stats', 'chart', 'recent_payments', 'filters']
+    });
 });
 
 // Chart Reference
@@ -30,7 +48,6 @@ const initChart = () => {
         
         const ctx = mainChartCanvas.value.getContext('2d');
         
-        // Create a gradient for the line chart
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
         gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); // Blue
         gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
@@ -49,7 +66,7 @@ const initChart = () => {
                     pointBorderColor: '#3b82f6',
                     pointRadius: 6,
                     pointHoverRadius: 8,
-                    tension: 0.4, // Smooth curve
+                    tension: 0.4, 
                     fill: true
                 }]
             },
@@ -95,7 +112,7 @@ watch(() => props.chart, () => initChart(), { deep: true });
     <Head title="Admin Dashboard" />
 
     <AuthenticatedLayout>
-        <div class="h-full flex flex-col gap-6 overflow-hidden">
+        <div class="h-full flex flex-col gap-6 overflow-y-auto overflow-x-hidden pb-4 custom-scrollbar">
             
             <div class="flex-none flex flex-col gap-6">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -104,12 +121,18 @@ watch(() => props.chart, () => initChart(), { deep: true });
                         <p class="text-gray-500 text-sm mt-1">Overview of Tricycle Franchise Management System</p>
                     </div>
 
-                    <div class="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
-                        <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                        <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Current Fiscal Year:</span>
-                        <span class="text-base font-black text-indigo-700">{{ props.stats.current_fiscal_year }}</span>
+                    <div class="flex items-center justify-between w-full sm:w-auto gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-2 whitespace-nowrap">
+                            <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                            <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Fiscal Year:</span>
+                        </div>
+                        <select v-model="selectedFiscalYear" class="w-full sm:w-auto text-right sm:text-left text-base font-black text-indigo-700 bg-transparent border-none focus:ring-0 p-0 pr-8 min-w-[110px] cursor-pointer">
+                            <option v-for="year in props.available_fiscal_years" :key="year" :value="year">
+                                {{ year }}
+                            </option>
+                        </select>
                     </div>
                 </div>
 
@@ -119,10 +142,14 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
+                            <span class="text-xs font-bold px-2 py-1 rounded" 
+                                  :class="props.stats.franchise_growth >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'">
+                                {{ props.stats.franchise_growth > 0 ? '+' : '' }}{{ props.stats.franchise_growth }}% vs Prev FY
+                            </span>
                         </div>
                         <div>
                             <span class="text-3xl font-black text-slate-800">{{ props.stats.total_franchises }}</span>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Franchises</p>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Franchises Created</p>
                         </div>
                     </div>
 
@@ -131,11 +158,10 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                             </div>
-                            <span class="text-xs font-bold px-2 py-1 rounded bg-emerald-50 text-emerald-600">Active</span>
                         </div>
                         <div>
                             <span class="text-3xl font-black text-slate-800">{{ props.stats.total_operators }}</span>
-                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Franchise Operators</p>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Operators Added</p>
                         </div>
                     </div>
 
@@ -146,7 +172,7 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             </div>
                             <span class="text-xs font-bold px-2 py-1 rounded" 
                                   :class="props.stats.revenue_growth >= 0 ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'">
-                                {{ props.stats.revenue_growth }}%
+                                {{ props.stats.revenue_growth > 0 ? '+' : '' }}{{ props.stats.revenue_growth }}% vs Prev FY
                             </span>
                         </div>
                         <div>
@@ -157,22 +183,35 @@ watch(() => props.chart, () => initChart(), { deep: true });
                 </div>
             </div>
 
-            <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6 pb-2">
+            <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
-                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col">
-                    <div class="flex justify-between items-center mb-6">
+                <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col min-h-[400px] lg:min-h-0">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
                         <h3 class="font-bold text-slate-700">Collection Trends</h3>
-                        <div class="flex gap-2">
-                            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
-                            <span class="text-xs text-slate-500">Revenue</span>
+                        
+                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                            <div class="flex gap-2 items-center mr-2">
+                                <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+                                <span class="text-xs text-slate-500">Revenue</span>
+                            </div>
+                            <select v-model="selectedPeriod" class="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer min-w-[110px]">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                                <option value="monthly">Monthly</option>
+                                <option value="quarterly">Quarterly</option>
+                                <option value="annually">Annually</option>
+                            </select>
                         </div>
                     </div>
-                    <div class="flex-1 min-h-0 relative w-full">
-                        <canvas ref="mainChartCanvas"></canvas>
+                    
+                    <div class="flex-1 min-h-0 relative w-full overflow-x-auto overflow-y-hidden custom-scrollbar">
+                        <div class="min-w-[700px] h-full relative">
+                            <canvas ref="mainChartCanvas"></canvas>
+                        </div>
                     </div>
                 </div>
 
-                <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-0 flex flex-col overflow-hidden">
+                <div class="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-gray-100 p-0 flex flex-col overflow-hidden min-h-[400px] lg:min-h-0">
                     <div class="p-6 border-b border-gray-50 flex justify-between items-center">
                         <h3 class="font-bold text-slate-700">Recent Transactions</h3>
                         <Link href="/payments" class="text-xs font-bold text-indigo-500 hover:text-indigo-600">View All</Link>
@@ -180,7 +219,7 @@ watch(() => props.chart, () => initChart(), { deep: true });
                     
                     <div class="flex-1 overflow-y-auto custom-scrollbar">
                         <div v-if="props.recent_payments.length === 0" class="h-full flex items-center justify-center text-slate-400 italic text-sm p-4">
-                            No recent transactions.
+                            No recent transactions for this fiscal year.
                         </div>
 
                         <div v-else class="divide-y divide-gray-50">
@@ -208,8 +247,8 @@ watch(() => props.chart, () => initChart(), { deep: true });
 </template>
 
 <style scoped>
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; height: 6px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 2px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 </style>
