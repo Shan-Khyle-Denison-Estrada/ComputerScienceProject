@@ -230,6 +230,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     Route::get('/franchise/dashboard', [DashboardController::class, 'index'])->name('franchise.dashboard');
     Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])->name('franchise.set-driver');
+    Route::post('/franchise/{franchise}/drivers/{assignment}/schedule', [DashboardController::class, 'updateDriverSchedule'])->name('franchise.drivers.schedule');
     
     // Applications
     Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');

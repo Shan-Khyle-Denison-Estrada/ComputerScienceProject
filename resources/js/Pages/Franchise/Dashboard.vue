@@ -26,6 +26,24 @@ const showConfirmDriverModal = ref(false);
 const driverToActivate = ref(null); // Stores the assignment object temporarily
 const processingDriverId = ref(null);
 
+// New Modal State for Driver Schedule
+const showScheduleModal = ref(false);
+const driverToSchedule = ref(null);
+
+const defaultSchedule = [
+    { day: 'Monday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Tuesday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Wednesday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Thursday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Friday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Saturday', is_off: true, start: '', end: '' },
+    { day: 'Sunday', is_off: true, start: '', end: '' },
+];
+
+const scheduleForm = useForm({
+    schedule: []
+});
+
 // --- PAGINATION STATE & LOGIC ---
 const currentPage = ref(1);
 const itemsPerPage = 5;
@@ -97,6 +115,28 @@ const confirmActivateDriver = () => {
         },
         onFinish: () => {
             processingDriverId.value = null;
+        }
+    });
+};
+
+// --- SCHEDULER LOGIC ---
+const openScheduleModal = (assignment) => {
+    driverToSchedule.value = assignment;
+    // Load existing schedule if available, otherwise fallback to default
+    scheduleForm.schedule = assignment.schedule 
+        ? JSON.parse(JSON.stringify(assignment.schedule)) 
+        : JSON.parse(JSON.stringify(defaultSchedule));
+    showScheduleModal.value = true;
+};
+
+const saveSchedule = () => {
+    if (!driverToSchedule.value) return;
+
+    scheduleForm.post(route('franchise.drivers.schedule', [selectedFranchiseId.value, driverToSchedule.value.id]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showScheduleModal.value = false;
+            driverToSchedule.value = null;
         }
     });
 };
@@ -338,19 +378,31 @@ const getTabLabel = (tabKey) => {
                                                 </span>
                                             </td>
 
-                                            <td class="px-6 py-4 text-right">
-                                                <button 
-                                                    v-if="!assign.is_active"
-                                                    @click="openActivateDriverModal(assign)"
-                                                    :disabled="processingDriverId === assign.driver_id"
-                                                    class="px-4 py-1.5 rounded-lg border border-blue-200 text-blue-600 font-bold text-xs uppercase hover:bg-blue-50 transition-colors disabled:opacity-50"
-                                                >
-                                                    {{ processingDriverId === assign.driver_id ? 'Switching...' : 'Set Active' }}
-                                                </button>
-                                                <span v-else class="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                                                    Currently Selected
-                                                </span>
-                                            </td>
+<td class="px-6 py-4 text-right">
+    <div class="flex items-center justify-end gap-2">
+        <button 
+            @click="openScheduleModal(assign)"
+            class="px-3 py-1.5 rounded-lg border border-purple-200 text-purple-600 font-bold text-xs uppercase hover:bg-purple-50 transition-colors flex items-center gap-1"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            Schedule
+        </button>
+
+        <button 
+            v-if="!assign.is_active"
+            @click="openActivateDriverModal(assign)"
+            :disabled="processingDriverId === assign.driver_id"
+            class="px-4 py-1.5 rounded-lg border border-blue-200 text-blue-600 font-bold text-xs uppercase hover:bg-blue-50 transition-colors disabled:opacity-50"
+        >
+            {{ processingDriverId === assign.driver_id ? 'Switching...' : 'Set Active' }}
+        </button>
+        <span v-else class="text-xs font-bold text-gray-400 uppercase tracking-wide px-2">
+            Active
+        </span>
+    </div>
+</td>
                                         </tr>
                                     </tbody>
                                     <tfoot v-if="totalPages > 1">
@@ -527,7 +579,70 @@ const getTabLabel = (tabKey) => {
                     </div>
                 </div>
             </Modal>
+<Modal :show="showScheduleModal" @close="showScheduleModal = false" maxWidth="2xl">
+                <div class="p-6">
+                    <div class="flex items-center justify-between mb-5 border-b border-gray-100 pb-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2.5 bg-purple-100 rounded-full text-purple-600">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-lg font-bold text-gray-900 leading-tight">Driver Schedule</h2>
+                                <p class="text-xs text-gray-500 font-medium">{{ driverToSchedule ? getDriverName(driverToSchedule.driver) : '' }}</p>
+                            </div>
+                        </div>
+                        <button @click="showScheduleModal = false" class="text-gray-400 hover:text-gray-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
 
+                    <form @submit.prevent="saveSchedule">
+                        <div v-if="scheduleForm.errors.schedule" class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div class="text-sm font-medium text-red-700">
+                                {{ scheduleForm.errors.schedule }}
+                            </div>
+                        </div>
+                        <div class="space-y-3 mb-6 max-h-[60vh] overflow-y-auto px-1 custom-scrollbar">
+                            <div v-for="(daySched, index) in scheduleForm.schedule" :key="index" 
+                                class="flex items-center gap-4 p-3 rounded-xl border transition-colors"
+                                :class="daySched.is_off ? 'bg-gray-50 border-gray-100 opacity-70' : 'bg-white border-gray-200 shadow-sm hover:border-purple-200'"
+                            >
+                                <div class="w-28 shrink-0">
+                                    <span class="font-bold text-gray-800 text-sm block">{{ daySched.day }}</span>
+                                </div>
+
+                                <label class="flex items-center gap-2 cursor-pointer w-24 shrink-0">
+                                    <input type="checkbox" v-model="daySched.is_off" class="rounded text-purple-600 focus:ring-purple-500 border-gray-300">
+                                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Day Off</span>
+                                </label>
+
+                                <div class="flex items-center gap-2 flex-1" v-if="!daySched.is_off">
+                                    <input type="time" v-model="daySched.start" required class="block w-full text-sm rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 shadow-sm" />
+                                    <span class="text-gray-400 text-xs font-bold">TO</span>
+                                    <input type="time" v-model="daySched.end" required class="block w-full text-sm rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 shadow-sm" />
+                                </div>
+                                <div v-else class="flex-1 px-3 text-sm text-gray-400 italic">
+                                    Not scheduled to work
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
+                            <SecondaryButton type="button" @click="showScheduleModal = false">Cancel</SecondaryButton>
+                            <PrimaryButton type="submit" :class="{ 'opacity-25': scheduleForm.processing }" :disabled="scheduleForm.processing" class="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 border-transparent text-white">
+                                Save Weekly Schedule
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
             <Teleport to="body">
                 <div 
                     v-if="showCoverageModal" 

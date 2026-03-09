@@ -18,3 +18,5 @@ Schedule::command('assessments:update-penalties')->daily();
 //     ->dailyAt('8:50');
 
 Schedule::command('franchise:check-expired')->daily();
+
+Schedule::command('drivers:update-schedules')->everyMinute();
