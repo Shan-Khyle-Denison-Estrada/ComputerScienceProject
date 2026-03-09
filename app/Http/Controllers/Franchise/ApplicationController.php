@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
-    public function index()
+public function index()
     {
         $user = Auth::user();
         $operator = $user->operator; 
@@ -60,7 +60,7 @@ class ApplicationController extends Controller
             ];
         });
 
-        // UPDATED: Find all currently active unit IDs across all franchises
+        // Find all currently active unit IDs across all franchises
         $activeUnitIds = Franchise::with('currentActiveUnit')->get()->map(function($f) {
             if ($f->currentActiveUnit) {
                 // Safely grab the unit ID depending on your exact column name
@@ -69,7 +69,7 @@ class ApplicationController extends Controller
             return null;
         })->filter()->toArray();
 
-        // UPDATED: Only pass units that are NOT currently active
+        // Only pass units that are NOT currently active
         $units = Unit::with('make')
             ->whereNotIn('id', $activeUnitIds)
             ->get()
@@ -126,21 +126,37 @@ class ApplicationController extends Controller
                 ->first()
                 ?->driver;
 
-            $franchise->has_renewal_this_year = Application::where('franchise_id', $franchise->id)
+            // 1. Grab the active/conflicting renewal application directly
+            $franchise->conflicting_renewal = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Renewal')
                 ->whereNotIn('status', ['Rejected', 'Cancelled'])
                 ->where('reference_number', 'LIKE', "%APP-{$fiscalYearString}-%")
+                ->select('id', 'reference_number as ref_no', 'application_type as type', 'status', 'remarks')
+                ->latest()
+                ->first();
+
+            // 2. NEW CRITERIA: Check if they have a rejected renewal this year
+            $franchise->has_rejected_renewal = Application::where('franchise_id', $franchise->id)
+                ->where('application_type', 'Renewal')
+                ->whereIn('status', ['Rejected', 'Cancelled'])
+                ->where('reference_number', 'LIKE', "%APP-{$fiscalYearString}-%")
                 ->exists();
 
-            $franchise->has_active_change_unit = Application::where('franchise_id', $franchise->id)
+            // 3. Grab conflicting Change of Unit
+            $franchise->conflicting_change_unit = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Change of Unit')
                 ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
-                ->exists();
+                ->select('id', 'reference_number as ref_no', 'application_type as type', 'status', 'remarks')
+                ->latest()
+                ->first();
 
-            $franchise->has_active_change_owner = Application::where('franchise_id', $franchise->id)
+            // 4. Grab conflicting Change of Owner
+            $franchise->conflicting_change_owner = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Change of Owner')
                 ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
-                ->exists();
+                ->select('id', 'reference_number as ref_no', 'application_type as type', 'status', 'remarks')
+                ->latest()
+                ->first();
 
             return $franchise;
         });
