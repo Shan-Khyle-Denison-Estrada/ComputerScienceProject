@@ -183,7 +183,7 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/applications/{id}/return', [ApplicationShowController::class, 'returnApplication'])->name('admin.applications.return');
     Route::post('/applications/{id}/reject', [ApplicationShowController::class, 'rejectApplication'])->name('admin.applications.reject');
     Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
-    Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
+    // Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
     // CHANGE OF UNIT SHOW ROUTES
     Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])

@@ -119,7 +119,7 @@ class EncoderApplicationController extends Controller
         
         return Inertia::render('Encoder/Applications/ShowNewFranchise', [
             'application' => $application,
-            'barangays' => Barangay::all(),
+            // 'barangays' => Barangay::all(),
             'zones' => Zone::all(),
             'unitMakes' => UnitMake::orderBy('name', 'asc')->get(),
         ]);
