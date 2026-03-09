@@ -4,7 +4,6 @@ import { computed, ref } from 'vue';
 
 const props = defineProps({
     franchise: Object,
-    // [!code ++] Receive the dynamic list from controller
     natureOfComplaints: {
         type: Array,
         default: () => []
@@ -38,12 +37,15 @@ const getDriverName = (driver) => {
 const currentUnit = computed(() => props.franchise.current_active_unit?.new_unit);
 const currentOwner = computed(() => props.franchise.current_ownership?.new_owner);
 
+// Computed property to get the currently active driver assignment
+const activeDriverAssignment = computed(() => {
+    if (!props.franchise.driver_assignments) return null;
+    return props.franchise.driver_assignments.find(assignment => assignment.is_active);
+});
+
 // --- COMPLAINT LOGIC ---
 const showComplaintModal = ref(false);
 const complaintSuccess = ref(false);
-
-// [!code --] Removed hardcoded array
-// const complaintOptions = [ ... ];
 
 const form = useForm({
     franchise_id: props.franchise.id,
@@ -134,40 +136,39 @@ const submitComplaint = () => {
                                     {{ currentOwner?.user.contact_number || 'No Contact Number Recorded' }}
                                 </div>
                             </div>
-                            <div class="text-right flex-shrink-0 bg-gray-50 px-2 py-1 rounded border border-gray-100">
+                            <!-- <div class="text-right flex-shrink-0 bg-gray-50 px-2 py-1 rounded border border-gray-100">
                                 <div class="text-[10px] font-mono text-gray-400 uppercase">TIN</div>
                                 <div class="text-xs font-mono font-bold text-gray-600">
                                     {{ currentOwner ? currentOwner.tin_number : '---' }}
                                 </div>
-                            </div>
+                            </div> -->
                         </div>
                     </div>
 
                     <div>
                         <div class="flex items-center gap-2 mb-3 sticky top-0 bg-white z-10 py-1">
-                            <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide">Authorized Drivers</h3>
+                            <h3 class="text-xs font-bold text-gray-900 uppercase tracking-wide">Current Active Driver</h3>
                         </div>
 
-                        <div v-if="franchise.driver_assignments && franchise.driver_assignments.length > 0" class="space-y-2">
-                            <div v-for="assignment in franchise.driver_assignments" :key="assignment.id" 
-                                 class="flex items-center gap-3 bg-white border border-gray-100 rounded-lg p-2.5 shadow-sm">
+                        <div v-if="activeDriverAssignment" class="space-y-2">
+                            <div class="flex items-center gap-3 bg-white border border-gray-100 rounded-lg p-2.5 shadow-sm">
                                 <div class="h-9 w-9 rounded-full bg-gray-100 flex-shrink-0 flex items-center justify-center border border-gray-200 overflow-hidden text-gray-500 font-bold text-sm">
-                                    <img v-if="assignment.driver.user_photo" :src="`/storage/${assignment.driver.user_photo}`" class="h-full w-full object-cover" />
-                                    <span v-else>{{ assignment.driver.first_name.charAt(0) }}</span>
+                                    <img v-if="activeDriverAssignment.driver.user_photo" :src="`/storage/${activeDriverAssignment.driver.user_photo}`" class="h-full w-full object-cover" />
+                                    <span v-else>{{ activeDriverAssignment.driver.first_name.charAt(0) }}</span>
                                 </div>
                                 <div class="min-w-0">
                                     <div class="font-bold text-sm text-gray-900 truncate">
-                                        {{ getDriverName(assignment.driver) }}
+                                        {{ getDriverName(activeDriverAssignment.driver) }}
                                     </div>
                                     <div class="text-[10px] text-gray-500 font-mono flex items-center gap-1">
-                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                                        LIC: {{ assignment.driver.license_number }}
+                                        <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                                        LIC: {{ activeDriverAssignment.driver.license_number }}
                                     </div>
                                 </div>
                             </div>
                         </div>
                         <div v-else class="bg-gray-50 rounded-lg p-3 text-center border border-dashed border-gray-200">
-                            <p class="text-xs text-gray-400 italic">No drivers assigned.</p>
+                            <p class="text-xs text-gray-400 italic">No active driver currently on duty.</p>
                         </div>
                     </div>
                 </div>
