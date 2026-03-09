@@ -18,6 +18,8 @@ const props = defineProps({
     complaintNatures: Array,
     systemSetting: Object,
     userRole: String, // <-- NEW PROP FOR USER ROLE
+    tabApprover: Object, // <-- ADDED
+    spApprover: Object,  // <-- ADDED
 });
 
 // --- STATE ---
@@ -700,13 +702,13 @@ const getDriverName = (driver) => {
                     <div class="text-[10px] text-gray-400">Scan to Verify Validity</div>
                 </div>
                 
-                <FranchiseCertificate
-                    v-if="printMode === 'certificate'"
-                    :franchise="franchise"
-                    :currentOwner="currentOwner"
-                    :currentUnit="currentUnit"
-                    :systemSetting="systemSetting"
-                />
+                <FranchiseCertificate 
+                    v-if="printMode === 'certificate'" 
+                    :franchise="franchise" 
+                    :currentOwner="currentOwner" 
+                    :currentUnit="currentUnit" 
+                    :systemSetting="systemSetting" 
+                    :tabApprover="tabApprover"  :spApprover="spApprover"    />
             </div>
 
         </div>

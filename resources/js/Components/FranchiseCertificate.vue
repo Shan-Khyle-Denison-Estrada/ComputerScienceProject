@@ -6,6 +6,8 @@ const props = defineProps({
     currentOwner: Object,
     currentUnit: Object,
     systemSetting: Object, // <-- Prop for LGU logo
+    tabApprover: Object, // <-- ADDED
+    spApprover: Object,  // <-- ADDED
 });
 
 const ownerName = computed(() => {
@@ -127,15 +129,25 @@ const ownerAddress = computed(() => {
             
             <p class="text-xs font-bold tracking-widest mt-8 mb-16 uppercase">ISSUED IN ZAMBOANGA CITY, PHILIPPINES</p>
 
-            <div style="display: flex !important; flex-direction: row !important; justify-content: space-around !important; align-items: flex-end !important;" class="px-4">
-                <div class="text-center flex flex-col items-center">
-                    <div class="w-48 border-b border-gray-800 mb-1.5"></div>
-                    <p class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">Recommending Approval</p>
+            <div style="display: flex !important; flex-direction: row !important; justify-content: space-around !important; align-items: flex-end !important; margin-top: 40px !important;" class="px-4">
+                
+                <div class="text-center flex flex-col items-center relative h-20 justify-end">
+                    <img v-if="tabApprover?.signature_photo" :src="`/storage/${tabApprover.signature_photo}`" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); height: 100px; object-fit: contain; z-index: 1;" />
+                    <p style="position: relative; z-index: 2; margin-bottom: 2px; text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff, -1px -1px 0 #fff;" class="font-bold text-[12px] uppercase">
+                        {{ tabApprover ? `${tabApprover.first_name} ${tabApprover.last_name}` : '' }}
+                    </p>
+                    <div style="position: relative; z-index: 2;" class="w-48 border-b border-gray-800 mb-1.5"></div>
+                    <p style="position: relative; z-index: 2;" class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">SP Member</p>
                 </div>
 
-                <div class="text-center flex flex-col items-center">
-                    <div class="w-48 border-b border-gray-800 mb-1.5"></div>
-                    <p class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">Authorizing Officer</p>
+                <div class="text-center flex flex-col items-center relative h-20 justify-end">
+                    <img v-if="spApprover?.signature_photo" :src="`/storage/${spApprover.signature_photo}`" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); height: 100px; object-fit: contain; z-index: 1;" />
+                    <p style="position: relative; z-index: 2; margin-bottom: 2px; text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff, -1px -1px 0 #fff;" class="font-bold text-[12px] uppercase">
+                        {{ spApprover ? `${spApprover.first_name} ${spApprover.last_name}` : '' }}
+                    </p>
+                    <div style="position: relative; z-index: 2;" class="w-48 border-b border-gray-800 mb-1.5"></div>
+                    <p style="position: relative; z-index: 2;" class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">City Legal Office</p>
+                    <p style="position: relative; z-index: 2;" class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">TAB Chairman</p>
                 </div>
             </div>
             
