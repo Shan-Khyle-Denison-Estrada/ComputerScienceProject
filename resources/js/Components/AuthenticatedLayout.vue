@@ -285,7 +285,7 @@ onMounted(() => {
 
         <div class="flex-1 flex flex-col min-w-0 overflow-hidden transition-all duration-300 p-0">
             
-            <header class="bg-white shadow-sm flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8 relative z-10">
+            <header class="bg-white shadow-sm flex items-center justify-between h-16 px-4 sm:px-6 lg:px-8 relative z-50">
                 
                 <div class="flex items-center">
                     <button 
@@ -327,12 +327,12 @@ onMounted(() => {
                     <div 
                         v-if="isUserDropdownOpen" 
                         @click="isUserDropdownOpen = false" 
-                        class="fixed inset-0 z-10 cursor-default"
+                        class="fixed inset-0 z-40 cursor-default"
                     ></div>
 
                     <div 
                         v-show="isUserDropdownOpen"
-                        class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-20 ring-1 ring-black ring-opacity-5"
+                        class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 ring-1 ring-black ring-opacity-5"
                     >
                         <Link 
                             :href="route('profile.edit')" 
