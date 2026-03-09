@@ -4,7 +4,7 @@ import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 
 const props = defineProps({
     show: { type: Boolean, required: true },
@@ -19,13 +19,19 @@ const props = defineProps({
 const emit = defineEmits(['close', 'submit']);
 const page = usePage();
 
+// --- PSGC API STATES ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+
+const selectedProvinceCode = ref('');
+const selectedCityCode = ref('');
+
 // --- MODAL STATES ---
 const currentStep = ref(1); 
 const selectedType = ref('change_unit'); 
 const ownerMode = ref('existing');
 const unitMode = ref('existing');
-const barangayQuery = ref('');
-const showBarangayDropdown = ref(false);
 const docPreviews = ref({}); 
 const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); 
 
@@ -56,8 +62,9 @@ const form = useForm({
     new_owner_email: '', 
     new_owner_tin: '', 
     new_owner_address: '', 
+    new_owner_province: '', 
+    new_owner_city: '',
     new_owner_barangay: '', 
-    new_owner_city: 'Zamboanga City',
     
     // Unit Fields
     existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
@@ -66,6 +73,93 @@ const form = useForm({
     // Document uploads
     documents: {} 
 });
+
+// --- FORMATTERS ---
+const formatContactNumber = (val) => {
+    let parts = val.replace(/[^0-9]/g, '');
+    if (parts.length > 11) parts = parts.substring(0, 11);
+    
+    let formatted = parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+    
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) {
+        formatted += '-';
+    }
+    return formatted;
+};
+
+const formatTinNumber = (val) => {
+    let parts = val.replace(/[^0-9]/g, '');
+    if (parts.length > 12) parts = parts.substring(0, 12);
+    
+    let formatted = parts.substring(0, 3);
+    if (parts.length >= 4) formatted += '-' + parts.substring(3, 6);
+    if (parts.length >= 7) formatted += '-' + parts.substring(6, 9);
+    if (parts.length >= 10) formatted += '-' + parts.substring(9, 12);
+    
+    if (val.endsWith('-') && (parts.length === 3 || parts.length === 6 || parts.length === 9)) {
+        formatted += '-';
+    }
+    return formatted;
+};
+
+// --- API FETCHING LOGIC ---
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load provinces:", error);
+    }
+});
+
+const fetchCities = async (provinceCode) => {
+    if (!provinceCode) return;
+    try {
+        const isNCR = provinceCode === '130000000';
+        const endpoint = isNCR 
+            ? 'https://psgc.gitlab.io/api/regions/130000000/cities-municipalities'
+            : `https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`;
+        const res = await fetch(endpoint);
+        citiesList.value = (await res.json()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) { console.error(error); }
+};
+
+const fetchBarangays = async (cityCode) => {
+    if (!cityCode) return;
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
+        barangaysList.value = (await res.json()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) { console.error(error); }
+};
+
+// --- API DROPDOWN HANDLERS ---
+const handleProvinceChange = async (event) => {
+    const code = event.target.value;
+    selectedProvinceCode.value = code;
+    const p = provincesList.value.find(x => x.code === code);
+    form.new_owner_province = p ? p.name : '';
+    
+    form.new_owner_city = ''; form.new_owner_barangay = '';
+    selectedCityCode.value = '';
+    citiesList.value = []; barangaysList.value = [];
+    
+    await fetchCities(code);
+};
+
+const handleCityChange = async (event) => {
+    const code = event.target.value;
+    selectedCityCode.value = code;
+    const c = citiesList.value.find(x => x.code === code);
+    form.new_owner_city = c ? c.name : '';
+
+    form.new_owner_barangay = ''; barangaysList.value = [];
+    
+    await fetchBarangays(code);
+};
 
 // Watch for Server-Side Validation Errors as a fallback
 watch(() => form.errors.selected_franchise_id, (newError) => {
@@ -84,7 +178,6 @@ const currentEvaluationRequirements = computed(() => {
     return props.evaluationRequirements[typeObj.name] || [];
 });
 
-const filteredBarangays = computed(() => props.barangays.filter(b => b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())));
 const isUnitRequired = computed(() => ['change_unit'].includes(selectedType.value));
 const isOwnerRequired = computed(() => ['change_owner'].includes(selectedType.value));
 const isFranchiseSelectRequired = computed(() => true); 
@@ -132,6 +225,7 @@ const isStep2Valid = computed(() => {
         if (ownerMode.value === 'new') {
             if (!form.new_owner_first_name || !form.new_owner_last_name || 
                 !form.new_owner_contact || !form.new_owner_address || 
+                !form.new_owner_province || !form.new_owner_city || 
                 !form.new_owner_barangay || !form.new_owner_tin) {
                 return false;
             }
@@ -158,6 +252,13 @@ const closeModal = () => {
     docPreviews.value = {}; 
     unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
     ownerMode.value = 'existing'; unitMode.value = 'existing';
+    
+    // Reset API state
+    selectedProvinceCode.value = '';
+    selectedCityCode.value = '';
+    citiesList.value = [];
+    barangaysList.value = [];
+
     emit('close');
 };
 
@@ -278,26 +379,39 @@ const submit = () => {
                                 <div><InputLabel value="Last Name" /><TextInput v-model="form.new_owner_last_name" class="w-full text-sm py-1.5 mt-1" /></div>
                                 
                                 <div class="sm:col-span-2"><InputLabel value="Email Address" /><TextInput type="email" v-model="form.new_owner_email" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Contact Number" /><TextInput v-model="form.new_owner_contact" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
+                                <div>
+                                    <InputLabel value="Contact Number" />
+                                    <TextInput v-model="form.new_owner_contact" @input="form.new_owner_contact = formatContactNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/>
+                                </div>
                                 
-                                <div><InputLabel value="TIN Number" /><TextInput v-model="form.new_owner_tin" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div>
+                                    <InputLabel value="TIN Number" />
+                                    <TextInput v-model="form.new_owner_tin" @input="form.new_owner_tin = formatTinNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="XXX-XXX-XXX-XXX" />
+                                </div>
                                 
                                 <div class="sm:col-span-2"><InputLabel value="Street Address" /><TextInput v-model="form.new_owner_address" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div class="sm:col-span-2">
-                                    <InputLabel value="Barangay" />
-                                    <div class="relative mt-1">
-                                        <TextInput v-model="barangayQuery" @focus="showBarangayDropdown = true" placeholder="Search..." class="w-full text-sm py-1.5" />
-                                        <div v-if="showBarangayDropdown" class="absolute z-10 w-full bg-white border mt-1 rounded shadow-lg max-h-32 overflow-y-auto">
-                                            <div v-for="brgy in filteredBarangays" :key="brgy.id" 
-                                                @click="form.new_owner_barangay = brgy.name; barangayQuery = brgy.name; showBarangayDropdown = false" 
-                                                class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer">
-                                                {{ brgy.name }}
-                                            </div>
-                                            <div v-if="filteredBarangays.length === 0" class="px-3 py-2 text-sm text-gray-500 italic">No barangays found.</div>
-                                        </div>
-                                    </div>
+                                
+                                <div>
+                                    <InputLabel value="Province" />
+                                    <select v-model="selectedProvinceCode" @change="handleProvinceChange" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="" disabled>-- Select Province --</option>
+                                        <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
+                                    </select>
                                 </div>
-                                <div><InputLabel value="City" /><TextInput v-model="form.new_owner_city" disabled class="w-full text-sm py-1.5 mt-1 bg-gray-100" /></div>
+                                <div>
+                                    <InputLabel value="City/Municipality" />
+                                    <select v-model="selectedCityCode" @change="handleCityChange" :disabled="!citiesList.length" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                        <option value="" disabled>-- Select City --</option>
+                                        <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel value="Barangay" />
+                                    <select v-model="form.new_owner_barangay" :disabled="!barangaysList.length" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                        <option value="" disabled>-- Select Barangay --</option>
+                                        <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 

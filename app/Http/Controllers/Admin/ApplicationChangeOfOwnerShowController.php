@@ -146,6 +146,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
                         'contact_number' => $application->contact_number,
                         'street_address' => $application->street_address,
                         'barangay' => $application->barangay,
+                        'province' => $request->province,
                         'city' => $application->city,
                         'password' => Hash::make($request->password), 
                         'role' => 'franchise_owner',

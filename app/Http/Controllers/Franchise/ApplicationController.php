@@ -424,6 +424,8 @@ class ApplicationController extends Controller
                 'new_owner_tin'        => 'required|string',
                 'new_owner_address'    => 'required|string',
                 'new_owner_barangay'   => 'required|string',
+                'new_owner_province' => 'required|string',
+                'new_owner_city' => 'required|string',
             ]);
             $firstName = $request->new_owner_first_name;
             $middleName = $request->new_owner_middle_name;
@@ -433,7 +435,8 @@ class ApplicationController extends Controller
             $tinNumber = $request->new_owner_tin;
             $address = $request->new_owner_address;
             $barangay = $request->new_owner_barangay;
-            $city = $request->new_owner_city ?? 'Zamboanga City';
+            $city = $request->new_owner_city;
+            $province = $request->new_owner_province;   
         }
 
         DB::beginTransaction();
@@ -456,6 +459,7 @@ class ApplicationController extends Controller
                 'email'            => $email, 
                 'tin_number'       => $tinNumber,
                 'street_address'   => $address,
+                'province'         => $province,
                 'barangay'         => $barangay,
                 'city'             => $city,
             ]);
