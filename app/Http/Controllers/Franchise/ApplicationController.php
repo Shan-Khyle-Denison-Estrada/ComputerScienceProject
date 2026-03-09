@@ -26,7 +26,7 @@ use Illuminate\Validation\ValidationException;
 
 class ApplicationController extends Controller
 {
-public function index()
+    public function index()
     {
         $user = Auth::user();
         $operator = $user->operator; 

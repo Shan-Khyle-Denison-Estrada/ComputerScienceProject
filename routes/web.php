@@ -234,6 +234,7 @@ Route::middleware(['auth', 'role:franchise_owner'])->group(function () {
     
     // Applications
     Route::get('/franchise/applications', [FranchiseApplicationController::class, 'index'])->name('franchise.make-application');
+    Route::post('/franchise/applications/renewal', [FranchiseApplicationController::class, 'storeRenewal'])->name('franchise.applications.store-renewal');
     Route::post('/franchise/applications/change-unit', [FranchiseApplicationController::class, 'storeChangeOfUnit'])->name('franchise.applications.store-change-unit');
     Route::post('/franchise/applications/change-owner', [FranchiseApplicationController::class, 'storeChangeOfOwner'])->name('franchise.applications.store-change-owner');
     Route::post('/franchise/applications/{application}/submit-renewal-documents', [FranchiseApplicationController::class, 'submitRenewalDocuments'])->name('franchise.applications.submit-renewal-documents');
