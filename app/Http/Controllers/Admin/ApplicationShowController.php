@@ -69,7 +69,7 @@ class ApplicationShowController extends Controller
                 // 🚨 FIX: Prioritize the unit's zone_id, fallback to application's zone_id if missing
                     'zone_id' => $unit->zone_id ?? $application->zone_id,
                     'zone_name' => $unit->zone->description ?? $application->zone->description ?? 'N/A',
-                    'date_issued' => 'Pending',
+                    'date_issued' => $unit->date_issued,
                     'make_name' => $unit->make->name ?? 'N/A',
                     'model_year' => $unit->model_year,
                     'plate_number' => $unit->plate_number,

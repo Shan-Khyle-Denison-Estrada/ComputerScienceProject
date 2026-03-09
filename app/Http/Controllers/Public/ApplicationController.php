@@ -62,6 +62,7 @@ class ApplicationController extends Controller
             'units.*.make_id' => 'required|exists:unit_makes,id',
             'units.*.zone_id' => 'required|exists:zones,id',
             'units.*.franchise_number' => 'nullable|string|max:255',
+            'units.*.date_issued' => 'required|date', // <-- ADD THIS RULE
             'units.*.motor_number' => 'required|string|max:255',
             'units.*.chassis_number' => 'required|string|max:255',
             'units.*.model_year' => 'required|integer|min:1900|max:'.(date('Y')+1),
@@ -146,6 +147,7 @@ class ApplicationController extends Controller
                     'make_id' => $unitData['make_id'],
                     'zone_id' => $unitData['zone_id'],
                     'franchise_number' => $unitData['franchise_number'] ?? null,
+                    'date_issued' => $unitData['date_issued'],
                     'plate_number' => $unitData['plate_number'] ?? 'To Follow',
                     'motor_number' => $unitData['motor_number'],
                     'cr_number' => $unitData['cr_number'],

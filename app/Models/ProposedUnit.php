@@ -10,7 +10,7 @@ class ProposedUnit extends Model
     use HasFactory;
 
     protected $fillable = [
-        'application_id', 'franchise_number', 'make_id', 'model_year', 'zone_id', 
+        'application_id', 'franchise_number', 'make_id', 'model_year', 'zone_id', 'date_issued',
         'plate_number', 'motor_number', 'chassis_number', 'cr_number',
         'unit_front_photo', 'unit_back_photo', 'unit_left_photo', 'unit_right_photo',
         'cr_photo', 'or_photo', 'franchise_certificate_photo'

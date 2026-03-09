@@ -235,7 +235,7 @@ function populateForm(app) {
                 motor_number: unit.motor_number || '',
                 cr_number: unit.cr_number || '',
                 model_year: unit.model_year || '',
-                date_issued: new Date().toISOString().split('T')[0],
+                date_issued: unit.date_issued,
                 // We send the existing paths (strings) to the backend
                 unit_front_photo_path: unit.unit_front_photo_path || '', 
                 unit_back_photo_path: unit.unit_back_photo_path || '',   

@@ -121,7 +121,7 @@ const form = useForm({
 
     units: [
         {
-            make_id: '', zone_id: '', franchise_number: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
+            make_id: '', zone_id: '', franchise_number: '', date_issued: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
             unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
             cr_photo: null, or_photo: null, franchise_certificate_photo: null
         }
@@ -228,6 +228,7 @@ const validateStep2 = () => {
 
         if (!unit.zone_id) { form.setError(`units.${index}.zone_id`, 'Target Zone is required.'); isValid = false; unitHasError = true; }
         if (!unit.franchise_number?.toString().trim()) { form.setError(`units.${index}.franchise_number`, 'Franchise No. is required.'); isValid = false; unitHasError = true; }
+        if (!unit.date_issued) { form.setError(`units.${index}.date_issued`, 'Date Issued is required.'); isValid = false; unitHasError = true; }
         if (!unit.make_id) { form.setError(`units.${index}.make_id`, 'Make is required.'); isValid = false; unitHasError = true; }
         if (!unit.model_year) { form.setError(`units.${index}.model_year`, 'Model Year is required.'); isValid = false; unitHasError = true; }
         if (!unit.plate_number?.toString().trim()) { form.setError(`units.${index}.plate_number`, 'Plate No. is required.'); isValid = false; unitHasError = true; }
@@ -613,6 +614,14 @@ const formatTinNumber = (val) => {
                                         </div>
                                         <div>
                                             <div class="flex items-start gap-1">
+                                                <InputLabel value="Date Issued" />
+                                                <span class="text-red-600 font-bold">*</span>
+                                            </div>
+                                            <TextInput type="date" v-model="unit.date_issued" @input="form.clearErrors(`units.${index}.date_issued`)" class="mt-1 block w-full" />
+                                            <InputError :message="form.errors[`units.${index}.date_issued`]" class="mt-2" />
+                                        </div>
+                                        <div>
+                                            <div class="flex items-start gap-1">
                                                 <InputLabel value="Make" />
                                                 <span class="text-red-600 font-bold">*</span>
                                             </div>
@@ -635,7 +644,7 @@ const formatTinNumber = (val) => {
                                                 <InputLabel value="Plate No." />
                                                 <span class="text-red-600 font-bold">*</span>
                                             </div>
-                                            <TextInput v-model="unit.plate_number" @input="form.clearErrors(`units.${index}.plate_number`)" placeholder="e.g. ABC-1234" class="mt-1 block w-full" />
+                                            <TextInput v-model="unit.plate_number" @input="form.clearErrors(`units.${index}.plate_number`)" placeholder="e.g. ABC 1234" class="mt-1 block w-full" />
                                             <InputError :message="form.errors[`units.${index}.plate_number`]" class="mt-2" />
                                         </div>                                        
                                         <div>
@@ -654,8 +663,6 @@ const formatTinNumber = (val) => {
                                             <TextInput v-model="unit.cr_number" @input="form.clearErrors(`units.${index}.cr_number`)" placeholder="e.g. CR-987654" class="mt-1 block w-full" />
                                             <InputError :message="form.errors[`units.${index}.cr_number`]" class="mt-2" />
                                         </div>
-                                    </div>
-                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                                         <div>
                                             <div class="flex items-start gap-1">
                                                 <InputLabel value="Chassis No." />
