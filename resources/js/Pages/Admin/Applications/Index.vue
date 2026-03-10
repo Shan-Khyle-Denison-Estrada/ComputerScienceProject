@@ -4,7 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
+import Pagination from '@/Components/Pagination.vue'; 
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import debounce from 'lodash/debounce';
@@ -15,12 +15,14 @@ const props = defineProps({
     evaluationRequirements: Array,
     inspectionRequirements: Array,
     filters: Object,
-    isEncoder: Boolean // <-- ADD THIS
+    isEncoder: Boolean 
 });
 
 // --- CONSTANTS ---
+// Added 'New Franchise' so it appears in the requirements modal and filters
 const applicationTypes = [
     'Franchise Owner Account',
+    'New Franchise', 
     'Renewal',
     'Change of Owner',
     'Change of Unit'
@@ -40,9 +42,7 @@ const activeReqTab = ref('evaluation');
 const isEditingReq = ref(false);
 const reqForm = ref({ id: null, name: '', options: '', type: '' });
 
-// Add this anywhere in your <script setup>
 const getViewUrl = (app) => {
-    // FIX 1: Check 'app.type' instead of 'app.application_type'
     switch (app.type) {
         case 'Renewal': 
             return route('admin.applications.renewal.show', app.id);
@@ -50,16 +50,16 @@ const getViewUrl = (app) => {
             return route('admin.applications.change-of-owner.show', app.id);
         case 'Change of Unit': 
             return route('admin.applications.change-of-unit.show', app.id);
+        case 'New Franchise': // <-- Added New Franchise
+            return route('admin.applications.show-new-franchise', app.id);
         case 'Franchise Owner Account': 
-            return route('admin.applications.show', app.id);
         default: 
-            return '#';
+            return route('admin.applications.show', app.id);
     }
 }
 
 // --- SEARCH & FILTER LOGIC (Server-side) ---
 const handleSearch = debounce(() => {
-    // ✅ Replaced hardcoded admin route with current path
     router.get(window.location.pathname, {
         search: search.value,
         status: filterStatus.value,
@@ -88,7 +88,6 @@ const resetFilters = () => {
     search.value = ''; 
     applyFilters(); 
 };
-
 
 // --- COMPUTED PROPERTIES ---
 const currentRequirementsList = computed(() => activeReqTab.value === 'evaluation' ? props.evaluationRequirements : props.inspectionRequirements);
@@ -162,7 +161,6 @@ const deleteRequirement = (id) => {
     }
 };
 
-// --- DYNAMIC ROUTING HELPER ---
 const getApplicationRoute = (app) => {
     if (app.type === 'Change of Unit') {
         return route('admin.applications.show-change-of-unit', app.id);
@@ -170,8 +168,10 @@ const getApplicationRoute = (app) => {
         return route('admin.applications.show-change-of-owner', app.id);
     } else if (app.type === 'Renewal') {
         return route('admin.applications.show-renewal', app.id); 
+    } else if (app.type === 'New Franchise') { // <-- Added New Franchise
+        return route('admin.applications.show-new-franchise', app.id); 
     }
-    // Fallback or future paths
+    // Fallback (Handles 'Franchise Owner Account')
     return route('admin.applications.show', app.id);
 };
 </script>

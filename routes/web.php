@@ -31,6 +31,7 @@ use App\Http\Controllers\SpApprover\SpApproverApplicationController;
 use App\Http\Controllers\TabApprover\TabApproverApplicationController;
 use App\Http\Controllers\Encoder\EncoderApplicationController;
 use App\Http\Controllers\Public\NewFranchiseController;
+use App\Http\Controllers\Admin\ApplicationNewFranchiseShowController;
 use Illuminate\Support\Facades\Auth; // <-- Add this
 use App\Enums\UserRole; // <-- Add this
 use App\Models\Franchise;
@@ -95,6 +96,9 @@ Route::post('/complaints/report', [ComplaintController::class, 'store'])->name('
 
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
+
+    Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
+    ->name('admin.applications.show-new-franchise');
     
     // 1. Dashboard
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
@@ -384,6 +388,8 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
 
     Route::get('admin/drivers', [DriverController::class, 'index'])->name('admin.drivers.index');
     Route::get('admin/drivers/{driver}', [DriverController::class, 'show'])->name('admin.drivers.show');
+
+    Route::post('/applications/new-franchise/{application}/inspect', [ApplicationNewFranchiseShowController::class, 'updateInspection'])->name('admin.applications.new-franchise.inspect');
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
