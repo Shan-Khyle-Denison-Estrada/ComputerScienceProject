@@ -4,7 +4,7 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import Pagination from '@/Components/Pagination.vue';
+import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import debounce from 'lodash/debounce';
@@ -15,13 +15,11 @@ const props = defineProps({
     evaluationRequirements: Array,
     inspectionRequirements: Array,
     filters: Object,
-    isEncoder: Boolean,
-    isNewFranchiseOpen: Boolean // <-- ADDED: Prop from ApplicationController
+    isEncoder: Boolean // <-- ADD THIS
 });
 
 // --- CONSTANTS ---
 const applicationTypes = [
-    'New Franchise', // <-- ADDED: New application type
     'Franchise Owner Account',
     'Renewal',
     'Change of Owner',
@@ -42,11 +40,10 @@ const activeReqTab = ref('evaluation');
 const isEditingReq = ref(false);
 const reqForm = ref({ id: null, name: '', options: '', type: '' });
 
-// --- ROUTING LOGIC ---
+// Add this anywhere in your <script setup>
 const getViewUrl = (app) => {
+    // FIX 1: Check 'app.type' instead of 'app.application_type'
     switch (app.type) {
-        case 'New Franchise': // <-- ADDED
-            return route('admin.applications.show', app.id);
         case 'Renewal': 
             return route('admin.applications.renewal.show', app.id);
         case 'Change of Owner': 
@@ -56,12 +53,13 @@ const getViewUrl = (app) => {
         case 'Franchise Owner Account': 
             return route('admin.applications.show', app.id);
         default: 
-            return route('admin.applications.show', app.id); // Safe fallback
+            return '#';
     }
 }
 
 // --- SEARCH & FILTER LOGIC (Server-side) ---
 const handleSearch = debounce(() => {
+    // ✅ Replaced hardcoded admin route with current path
     router.get(window.location.pathname, {
         search: search.value,
         status: filterStatus.value,
@@ -90,6 +88,7 @@ const resetFilters = () => {
     search.value = ''; 
     applyFilters(); 
 };
+
 
 // --- COMPUTED PROPERTIES ---
 const currentRequirementsList = computed(() => activeReqTab.value === 'evaluation' ? props.evaluationRequirements : props.inspectionRequirements);
@@ -165,9 +164,7 @@ const deleteRequirement = (id) => {
 
 // --- DYNAMIC ROUTING HELPER ---
 const getApplicationRoute = (app) => {
-    if (app.type === 'New Franchise') { // <-- ADDED
-        return route('admin.applications.show', app.id);
-    } else if (app.type === 'Change of Unit') {
+    if (app.type === 'Change of Unit') {
         return route('admin.applications.show-change-of-unit', app.id);
     } else if (app.type === 'Change of Owner') {
         return route('admin.applications.show-change-of-owner', app.id);
@@ -188,9 +185,6 @@ const getApplicationRoute = (app) => {
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Applications</h1>
                 <p class="text-gray-600 text-sm">Manage franchise applications, renewals, and modifications.</p>
-                <span v-if="!isEncoder" :class="isNewFranchiseOpen ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium mt-2">
-                    New Franchises: {{ isNewFranchiseOpen ? 'Open' : 'Closed' }}
-                </span>
             </div>
 
             <div class="flex items-center gap-3">
