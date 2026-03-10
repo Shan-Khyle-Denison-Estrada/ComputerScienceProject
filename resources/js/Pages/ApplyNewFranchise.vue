@@ -226,7 +226,6 @@ const nextStep = () => {
 
     // Basic Validation per step
     if (currentStep.value === 1) {
-        // <-- Added form.tin_number to the check here
         if (!form.first_name || !form.last_name || !form.contact_number || !form.tin_number || !form.street_address || !form.barangay || !form.city || !form.province) {
             stepError.value = "Please fill in all required applicant fields.";
             scrollToError();
@@ -536,31 +535,34 @@ const submitApplication = () => {
                             </div>
 
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-5 bg-slate-50/50 p-5 rounded-xl border border-slate-100">
+                                
                                 <div class="md:col-span-2">
                                     <InputLabel>Preferred Zone / Route <span class="text-red-500">*</span></InputLabel>
-                                    <select v-model="form.units[0].zone_id" class="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white text-slate-900">
-                                        <option disabled value="">-- Select Zone --</option>
-                                        <option v-for="zone in zones" :key="zone.id" :value="zone.id">{{ zone.name }}</option>
+                                    <select v-model="form.units[0].zone_id" class="mt-1 w-full bg-slate-50 border-slate-300 text-slate-900 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="" disabled>Select Zone</option>
+                                        <option v-for="zone in zones" :key="zone.id" :value="zone.id">{{ zone.description }}</option>
                                     </select>
                                 </div>
+                                
                                 <div>
                                     <InputLabel>Unit Brand / Make <span class="text-red-500">*</span></InputLabel>
-                                    <select v-model="form.units[0].make_id" class="mt-1 block w-full border-slate-300 rounded-lg shadow-sm focus:border-blue-500 focus:ring-blue-500 bg-white text-slate-900">
-                                        <option disabled value="">-- Select Make --</option>
+                                    <select v-model="form.units[0].make_id" class="mt-1 w-full bg-slate-50 border-slate-300 text-slate-900 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="" disabled>Select Make</option>
                                         <option v-for="make in unitMakes" :key="make.id" :value="make.id">{{ make.name }}</option>
                                     </select>
                                 </div>
+                                
                                 <div>
                                     <InputLabel>Model Year <span class="text-red-500">*</span></InputLabel>
-                                    <TextInput type="number" v-model="form.units[0].model_year" class="mt-1 w-full bg-white text-slate-900" />
+                                    <TextInput type="number" v-model="form.units[0].model_year" class="mt-1 w-full bg-slate-50" />
                                 </div>
                                 <div>
                                     <InputLabel>Motor / Engine Number <span class="text-red-500">*</span></InputLabel>
-                                    <TextInput v-model="form.units[0].motor_number" class="mt-1 w-full bg-white text-slate-900" />
+                                    <TextInput v-model="form.units[0].motor_number" class="mt-1 w-full bg-slate-50" />
                                 </div>
                                 <div>
                                     <InputLabel>Chassis Number <span class="text-red-500">*</span></InputLabel>
-                                    <TextInput v-model="form.units[0].chassis_number" class="mt-1 w-full bg-white text-slate-900" />
+                                    <TextInput v-model="form.units[0].chassis_number" class="mt-1 w-full bg-slate-50" />
                                 </div>
                             </div>
 
@@ -608,29 +610,35 @@ const submitApplication = () => {
                                 <p class="text-sm text-slate-500 mb-6">Upload the necessary clearances and forms to complete your application.</p>
                             </div>
 
-                            <div v-for="(reqs, groupName) in requirements" :key="groupName" class="mb-8 last:mb-0">
-                                <h3 class="font-bold text-sm tracking-wider uppercase text-blue-600 mb-4">{{ groupName }} Requirements</h3>
-                                <div class="space-y-3">
-                                    <div v-for="req in reqs" :key="req.id" class="relative flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-slate-200 rounded-xl bg-white hover:border-blue-300 transition-colors shadow-sm group overflow-hidden">
-                                        <input type="file" @change="e => handleRequirementFile(e, req.id)" accept="image/*,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
-                                        
-                                        <div class="flex items-start gap-3 mb-3 sm:mb-0 pr-4">
-                                            <div class="mt-0.5 p-2 bg-slate-100 rounded-lg text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                                            </div>
-                                            <div>
-                                                <p class="font-bold text-slate-800 text-sm">{{ req.name }} <span class="text-red-500">*</span></p>
-                                                <p v-if="req.description" class="text-xs text-slate-500 mt-0.5">{{ req.description }}</p>
-                                            </div>
-                                        </div>
+                            <div v-if="!requirements || Object.keys(requirements).length === 0" class="text-center py-10 text-slate-500 border border-slate-200 rounded-xl bg-slate-50">
+                                No requirements have been configured by the admin yet.
+                            </div>
 
-                                        <div class="shrink-0 flex items-center justify-end">
-                                            <div v-if="form.requirement_files[req.id]" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 text-xs font-bold w-full sm:w-auto justify-center z-20 relative">
-                                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
-                                                <span class="truncate max-w-[150px]">{{ getFileName(form.requirement_files[req.id]) }}</span>
+                            <div v-else>
+                                <div v-for="(reqs, groupName) in requirements" :key="groupName" class="mb-8 last:mb-0">
+                                    <h3 class="font-bold text-sm tracking-wider uppercase text-blue-600 mb-4">{{ groupName }} Requirements</h3>
+                                    <div class="space-y-3">
+                                        <div v-for="req in reqs" :key="req.id" class="relative flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-slate-200 rounded-xl bg-white hover:border-blue-300 transition-colors shadow-sm group overflow-hidden">
+                                            <input type="file" @change="e => handleRequirementFile(e, req.id)" accept="image/*,application/pdf" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+                                            
+                                            <div class="flex items-start gap-3 mb-3 sm:mb-0 pr-4">
+                                                <div class="mt-0.5 p-2 bg-slate-100 rounded-lg text-slate-500 group-hover:bg-blue-100 group-hover:text-blue-600 transition-colors">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                                                </div>
+                                                <div>
+                                                    <p class="font-bold text-slate-800 text-sm">{{ req.name }} <span class="text-red-500">*</span></p>
+                                                    <p v-if="req.description" class="text-xs text-slate-500 mt-0.5">{{ req.description }}</p>
+                                                </div>
                                             </div>
-                                            <div v-else class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200 text-xs font-bold w-full sm:w-auto justify-center group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-colors">
-                                                Browse File
+
+                                            <div class="shrink-0 flex items-center justify-end">
+                                                <div v-if="form.requirement_files[req.id]" class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 rounded-lg border border-green-200 text-xs font-bold w-full sm:w-auto justify-center z-20 relative">
+                                                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                                                    <span class="truncate max-w-[150px]">{{ getFileName(form.requirement_files[req.id]) }}</span>
+                                                </div>
+                                                <div v-else class="inline-flex items-center gap-1.5 px-4 py-1.5 bg-slate-100 text-slate-600 rounded-lg border border-slate-200 text-xs font-bold w-full sm:w-auto justify-center group-hover:bg-blue-50 group-hover:text-blue-600 group-hover:border-blue-200 transition-colors">
+                                                    Browse File
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
