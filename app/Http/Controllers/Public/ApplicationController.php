@@ -9,6 +9,7 @@ use App\Models\Application;
 use App\Models\ApplicationEvaluation;
 use App\Models\EvaluationRequirement;
 use App\Models\ProposedUnit;
+use App\Models\SystemSetting;
 use App\Models\UnitMake;
 use App\Models\Zone;
 use Illuminate\Http\Request;
@@ -213,5 +214,164 @@ class ApplicationController extends Controller
         }
 
         return response()->json(['message' => 'Invalid or expired verification code.'], 422);
+    }
+
+    public function createNewFranchise()
+    {
+        // 1. Check if the setting is open
+        $settings = SystemSetting::first();
+        if (!$settings || !$settings->is_new_franchise_open) {
+            abort(403, 'Applications for new franchises are currently closed by the administration.');
+        }
+
+        // 2. Fetch required documents specific to new franchises and general files
+        $relevantGroups = ['General', 'New Franchise'];
+        $requirements = EvaluationRequirement::where('is_active', true)
+            ->whereIn('group', $relevantGroups)
+            ->orderBy('group')
+            ->get()
+            ->groupBy('group');
+
+        return Inertia::render('ApplyNewFranchise', [
+            'zones' => Zone::all(),
+            'unitMakes' => UnitMake::orderBy('name')->get(),
+            'requirements' => $requirements,
+        ]);
+    }
+
+    public function storeNewFranchise(Request $request)
+    {
+        // 1. Double check if setting is still open
+        $settings = SystemSetting::first();
+        if (!$settings || !$settings->is_new_franchise_open) {
+            abort(403, 'Applications for new franchises are currently closed by the administration.');
+        }
+
+        $relevantGroups = ['General', 'New Franchise'];
+        $requiredDocs = EvaluationRequirement::where('is_active', true)
+            ->whereIn('group', $relevantGroups)
+            ->get();
+
+        $rules = [
+            'first_name' => 'required|string|max:255',
+            'middle_name' => 'nullable|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|email|max:255',
+            'contact_number' => 'required|string|max:20',
+            'tin_number' => 'required|string|max:50', // <-- CHANGED TO REQUIRED
+            'street_address' => 'required|string|max:255',
+            'province' => 'required|string|max:255',
+            'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
+
+            // Units 
+            'units' => 'required|array|min:1',
+            'units.*.make_id' => 'required|exists:unit_makes,id',
+            'units.*.zone_id' => 'required|exists:zones,id',
+            'units.*.motor_number' => 'required|string|max:255',
+            'units.*.chassis_number' => 'required|string|max:255',
+            'units.*.model_year' => 'required|integer|min:1900|max:'.(date('Y')+1),
+            
+            // Unit Photos
+            'units.*.unit_front_photo' => 'required|image|max:5120',
+            'units.*.unit_back_photo' => 'required|image|max:5120',
+            'units.*.unit_left_photo' => 'required|image|max:5120',
+            'units.*.unit_right_photo' => 'required|image|max:5120',
+            'units.*.cr_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'units.*.or_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
+
+            'requirement_files' => 'nullable|array', 
+        ];
+
+        // Apply file upload rules for requirements
+        foreach ($requiredDocs as $req) {
+            $rules["requirement_files.{$req->id}"] = 'required|file|mimes:jpg,jpeg,png,pdf|max:5120';
+        }
+
+        $validated = $request->validate($rules);
+
+        try {
+            DB::beginTransaction();
+
+            $referenceNumber = 'APP-' . date('Y') . '-' . strtoupper(Str::random(5));
+
+            // A. Create Application
+            $application = Application::create([
+                'reference_number' => $referenceNumber,
+                'user_id' => auth()->id() ?? null,
+                'application_type' => "New Franchise", 
+                'status' => 'Pending',
+                'first_name' => $validated['first_name'],
+                'middle_name' => $validated['middle_name'],
+                'last_name' => $validated['last_name'],
+                'contact_number' => $validated['contact_number'],
+                'email' => $validated['email'],
+                'tin_number' => $validated['tin_number'],
+                'street_address' => $validated['street_address'],
+                'barangay' => $validated['barangay'],
+                'city' => $validated['city'],
+                'province' => $validated['province'],
+                'submitted_at' => now(),
+            ]);
+
+            // B. Process Requirement Files
+            if ($request->hasFile('requirement_files')) {
+                foreach ($request->file('requirement_files') as $reqId => $file) {
+                    if ($requiredDocs->contains('id', $reqId)) {
+                        $path = $file->store('application_requirements', 'public');
+                        
+                        ApplicationEvaluation::create([
+                            'application_id' => $application->id,
+                            'requirement_id' => $reqId,
+                            'file_path' => $path,
+                            'is_compliant' => null,
+                            'remarks' => 'Submitted by applicant'
+                        ]);
+                    }
+                }
+            }
+
+            // C. Process Units
+            foreach ($request->units as $unitData) {
+                $storePhoto = function($field) use ($unitData) {
+                    if (isset($unitData[$field]) && $unitData[$field] instanceof \Illuminate\Http\UploadedFile) {
+                        return $unitData[$field]->store('application_units', 'public');
+                    }
+                    return null;
+                };
+
+                ProposedUnit::create([
+                    'application_id' => $application->id,
+                    'make_id' => $unitData['make_id'],
+                    'zone_id' => $unitData['zone_id'],
+                    'franchise_number' => null,
+                    'date_issued' => null, 
+                    'plate_number' => 'To Follow',
+                    'cr_number' => 'To Follow',
+                    'motor_number' => $unitData['motor_number'],
+                    'chassis_number' => $unitData['chassis_number'],
+                    'model_year' => $unitData['model_year'],
+                    'unit_front_photo' => $storePhoto('unit_front_photo'),
+                    'unit_back_photo' => $storePhoto('unit_back_photo'),
+                    'unit_left_photo' => $storePhoto('unit_left_photo'),
+                    'unit_right_photo' => $storePhoto('unit_right_photo'),
+                    'cr_photo' => $storePhoto('cr_photo'),
+                    'or_photo' => $storePhoto('or_photo'),
+                    'franchise_certificate_photo' => null, 
+                ]);
+            }
+
+            DB::commit();
+
+            Mail::to($application->email)->send(
+                new \App\Mail\ApplicationSubmittedMail($referenceNumber, $application->first_name)
+            );
+
+            return back()->with('success', "New Franchise Application submitted successfully! Ref No: $referenceNumber");
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Submission Failed: ' . $e->getMessage()]);
+        }
     }
 }

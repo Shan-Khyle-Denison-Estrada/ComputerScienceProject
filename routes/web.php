@@ -30,8 +30,9 @@ use App\Http\Controllers\Reviewer\ReviewerApplicationController;
 use App\Http\Controllers\SpApprover\SpApproverApplicationController;
 use App\Http\Controllers\TabApprover\TabApproverApplicationController;
 use App\Http\Controllers\Encoder\EncoderApplicationController;
-use Illuminate\Support\Facades\Auth; // <-- Add this
-use App\Enums\UserRole; // <-- Add this
+use App\Http\Controllers\Admin\ApplicationNewFranchiseShowController;
+use Illuminate\Support\Facades\Auth; 
+use App\Enums\UserRole; 
 use App\Models\Franchise;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
@@ -62,12 +63,16 @@ Route::get('/dashboard', function () {
 Route::get('/', function () {
     return Inertia::render('Index', [
         'renewedFranchisesSum' => \App\Models\Franchise::where('status', 'Renewed')
-            ->count(), // Replace 'amount' with your actual column name
+            ->count(), 
     ]);
 });
 
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
 Route::post('/apply', [ApplicationController::class, 'store'])->name('application.store');
+
+// NEW: New Franchise Application Form
+Route::get('/apply/new-franchise', [ApplicationController::class, 'createNewFranchise'])->name('apply.new_franchise');
+Route::post('/apply/new-franchise', [ApplicationController::class, 'storeNewFranchise'])->name('apply.new_franchise.store');
 
 Route::get('/about', function () {
     return Inertia::render('About');
@@ -115,26 +120,6 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/franchise-owners', [FranchiseOwnerController::class, 'store'])->name('admin.franchise-owners.store');
     Route::put('/admin/franchise-owners/{user}', [FranchiseOwnerController::class, 'update'])->name('admin.franchise-owners.update');
 
-    // 5. Driver Management
-    // Route::resource('admin/drivers', DriverController::class)
-    //     ->names([
-    //         'index'   => 'admin.drivers.index',
-    //         'store'   => 'admin.drivers.store',
-    //         'create'  => 'admin.drivers.create',
-    //         'show'    => 'admin.drivers.show',
-    //         'update'  => 'admin.drivers.update',
-    //         'destroy' => 'admin.drivers.destroy',
-    //         'edit'    => 'admin.drivers.edit',
-    //     ]);
-
-    // // 6. Payment Routes
-    // Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
-    // Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
-
-    // // 7. Assessment Routes
-    // Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
-    // Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
-
     // 9. Units Routes
     Route::get('/admin/units', [UnitController::class, 'index'])->name('admin.units.index');
     Route::post('/admin/units', [UnitController::class, 'store'])->name('admin.units.store');
@@ -146,17 +131,11 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::delete('/admin/unit-makes/{unitMake}', [UnitMakeController::class, 'destroy'])->name('admin.unit-makes.destroy');
 
     // 11. Franchise Management Routes
-    // Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
     Route::post('/admin/franchises', [FranchiseController::class, 'store'])->name('admin.franchises.store');
-    // Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
 
     // 12. Franchise Actions
     Route::post('/admin/franchises/{franchise}/transfer', [FranchiseController::class, 'transferOwnership'])->name('admin.franchises.transfer');
     Route::post('/admin/franchises/{franchise}/change-unit', [FranchiseController::class, 'changeUnit'])->name('admin.franchises.change-unit');
-
-    // 13. Driver Assignment Routes
-    
-    
 
     // 14. Complaint Route
     Route::get('/admin/complaints', [ComplaintController::class, 'index'])->name('admin.complaints.index');
@@ -171,19 +150,14 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/admin/complaints/nature', [ComplaintController::class, 'storeNature'])->name('admin.complaints.nature.store');
     Route::delete('/admin/complaints/nature/{nature}', [ComplaintController::class, 'destroyNature'])->name('admin.complaints.nature.destroy');
 
-    // Application Index
-    // Route::get('/admin/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
-
     // Requirements Management
     Route::post('/admin/applications/requirements', [AdminApplicationController::class, 'storeRequirement'])->name('admin.requirements.store');
     Route::delete('/admin/applications/requirements/{type}/{id}', [AdminApplicationController::class, 'destroyRequirement'])->name('admin.requirements.destroy');
 
-    // Route::get('/applications/{id}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
     Route::post('/applications/{id}/evaluate', [ApplicationShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate');
     Route::post('/applications/{id}/return', [ApplicationShowController::class, 'returnApplication'])->name('admin.applications.return');
     Route::post('/applications/{id}/reject', [ApplicationShowController::class, 'rejectApplication'])->name('admin.applications.reject');
     Route::post('/applications/{id}/approve', [ApplicationShowController::class, 'approveApplication'])->name('admin.applications.approve');
-    // Route::post('/applications/{id}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
 
     // CHANGE OF UNIT SHOW ROUTES
     Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])
@@ -275,7 +249,7 @@ Route::middleware(['auth', 'role:evaluator'])->group(function () {
     Route::get('/evaluator/applications', [EvaluatorApplicationController::class, 'index'])->name('evaluator.applications.index');
     
     // Application Specific Show Routes
-    Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show'); // Kept original name for backward compatibility
+    Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show'); 
     Route::get('/evaluator/applications/change-of-owner/{application}', [EvaluatorApplicationController::class, 'showChangeOfOwner'])->name('evaluator.applications.show-change-of-owner');
     Route::get('/evaluator/applications/change-of-unit/{application}', [EvaluatorApplicationController::class, 'showChangeOfUnit'])->name('evaluator.applications.show-change-of-unit');
     Route::get('/evaluator/applications/new-franchise/{application}', [EvaluatorApplicationController::class, 'showFranchiseOwnerAccount'])->name('evaluator.applications.show-new-franchise');
@@ -305,7 +279,7 @@ Route::middleware(['auth', 'role:inspector'])->group(function () {
     Route::get('/inspector/applications/renewal/{application}', [InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
     Route::get('/inspector/applications/change-of-unit/{application}', [InspectorApplicationController::class, 'showChangeOfUnit'])->name('inspector.applications.show-change-of-unit');
 
-    // Shared Action Routes (Used by both Renewal and Change of Unit)
+    // Shared Action Routes
     Route::post('/inspector/applications/{application}/approve', [InspectorApplicationController::class, 'approve'])
         ->name('inspector.applications.approve');
     Route::post('/inspector/applications/{application}/reject', [InspectorApplicationController::class, 'reject'])
@@ -318,7 +292,6 @@ Route::middleware(['auth', 'role:inspector'])->group(function () {
 Route::middleware(['auth', 'role:reviewer'])->prefix('reviewer')->name('reviewer.')->group(function () {
     Route::get('/applications', [ReviewerApplicationController::class, 'index'])->name('applications.index');
     
-    // Split the show routes based on application type
     Route::get('/applications/renewal/{application}', [ReviewerApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
     Route::get('/applications/change-of-unit/{application}', [ReviewerApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
     Route::get('/applications/change-of-owner/{application}', [ReviewerApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
@@ -342,7 +315,6 @@ Route::middleware(['auth', 'role:sp_approver'])->group(function () {
 Route::middleware(['auth', 'role:tab_approver'])->prefix('tab-approver')->name('tab_approver.')->group(function () {
     Route::get('/applications', [TabApproverApplicationController::class, 'index'])->name('applications.index');
     
-    // Split the show routes based on application type
     Route::get('/applications/renewal/{application}', [TabApproverApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
     Route::get('/applications/change-of-unit/{application}', [TabApproverApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
     Route::get('/applications/change-of-owner/{application}', [TabApproverApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
@@ -353,10 +325,15 @@ Route::middleware(['auth', 'role:tab_approver'])->prefix('tab-approver')->name('
 
 // --- SHARED APPLICATION ROUTES (Admin & Encoder) ---
 Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
-    // We will use the 'admin.' prefix for the route names to prevent needing to rewrite all your Vue links,
-    // but the URLs will simply be /applications/...
-    
     Route::get('/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
+
+    // New Franchise 
+    Route::get('/applications/new-franchise/{application}', [ApplicationNewFranchiseShowController::class, 'show'])->name('admin.applications.new-franchise.show');
+    Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationNewFranchiseShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate'); // Keep same generic name or change it
+    Route::post('/applications/new-franchise/{application}/finalize', [ApplicationNewFranchiseShowController::class, 'finalizeApplication'])->name('admin.applications.new-franchise.finalize');// New Franchise 
+    Route::get('/applications/new-franchise/{application}', [ApplicationNewFranchiseShowController::class, 'show'])->name('admin.applications.new-franchise.show');
+    Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationNewFranchiseShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate'); // Keep same generic name or change it
+    Route::post('/applications/new-franchise/{application}/finalize', [ApplicationNewFranchiseShowController::class, 'finalizeApplication'])->name('admin.applications.new-franchise.finalize');
     
     // New Franchise (Franchise Owner Account)
     Route::get('/applications/new-franchise/{application}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
@@ -380,38 +357,28 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
 });
 
 // --- SHARED ROUTES: Admin & Collector ---
-// Both can view the index pages for payments and assessments
 Route::middleware(['auth', 'role:admin,collector'])->group(function () {
     Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
     Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
 });
 
 // --- COLLECTOR ONLY ROUTES ---
-// Only collectors have full CRUD access (store, update, destroy)
 Route::middleware(['auth', 'role:collector'])->group(function () {
-    // Payment CRUD
     Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
-    // If you add update/destroy for payments in the future, add them here.
-    
-    // Assessment CRUD
     Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
-    // If you add update/destroy for assessments in the future, add them here.
 
-    // 8. Particulars (Fee Types) Routes
     Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
     Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
     Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
 });
 
 // --- SHARED ROUTES: Admin & Releaser ---
-// Both can view the franchise show page
 Route::middleware(['auth', 'role:admin,releaser,encoder'])->group(function () {
     Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
     Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
 });
 
 // --- ENCODER ONLY ROUTES ---
-// Only encoders can create, store, edit, update, and delete drivers
 Route::middleware(['auth', 'role:encoder'])->group(function () {
     Route::get('admin/drivers/create', [DriverController::class, 'create'])->name('admin.drivers.create');
     Route::post('admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');

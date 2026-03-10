@@ -11,6 +11,7 @@ class SystemSetting extends Model
     protected $casts = [
         'surcharge_rate' => 'decimal:2',
         'interest_rate' => 'decimal:2',
+        'is_new_franchise_open' => 'boolean',
         'ordinances' => 'array',
         'faqs' => 'array',
     ];

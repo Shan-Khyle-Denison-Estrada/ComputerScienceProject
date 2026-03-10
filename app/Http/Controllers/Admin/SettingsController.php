@@ -29,6 +29,7 @@ class SettingsController extends Controller
             'annual_renewal_due' => 'nullable|string',
             'surcharge_rate' => 'nullable|numeric',
             'interest_rate' => 'nullable|numeric',
+            'is_new_franchise_open' => 'nullable|boolean', // <-- Added validation rule
             'theme_color' => 'nullable|string',
             'lgu_name' => 'nullable|string',
             'office_name' => 'nullable|string',
@@ -40,6 +41,9 @@ class SettingsController extends Controller
             'faqs' => 'nullable|array',
             'ordinances' => 'nullable|array',
         ]);
+
+        // Explicitly cast to boolean to catch empty/unchecked payload correctly
+        $validated['is_new_franchise_open'] = $request->boolean('is_new_franchise_open');
 
         // Handle standalone image uploads
         if ($request->hasFile('lgu_logo')) {

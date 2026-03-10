@@ -17,6 +17,7 @@ const props = defineProps({
             annual_renewal_due: '',   // Expected format: 'MM-DD'
             surcharge_rate: '',
             interest_rate: '',
+            is_new_franchise_open: false, // <-- Added default prop
             theme_color: '#3B82F6',
             lgu_name: '',
             lgu_logo_path: null,
@@ -51,6 +52,7 @@ const form = useForm({
     annual_renewal_due: `${selectedDueMonth.value}-${selectedDueDay.value}`,
     surcharge_rate: props.settings.surcharge_rate,
     interest_rate: props.settings.interest_rate,
+    is_new_franchise_open: !!props.settings.is_new_franchise_open, // <-- Added to form state
     theme_color: props.settings.theme_color,
     lgu_name: props.settings.lgu_name,
     lgu_logo: null,
@@ -258,73 +260,100 @@ const submitSettings = () => {
                         
                         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                             
-<div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
-    <div class="flex items-center gap-3 mb-4">
-        <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-        </div>
-        <div>
-            <h4 class="font-bold text-gray-900 text-sm">Renewal Schedule</h4>
-            <p class="text-xs text-gray-500">Set the annual renewal period</p>
-        </div>
-    </div>
-    
-    <div class="flex-1 space-y-4">
-        <div>
-            <InputLabel>Annual Renewal Start Date</InputLabel>
-            <div class="mt-1 flex gap-2">
-                <select v-model="selectedStartMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                    <option value="01">January</option>
-                    <option value="02">February</option>
-                    <option value="03">March</option>
-                    <option value="04">April</option>
-                    <option value="05">May</option>
-                    <option value="06">June</option>
-                    <option value="07">July</option>
-                    <option value="08">August</option>
-                    <option value="09">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
-                <select v-model="selectedStartDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                    <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
-                        {{ day }}
-                    </option>
-                </select>
-            </div>
-            <div v-if="form.errors.annual_renewal_start" class="text-red-500 text-xs mt-1">{{ form.errors.annual_renewal_start }}</div>
-        </div>
-
-        <div>
-            <InputLabel>Annual Renewal Due Date</InputLabel>
-            <div class="mt-1 flex gap-2">
-                <select v-model="selectedDueMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                    <option value="01">January</option>
-                    <option value="02">February</option>
-                    <option value="03">March</option>
-                    <option value="04">April</option>
-                    <option value="05">May</option>
-                    <option value="06">June</option>
-                    <option value="07">July</option>
-                    <option value="08">August</option>
-                    <option value="09">September</option>
-                    <option value="10">October</option>
-                    <option value="11">November</option>
-                    <option value="12">December</option>
-                </select>
-                <select v-model="selectedDueDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                    <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
-                        {{ day }}
-                    </option>
-                </select>
-            </div>
-            <div v-if="form.errors.annual_renewal_due" class="text-red-500 text-xs mt-1">{{ form.errors.annual_renewal_due }}</div>
-        </div>
-    </div>
-</div>
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="p-2 bg-purple-100 text-purple-600 rounded-lg">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"></path>
+                                        </svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-900 text-sm">Application Availability</h4>
+                                        <p class="text-xs text-gray-500">Control public access to applications</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex-1 space-y-4">
+                                    <div class="flex items-center justify-between bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                                        <div class="mr-4">
+                                            <span class="block text-sm font-bold text-gray-800">New Franchise Application</span>
+                                            <span class="block text-xs text-gray-500 mt-1">When toggled on, users can submit applications for new franchises publicly.</span>
+                                        </div>
+                                        <label class="relative inline-flex items-center cursor-pointer shrink-0">
+                                            <input type="checkbox" v-model="form.is_new_franchise_open" class="sr-only peer">
+                                            <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
+                                <div class="flex items-center gap-3 mb-4">
+                                    <div class="p-2 bg-blue-100 text-blue-600 rounded-lg">
+                                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                                    </div>
+                                    <div>
+                                        <h4 class="font-bold text-gray-900 text-sm">Renewal Schedule</h4>
+                                        <p class="text-xs text-gray-500">Set the annual renewal period</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex-1 space-y-4">
+                                    <div>
+                                        <InputLabel>Annual Renewal Start Date</InputLabel>
+                                        <div class="mt-1 flex gap-2">
+                                            <select v-model="selectedStartMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                                <option value="01">January</option>
+                                                <option value="02">February</option>
+                                                <option value="03">March</option>
+                                                <option value="04">April</option>
+                                                <option value="05">May</option>
+                                                <option value="06">June</option>
+                                                <option value="07">July</option>
+                                                <option value="08">August</option>
+                                                <option value="09">September</option>
+                                                <option value="10">October</option>
+                                                <option value="11">November</option>
+                                                <option value="12">December</option>
+                                            </select>
+                                            <select v-model="selectedStartDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                                <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
+                                                    {{ day }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div v-if="form.errors.annual_renewal_start" class="text-red-500 text-xs mt-1">{{ form.errors.annual_renewal_start }}</div>
+                                    </div>
+
+                                    <div>
+                                        <InputLabel>Annual Renewal Due Date</InputLabel>
+                                        <div class="mt-1 flex gap-2">
+                                            <select v-model="selectedDueMonth" class="block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                                <option value="01">January</option>
+                                                <option value="02">February</option>
+                                                <option value="03">March</option>
+                                                <option value="04">April</option>
+                                                <option value="05">May</option>
+                                                <option value="06">June</option>
+                                                <option value="07">July</option>
+                                                <option value="08">August</option>
+                                                <option value="09">September</option>
+                                                <option value="10">October</option>
+                                                <option value="11">November</option>
+                                                <option value="12">December</option>
+                                            </select>
+                                            <select v-model="selectedDueDay" class="block w-24 border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
+                                                <option v-for="day in 31" :key="day" :value="String(day).padStart(2, '0')">
+                                                    {{ day }}
+                                                </option>
+                                            </select>
+                                        </div>
+                                        <div v-if="form.errors.annual_renewal_due" class="text-red-500 text-xs mt-1">{{ form.errors.annual_renewal_due }}</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col lg:col-span-2">
                                 <div class="flex items-center gap-3 mb-4">
                                     <div class="p-2 bg-green-100 text-green-600 rounded-lg">
                                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">

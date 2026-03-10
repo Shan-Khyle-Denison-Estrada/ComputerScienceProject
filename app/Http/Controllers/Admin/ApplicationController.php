@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\EvaluationRequirement;
 use App\Models\InspectionItem;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -81,12 +82,17 @@ class ApplicationController extends Controller
             ];
         });
 
+        // Dynamically fetch the System Setting toggle
+        $settings = SystemSetting::first();
+        $isNewFranchiseOpen = $settings ? (bool)$settings->is_new_franchise_open : false;
+
         return Inertia::render('Admin/Applications/Index', [
             'applications' => $applications,
             'evaluationRequirements' => $evalReqs,
             'inspectionRequirements' => $inspReqs,
             'filters' => $request->only(['search', 'status', 'type']),
-            'isEncoder' => $isEncoder
+            'isEncoder' => $isEncoder,
+            'isNewFranchiseOpen' => $isNewFranchiseOpen,
         ]);
     }
 
