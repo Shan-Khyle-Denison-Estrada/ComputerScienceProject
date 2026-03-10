@@ -386,25 +386,23 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
     Route::get('admin/drivers/{driver}', [DriverController::class, 'show'])->name('admin.drivers.show');
 });
 
-// --- SHARED ROUTES: Admin & Collector ---
-// Both can view the index pages for payments and assessments
+// --- PAYMENTS ROUTES (Admin & Collector) ---
 Route::middleware(['auth', 'role:admin,collector'])->group(function () {
     Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
-    Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
 });
 
-// --- COLLECTOR ONLY ROUTES ---
-// Only collectors have full CRUD access (store, update, destroy)
 Route::middleware(['auth', 'role:collector'])->group(function () {
-    // Payment CRUD
     Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
-    // If you add update/destroy for payments in the future, add them here.
-    
-    // Assessment CRUD
-    Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
-    // If you add update/destroy for assessments in the future, add them here.
+});
 
-    // 8. Particulars (Fee Types) Routes
+// --- ASSESSMENTS ROUTES (Admin, Evaluator, Encoder) ---
+Route::middleware(['auth', 'role:admin,evaluator,encoder'])->group(function () {
+    Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
+    Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
+});
+
+// --- PARTICULARS ROUTES (Admin Only) ---
+Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
     Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
     Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');

@@ -37,7 +37,8 @@ const filterForm = ref({
 const renewalParticulars = computed(() => props.particulars.filter(p => p.group === 'renewal'));
 const unitParticulars = computed(() => props.particulars.filter(p => p.group === 'change_of_unit'));
 const ownerParticulars = computed(() => props.particulars.filter(p => p.group === 'change_of_owner'));
-const otherParticulars = computed(() => props.particulars.filter(p => !p.group && !p.is_system)); 
+const newFranchiseParticulars = computed(() => props.particulars.filter(p => p.group === 'new_franchise'));
+const otherParticulars = computed(() => props.particulars.filter(p => !p.group && !p.is_system));
 
 // --- HELPERS ---
 const formatCurrency = (value) => {
@@ -181,6 +182,7 @@ const getGroupBadgeClass = (group) => {
         case 'renewal': return 'bg-blue-100 text-blue-800';
         case 'change_of_unit': return 'bg-purple-100 text-purple-800';
         case 'change_of_owner': return 'bg-orange-100 text-orange-800';
+        case 'new_franchise': return 'bg-teal-100 text-teal-800';
         case 'penalty': return 'bg-red-100 text-red-800';
         default: return 'bg-gray-100 text-gray-800';
     }
@@ -256,8 +258,8 @@ onUnmounted(() => {
                         <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                         <span v-if="filterForm.status || filterForm.franchise_id" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                     </button>
-                    <SecondaryButton @click="showParticularsModal = true">Particulars</SecondaryButton>
-                    <PrimaryButton v-if="userRole === 'collector'" @click="openAddModal">New Assessment</PrimaryButton>
+                    <SecondaryButton v-if="userRole === 'admin'" @click="showParticularsModal = true">Particulars</SecondaryButton>
+                    <PrimaryButton v-if="['evaluator', 'encoder', 'admin'].includes(userRole)" @click="openAddModal">New Assessment</PrimaryButton>
                 </div>
             </div>
 
@@ -442,6 +444,9 @@ onUnmounted(() => {
                                                             <optgroup label="Change of Owner Fees" v-if="ownerParticulars.length">
                                                                 <option v-for="p in ownerParticulars" :key="p.id" :value="p.id">{{ p.name }} ({{ formatCurrency(p.amount) }})</option>
                                                             </optgroup>
+                                                            <optgroup label="New Franchise Fees" v-if="newFranchiseParticulars.length">
+                                                                <option v-for="p in newFranchiseParticulars" :key="p.id" :value="p.id">{{ p.name }} ({{ formatCurrency(p.amount) }})</option>
+                                                            </optgroup>
                                                             <optgroup label="Other Fees" v-if="otherParticulars.length">
                                                                 <option v-for="p in otherParticulars" :key="p.id" :value="p.id">{{ p.name }} ({{ formatCurrency(p.amount) }})</option>
                                                             </optgroup>
@@ -513,6 +518,7 @@ onUnmounted(() => {
                                     <option value="renewal">Renewal Fee</option>
                                     <option value="change_of_unit">Change of Unit</option>
                                     <option value="change_of_owner">Change of Owner</option>
+                                    <option value="new_franchise">New Franchise</option>
                                     <option value="penalty" disabled>Penalty (System)</option>
                                 </select>
                             </div>
