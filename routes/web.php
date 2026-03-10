@@ -30,6 +30,7 @@ use App\Http\Controllers\Reviewer\ReviewerApplicationController;
 use App\Http\Controllers\SpApprover\SpApproverApplicationController;
 use App\Http\Controllers\TabApprover\TabApproverApplicationController;
 use App\Http\Controllers\Encoder\EncoderApplicationController;
+use App\Http\Controllers\Public\NewFranchiseController;
 use Illuminate\Support\Facades\Auth; // <-- Add this
 use App\Enums\UserRole; // <-- Add this
 use App\Models\Franchise;
@@ -64,7 +65,13 @@ Route::get('/', function () {
         'renewedFranchisesSum' => \App\Models\Franchise::where('status', 'Renewed')
             ->count(), // Replace 'amount' with your actual column name
     ]);
-});
+})->name('home');
+
+// Public Route for New Franchise Applications
+Route::get('/new-franchise', [NewFranchiseController::class, 'create'])->name('new-franchise.create');
+Route::post('/new-franchise', [NewFranchiseController::class, 'store'])->name('new-franchise.store');
+Route::post('/new-franchise/send-otp', [NewFranchiseController::class, 'sendOtp'])->name('new-franchise.send-otp');
+Route::post('/new-franchise/verify-otp', [NewFranchiseController::class, 'verifyOtp'])->name('new-franchise.verify-otp');
 
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
 Route::post('/apply', [ApplicationController::class, 'store'])->name('application.store');

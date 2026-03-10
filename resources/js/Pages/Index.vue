@@ -98,6 +98,12 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z"></path></svg>
                         Scan QR
                     </Link>
+
+                    <Link v-if="settings?.allow_new_applications" :href="route('new-franchise.create')" class="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 text-center transition-all flex items-center justify-center gap-2">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
+                        New Application
+                    </Link>
+
                 </div>
 
                 <div v-if="!user" class="mt-6 flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-2 sm:gap-3 bg-slate-900/40 sm:bg-slate-900/30 w-full max-w-full sm:w-fit p-4 sm:py-2 sm:px-4 rounded-lg backdrop-blur-sm border border-white/5 overflow-hidden box-border">
