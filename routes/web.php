@@ -327,15 +327,18 @@ Route::middleware(['auth', 'role:tab_approver'])->prefix('tab-approver')->name('
 Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
     Route::get('/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
 
-    // New Franchise 
-    Route::get('/applications/new-franchise/{application}', [ApplicationNewFranchiseShowController::class, 'show'])->name('admin.applications.new-franchise.show');
-    Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationNewFranchiseShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate'); // Keep same generic name or change it
-    Route::post('/applications/new-franchise/{application}/finalize', [ApplicationNewFranchiseShowController::class, 'finalizeApplication'])->name('admin.applications.new-franchise.finalize');// New Franchise 
-    Route::get('/applications/new-franchise/{application}', [ApplicationNewFranchiseShowController::class, 'show'])->name('admin.applications.new-franchise.show');
-    Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationNewFranchiseShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate'); // Keep same generic name or change it
-    Route::post('/applications/new-franchise/{application}/finalize', [ApplicationNewFranchiseShowController::class, 'finalizeApplication'])->name('admin.applications.new-franchise.finalize');
+// 1. ACTUAL NEW FRANCHISE APPLICATIONS (Uses your new controller)
+    Route::prefix('applications/new-franchise-application')->name('admin.applications.new-franchise.')->group(function () {
+        Route::get('/{application}', [ApplicationNewFranchiseShowController::class, 'show'])->name('show');
+        Route::post('/{application}/evaluate', [ApplicationNewFranchiseShowController::class, 'updateEvaluation'])->name('evaluate');
+        Route::post('/{application}/inspect', [ApplicationNewFranchiseShowController::class, 'updateInspection'])->name('inspect');
+        Route::post('/{application}/approve', [ApplicationNewFranchiseShowController::class, 'approveApplication'])->name('approve');
+        Route::post('/{application}/reject', [ApplicationNewFranchiseShowController::class, 'rejectApplication'])->name('reject');
+        Route::post('/{application}/return', [ApplicationNewFranchiseShowController::class, 'returnApplication'])->name('return');
+        Route::post('/{application}/finalize', [ApplicationNewFranchiseShowController::class, 'finalizeApplication'])->name('finalize');
+    });
     
-    // New Franchise (Franchise Owner Account)
+    // Franchise Owner Account
     Route::get('/applications/new-franchise/{application}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
     Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate');
     Route::post('/applications/new-franchise/{application}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');

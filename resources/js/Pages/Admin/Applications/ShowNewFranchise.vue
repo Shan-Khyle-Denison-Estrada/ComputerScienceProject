@@ -11,11 +11,16 @@ import { computed, ref, reactive } from 'vue';
 const props = defineProps({
     application: Object,
     zones: Array,
-    isEncoder: { type: Boolean, default: false }
+    isEncoder: { type: Boolean, default: false },
+    inspectionItems: { type: Array, default: () => [] },
+    unitInspections: { type: Array, default: () => [] },
+    currentProposedUnitId: [Number, String]
 });
 
 const activeTab = ref('applicant_info');
 const showFinalizeModal = ref(false);
+
+const proposedUnit = computed(() => props.application?.proposed_units[0] || null);
 
 const finalizeForm = useForm({
     franchise_number: '',
@@ -36,9 +41,29 @@ const evaluationsForm = useForm({
 });
 
 const submitEvaluation = () => {
-    evaluationsForm.post(route('admin.applications.evaluate', props.application.id), {
+    evaluationsForm.post(route('admin.applications.new-franchise.evaluate', props.application.id), {
         preserveScroll: true,
         onSuccess: () => alert('Evaluation saved!')
+    });
+};
+
+// Inspection logic
+const inspectionForm = useForm({
+    proposed_unit_id: props.currentProposedUnitId,
+    inspections: props.inspectionItems?.map(item => {
+        const existing = props.unitInspections?.find(ui => ui.inspection_item_id === item.id);
+        return {
+            inspection_item_id: item.id,
+            is_functional: existing ? (existing.is_functional === 1 || existing.is_functional === true) : false,
+            remarks: existing?.remarks || ''
+        };
+    }) || []
+});
+
+const submitInspection = () => {
+    inspectionForm.post(route('admin.applications.new-franchise.inspect', props.application.id), {
+        preserveScroll: true,
+        onSuccess: () => alert('Inspection status saved!')
     });
 };
 
@@ -47,8 +72,6 @@ const submitFinalization = () => {
         onSuccess: () => showFinalizeModal.value = false
     });
 };
-
-const proposedUnit = computed(() => props.application?.proposed_units[0] || null);
 
 </script>
 
@@ -92,6 +115,7 @@ const proposedUnit = computed(() => props.application?.proposed_units[0] || null
                     <button @click="activeTab = 'applicant_info'" :class="activeTab === 'applicant_info' ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:bg-gray-100'" class="px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap">Applicant Profile</button>
                     <button @click="activeTab = 'proposed_unit'" :class="activeTab === 'proposed_unit' ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:bg-gray-100'" class="px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap">Proposed Tricycle</button>
                     <button @click="activeTab = 'evaluations'" :class="activeTab === 'evaluations' ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:bg-gray-100'" class="px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap">Document Evaluation</button>
+                    <button @click="activeTab = 'inspection'" :class="activeTab === 'inspection' ? 'bg-white text-blue-600 shadow-sm border border-gray-200' : 'text-gray-500 hover:bg-gray-100'" class="px-4 py-2.5 rounded-xl font-bold text-sm transition-all whitespace-nowrap">Unit Inspection</button>
                 </div>
 
                 <div class="p-6 sm:p-8 flex-1 bg-white">
@@ -175,6 +199,44 @@ const proposedUnit = computed(() => props.application?.proposed_units[0] || null
                             </div>
                             <div class="mt-4 flex justify-end" v-if="isEncoder && application.status !== 'Completed'">
                                 <PrimaryButton type="submit" :disabled="evaluationsForm.processing">Save Evaluation Status</PrimaryButton>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div v-show="activeTab === 'inspection'" class="space-y-6 animate-fade-in">
+                        <form @submit.prevent="submitInspection">
+                            <div class="overflow-x-auto rounded-xl border border-gray-200">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Inspection Item</th>
+                                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase">Status</th>
+                                            <th class="px-6 py-3 text-left text-xs font-bold text-gray-500 uppercase w-1/3">Remarks</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        <tr v-for="(item, index) in inspectionItems" :key="item.id">
+                                            <td class="px-6 py-4 text-sm font-medium text-gray-900">{{ item.name }}</td>
+                                            <td class="px-6 py-4 text-sm">
+                                                <select v-model="inspectionForm.inspections[index].is_functional" :disabled="!isEncoder" class="block w-full border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 text-sm">
+                                                    <option :value="true">Functional (Passed)</option>
+                                                    <option :value="false">Defective (Failed)</option>
+                                                </select>
+                                            </td>
+                                            <td class="px-6 py-4">
+                                                <TextInput v-model="inspectionForm.inspections[index].remarks" :disabled="!isEncoder" class="w-full text-sm" placeholder="Add note..." />
+                                            </td>
+                                        </tr>
+                                        <tr v-if="inspectionItems.length === 0">
+                                            <td colspan="3" class="px-6 py-4 text-center text-sm text-gray-500">
+                                                No inspection items available.
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="mt-4 flex justify-end" v-if="isEncoder && application.status !== 'Completed'">
+                                <PrimaryButton type="submit" :disabled="inspectionForm.processing">Save Inspection Status</PrimaryButton>
                             </div>
                         </form>
                     </div>
