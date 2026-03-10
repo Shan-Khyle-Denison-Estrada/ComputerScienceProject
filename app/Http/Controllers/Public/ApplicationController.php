@@ -247,7 +247,7 @@ class ApplicationController extends Controller
             abort(403, 'Applications for new franchises are currently closed by the administration.');
         }
 
-        $relevantGroups = ['General', 'New Franchise'];
+        $relevantGroups = ['New Franchise'];
         $requiredDocs = EvaluationRequirement::where('is_active', true)
             ->whereIn('group', $relevantGroups)
             ->get();
