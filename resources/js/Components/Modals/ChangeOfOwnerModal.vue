@@ -38,8 +38,6 @@ const form = useForm({
     province: '', // Added province
     barangay: '',
     city: '',
-    password: '',
-    password_confirmation: '',
     change_date: '',
     remarks: 'Approved and Finalized Change of Owner.',
 });
@@ -253,20 +251,15 @@ const submit = () => {
 
                 </div>
 
-                <div v-if="!operatorExists" class="border-t border-gray-100 pt-4 mb-6">
-                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Account Setup</h3>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel value="Temporary Password" class="text-xs mb-0" />
-                            <TextInput type="password" v-model="form.password" class="block w-full text-sm py-1.5" :required="!operatorExists" />
-                            <div v-if="form.errors.password" class="text-red-500 text-xs mt-1">{{ form.errors.password }}</div>
-                        </div>
-                        <div>
-                            <InputLabel value="Confirm Password" class="text-xs mb-0" />
-                            <TextInput type="password" v-model="form.password_confirmation" class="block w-full text-sm py-1.5" :required="!operatorExists" />
+<div v-if="!operatorExists">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Security</h3>
+                        <div class="bg-blue-50 p-4 rounded-md border border-blue-200">
+                            <p class="text-xs text-blue-800 font-medium flex items-start gap-2">
+                                <svg class="w-4 h-4 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                A secure, system-generated password will be automatically emailed to the new owner. They will be required to change it upon their first login.
+                            </p>
                         </div>
                     </div>
-                </div>
 
                 <div class="border-t border-gray-100 pt-4 mb-6">
                     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Change Details</h3>

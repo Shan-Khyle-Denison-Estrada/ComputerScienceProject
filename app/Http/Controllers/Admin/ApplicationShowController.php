@@ -252,7 +252,6 @@ class ApplicationShowController extends Controller
             'city' => 'required|string|max:255',
             'province' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
-            'password' => 'required|string|min:8|confirmed',
 
             // Franchise / Unit Info
             'franchises' => 'required|array|min:1',
@@ -293,6 +292,9 @@ class ApplicationShowController extends Controller
                     }
                 }
 
+                // Generate a random 10-character password
+                $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
+
                 // A. Create User (Franchise Owner)
                 $user = User::create([
                     'user_photo' => $userPhotoPath, // Save the NEW path
@@ -300,7 +302,8 @@ class ApplicationShowController extends Controller
                     'middle_name' => $validated['middle_name'],
                     'last_name' => $validated['last_name'],
                     'email' => $validated['email'],
-                    'password' => Hash::make($validated['password']),
+                    'password' => Hash::make($generatedPassword),
+                    'force_password_change' => true, // Flag to trigger change on first login
                     'contact_number' => $validated['contact_number'],
                     'street_address' => $validated['street_address'],
                     
@@ -401,10 +404,12 @@ class ApplicationShowController extends Controller
                     'status' => 'Completed', 
                     'franchise_id' => isset($franchise) ? $franchise->id : null,
                 ]);
+                // E. Send Email to the User
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
 
             });
 
-            return redirect()->back()->with('success', 'Franchise Account created successfully!');
+            return redirect()->back()->with('success', 'Franchise Account created successfully! Credentials have been emailed to the applicant.');
 
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Transaction Failed: ' . $e->getMessage()]);

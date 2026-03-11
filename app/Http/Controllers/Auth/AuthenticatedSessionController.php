@@ -26,6 +26,13 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
 
+        $user = $request->user();
+
+        // THIS IS THE CRITICAL CHECK
+        if ($user->force_password_change) {
+            return redirect()->route('password.force-change'); 
+        }
+
         // Redirect to the traffic director, which will route them to their specific panel
         return redirect()->intended(route('dashboard', absolute: false));
     }

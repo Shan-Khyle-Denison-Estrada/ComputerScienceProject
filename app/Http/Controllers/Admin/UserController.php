@@ -56,7 +56,6 @@ class UserController extends Controller
             'province' => 'nullable|string|max:255',
             'barangay' => 'nullable|string|max:255',       
             'city' => 'nullable|string|max:255',           
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', Rule::enum(UserRole::class)], 
             'photo' => 'nullable|image|max:2048', 
             'signature' => 'nullable|image|max:2048', 
@@ -82,8 +81,8 @@ class UserController extends Controller
                 ->update(['status' => 'inactive']);
         }
         // ---------------------------------------------------------
-
-        User::create([
+        $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
+        $user = User::create([
             'first_name' => $request->first_name,
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
@@ -93,12 +92,16 @@ class UserController extends Controller
             'province' => $request->province,
             'barangay' => $request->barangay,             
             'city' => $request->city,                     
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($generatedPassword),
+            'force_password_change' => true,
             'role' => $request->role, 
             'user_photo' => $photoPath,
             'signature_photo' => $signaturePath, 
             'status' => 'active', // Defaulting to active
         ]);
+
+        // Send Email to the new Staff User
+        \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
 
         return back()->with('success', 'User account created successfully.');
     }

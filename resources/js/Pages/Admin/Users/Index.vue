@@ -70,8 +70,6 @@ const addForm = useForm({
     barangay: '',          
     city: '',              
     role: 'admin', 
-    password: '',
-    password_confirmation: '',
     photo: null,
     signature: null, 
 });
@@ -529,15 +527,11 @@ const resetFilters = () => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel>Password <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="password" class="mt-1 block w-full" v-model="addForm.password" required />
-                        </div>
-                        <div>
-                            <InputLabel>Confirm Password <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="password" class="mt-1 block w-full" v-model="addForm.password_confirmation" required />
-                        </div>
+                    <div class="col-span-2 bg-blue-50 p-4 rounded-md border border-blue-200 mt-2">
+                        <p class="text-xs text-blue-800 font-medium flex items-start gap-2">
+                            <svg class="w-4 h-4 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            A secure, system-generated password will be automatically emailed to this user. They will be required to change it upon their first login.
+                        </p>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3 border-t pt-4">

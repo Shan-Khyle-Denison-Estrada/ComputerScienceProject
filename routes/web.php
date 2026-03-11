@@ -267,6 +267,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // ADD THESE TWO NEW ROUTES:
+    Route::get('/force-password-change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'create'])->name('password.force-change');
+    Route::post('/force-password-change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'store'])->name('password.force-change.store');
 });
 
 // --- CITY ANTI-POLLUTION OFFICER (CAPO) ROUTES ---

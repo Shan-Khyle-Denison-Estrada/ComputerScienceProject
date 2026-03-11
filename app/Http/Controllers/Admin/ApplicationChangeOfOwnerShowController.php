@@ -137,6 +137,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
                 $user = User::where('email', $application->email)->first();
 
                 if (!$user) {
+                    $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
                     // Create brand new User for the new owner
                     $user = User::create([
                         'first_name' => $application->first_name,
@@ -148,7 +149,8 @@ class ApplicationChangeOfOwnerShowController extends Controller
                         'barangay' => $application->barangay,
                         'province' => $request->province,
                         'city' => $application->city,
-                        'password' => Hash::make($request->password), 
+                        'password' => Hash::make($generatedPassword),
+                        'force_password_change' => true,
                         'role' => 'franchise_owner',
                         'status' => 'active',
                     ]);
