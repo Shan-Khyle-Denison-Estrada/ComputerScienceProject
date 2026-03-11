@@ -273,6 +273,8 @@ Route::middleware(['auth', 'role:city_anti_pollution_officer'])->group(function 
     // View Routes
     Route::get('/capo/applications/renewal/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showRenewal'])->name('capo.applications.show');
     Route::get('/capo/applications/change-of-unit/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showChangeOfUnit'])->name('capo.applications.show-change-of-unit');
+    Route::get('/capo/applications/new-franchise/{application}', [CapoApplicationController::class, 'showNewFranchise'])
+    ->name('capo.applications.show-new-franchise');
 
     // Shared Action Routes (Used by both Renewal and Change of Unit)
     Route::post('/capo/applications/{application}/approve', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'approve'])

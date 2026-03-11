@@ -13,9 +13,8 @@ class CapoApplicationController extends Controller
 {
     public function index(Request $request)
     {
-        // FILTERING: Renewal or Change of Unit, Status Pending, Inspector Approved, CAPO Pending
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->whereIn('application_type', ['Renewal', 'Change of Unit'])
+            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'New Franchise']) // Include New Franchise applications
             ->where('status', 'Pending')
             ->where('inspector_status', 'Approved') // Must be approved by Inspector first
             ->where(function($q) {
@@ -130,5 +129,41 @@ class CapoApplicationController extends Controller
 
         return redirect()->route('capo.applications.index')
                          ->with('success', "Application has been returned to the Inspector for re-evaluation.");
+    }
+
+    public function showNewFranchise(Application $application)
+    {
+        // Strictly limit to New Franchise
+        abort_if($application->application_type !== 'New Franchise', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        
+        if ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('Capo/Applications/ShowNewFranchise', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
     }
 }
