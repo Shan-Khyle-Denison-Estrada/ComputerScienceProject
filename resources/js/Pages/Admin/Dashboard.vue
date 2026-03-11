@@ -115,26 +115,37 @@ watch(() => props.chart, () => initChart(), { deep: true });
         <div class="h-full flex flex-col gap-6 overflow-y-auto overflow-x-hidden pb-4 custom-scrollbar">
             
             <div class="flex-none flex flex-col gap-6">
-                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div>
-                        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
-                        <p class="text-gray-500 text-sm mt-1">Overview of Tricycle Franchise Management System</p>
-                    </div>
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+        <p class="text-gray-500 text-sm mt-1">Overview of Tricycle Franchise Management System</p>
+    </div>
 
-                    <div class="flex items-center justify-between w-full sm:w-auto gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-2 whitespace-nowrap">
-                            <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Fiscal Year:</span>
-                        </div>
-                        <select v-model="selectedFiscalYear" class="w-full sm:w-auto text-right sm:text-left text-base font-black text-indigo-700 bg-transparent border-none focus:ring-0 p-0 pr-8 min-w-[110px] cursor-pointer">
-                            <option v-for="year in props.available_fiscal_years" :key="year" :value="year">
-                                {{ year }}
-                            </option>
-                        </select>
-                    </div>
-                </div>
+    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+<a :href="`/dashboard/report/download?fiscal_year=${selectedFiscalYear}`" 
+   class="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl shadow-sm transition-colors text-sm font-semibold">
+    
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+    </svg>
+    Download Report
+</a>
+
+        <div class="flex items-center justify-between w-full sm:w-auto gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
+            <div class="flex items-center gap-2 whitespace-nowrap">
+                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Fiscal Year:</span>
+            </div>
+            <select v-model="selectedFiscalYear" class="w-full sm:w-auto text-right sm:text-left text-base font-black text-indigo-700 bg-transparent border-none focus:ring-0 p-0 pr-8 min-w-[110px] cursor-pointer">
+                <option v-for="year in props.available_fiscal_years" :key="year" :value="year">
+                    {{ year }}
+                </option>
+            </select>
+        </div>
+    </div>
+</div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100">

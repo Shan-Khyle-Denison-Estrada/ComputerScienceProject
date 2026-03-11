@@ -8,10 +8,13 @@ use App\Models\Payment;
 use App\Models\Driver;
 use App\Models\Operator;
 use App\Models\SystemSetting;
+use App\Models\Complaint;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\File;
 
 class AdminDashboardController extends Controller
 {
@@ -141,5 +144,153 @@ class AdminDashboardController extends Controller
                 'chart_period' => $chartPeriod,
             ]
         ]);
+    }
+
+    // Add this new method inside AdminDashboardController
+
+    public function report(Request $request)
+    {
+        $settings = SystemSetting::first();
+        $renewalStart = $settings->annual_renewal_start ?? '01-01';
+        $currentYear = now()->year;
+        
+        // Get the requested fiscal year from the URL
+        $selectedFiscalYear = $request->query('fiscal_year', (string)$currentYear);
+
+        // Calculate Date Ranges
+        if ($renewalStart === '01-01') {
+            $fyStart = Carbon::createFromFormat('Y-m-d', "{$selectedFiscalYear}-01-01")->startOfDay();
+            $fyEnd = $fyStart->copy()->endOfYear();
+        } else {
+            $parts = explode('-', $selectedFiscalYear);
+            $y1 = $parts[0] ?? $currentYear;
+            $y2 = $parts[1] ?? ($currentYear + 1);
+            $fyStart = Carbon::createFromFormat('Y-m-d', "{$y1}-{$renewalStart}")->startOfDay();
+            $fyEnd = Carbon::createFromFormat('Y-m-d', "{$y2}-{$renewalStart}")->subDay()->endOfDay();
+        }
+
+        // Gather Comprehensive Report Data
+        $totalFranchises = Franchise::whereBetween('created_at', [$fyStart, $fyEnd])->count();
+        $totalOperators = Operator::whereBetween('created_at', [$fyStart, $fyEnd])->count();
+        $totalRevenue = Payment::whereBetween('created_at', [$fyStart, $fyEnd])->sum('amount_paid');
+        $totalComplaints = Complaint::whereBetween('created_at', [$fyStart, $fyEnd])->count();
+
+        // Monthly Revenue Breakdown
+        $monthlyRevenue = Payment::select(
+            DB::raw('sum(amount_paid) as total'), 
+            DB::raw("DATE_FORMAT(created_at, '%M %Y') as month"),
+            DB::raw("MIN(created_at) as sort_date")
+        )
+        ->whereBetween('created_at', [$fyStart, $fyEnd])
+        ->groupBy('month')
+        ->orderBy('sort_date')
+        ->get();
+
+        return Inertia::render('Admin/Report', [
+            'fiscal_year' => $selectedFiscalYear,
+            'report_date' => now()->format('F d, Y'),
+            'date_range' => $fyStart->format('M d, Y') . ' - ' . $fyEnd->format('M d, Y'),
+            'stats' => [
+                'franchises' => $totalFranchises,
+                'operators' => $totalOperators,
+                'revenue' => $totalRevenue,
+                'complaints' => $totalComplaints,
+            ],
+            'monthly_revenue' => $monthlyRevenue
+        ]);
+    }
+
+public function downloadReport(Request $request)
+    {
+        $settings = SystemSetting::first();
+        $renewalStart = $settings->annual_renewal_start ?? '01-01';
+        $currentYear = now()->year;
+        
+        $selectedFiscalYear = $request->query('fiscal_year', (string)$currentYear);
+
+        // Calculate Date Ranges
+        if ($renewalStart === '01-01') {
+            $fyStart = Carbon::createFromFormat('Y-m-d', "{$selectedFiscalYear}-01-01")->startOfDay();
+            $fyEnd = $fyStart->copy()->endOfYear();
+        } else {
+            $parts = explode('-', $selectedFiscalYear);
+            $y1 = $parts[0] ?? $currentYear;
+            $y2 = $parts[1] ?? ($currentYear + 1);
+            $fyStart = Carbon::createFromFormat('Y-m-d', "{$y1}-{$renewalStart}")->startOfDay();
+            $fyEnd = Carbon::createFromFormat('Y-m-d', "{$y2}-{$renewalStart}")->subDay()->endOfDay();
+        }
+
+        // Gather Comprehensive Report Data
+        $totalFranchises = Franchise::whereBetween('created_at', [$fyStart, $fyEnd])->count();
+        $totalOperators = Operator::whereBetween('created_at', [$fyStart, $fyEnd])->count();
+        $totalRevenue = Payment::whereBetween('created_at', [$fyStart, $fyEnd])->sum('amount_paid');
+        
+        // Complaints Data
+        $totalComplaints = Complaint::whereBetween('created_at', [$fyStart, $fyEnd])->count();
+        $resolvedComplaints = Complaint::whereBetween('created_at', [$fyStart, $fyEnd])
+            ->where('status', 'resolved') // Ensure this matches your exact database string
+            ->count();
+
+        // Monthly Revenue Breakdown
+        $monthlyRevenue = Payment::select(
+            DB::raw('sum(amount_paid) as total'), 
+            DB::raw("DATE_FORMAT(created_at, '%M %Y') as month"),
+            DB::raw("MIN(created_at) as sort_date")
+        )
+        ->whereBetween('created_at', [$fyStart, $fyEnd])
+        ->groupBy('month')
+        ->orderBy('sort_date')
+        ->get();
+
+        // --- Bulletproof Logo Handling for DomPDF using office_logo_path ---
+        $logoBase64 = null;
+        $logoColumn = $settings->office_logo_path ?? null; 
+
+        if ($logoColumn) { 
+            // 1. Check if the file exists in the internal storage folder
+            $storagePath = storage_path('app/public/' . $logoColumn);
+            
+            // 2. Fallback: Check if the file was placed directly in the public folder
+            $publicPath = public_path($logoColumn);
+            
+            // Determine which path is valid
+            $actualLogoPath = null;
+            if (file_exists($storagePath)) {
+                $actualLogoPath = $storagePath;
+            } elseif (file_exists($publicPath)) {
+                $actualLogoPath = $publicPath;
+            } elseif (file_exists(public_path('storage/' . $logoColumn))) {
+                $actualLogoPath = public_path('storage/' . $logoColumn);
+            }
+
+            // Convert to Base64 using precise MIME type detection
+            if ($actualLogoPath) {
+                $mimeType = mime_content_type($actualLogoPath);
+                $fileData = file_get_contents($actualLogoPath);
+                $logoBase64 = 'data:' . $mimeType . ';base64,' . base64_encode($fileData);
+            }
+        }
+
+        $data = [
+            'fiscal_year' => $selectedFiscalYear,
+            'report_date' => now()->format('F d, Y'),
+            'date_range' => $fyStart->format('M d, Y') . ' - ' . $fyEnd->format('M d, Y'),
+            'logo_base64' => $logoBase64,
+            'system_name' => $settings->system_name ?? 'Tricycle Franchise Management System',
+            'stats' => [
+                'franchises' => $totalFranchises,
+                'operators' => $totalOperators,
+                'revenue' => $totalRevenue,
+                'complaints' => $totalComplaints,
+                'resolved_complaints' => $resolvedComplaints,
+            ],
+            'monthly_revenue' => $monthlyRevenue
+        ];
+
+        // Generate PDF using a Blade view
+        $pdf = Pdf::loadView('reports.annual-report', $data);
+
+        // Download the file directly
+        return $pdf->download("Annual_Report_FY_{$selectedFiscalYear}.pdf");
     }
 }

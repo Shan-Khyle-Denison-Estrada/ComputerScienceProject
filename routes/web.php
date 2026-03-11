@@ -100,6 +100,8 @@ Route::post('/complaints/report', [ComplaintController::class, 'store'])->name('
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
 
+    Route::get('/dashboard/report/download', [AdminDashboardController::class, 'downloadReport'])->name('admin.dashboard.report.download');
+
     // Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
     // ->name('admin.applications.show-new-franchise');
     
