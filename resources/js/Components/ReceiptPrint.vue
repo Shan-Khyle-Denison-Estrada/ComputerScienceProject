@@ -14,7 +14,7 @@ const printDateTime = ref('');
 watch(() => props.payment, () => {
     printDateTime.value = new Date().toLocaleString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric',
         hour: '2-digit',
         minute: '2-digit'
@@ -32,7 +32,7 @@ const formattedDate = computed(() => {
     if (!props.payment.created_at) return 'N/A';
     return new Date(props.payment.created_at).toLocaleDateString('en-US', {
         year: 'numeric',
-        month: 'long',
+        month: 'short',
         day: 'numeric'
     });
 });
@@ -87,10 +87,8 @@ const amountInWords = computed(() => {
 
     let words = pesos === 0 ? 'Zero' : convertInteger(pesos);
     
-    // Append currency
     words += (pesos === 1) ? ' Peso' : ' Pesos';
 
-    // Handle cents
     if (centavos > 0) {
         const centavoWords = convertInteger(centavos);
         words += ` and ${centavoWords} Centavo${centavos > 1 ? 's' : ''} Only`;
@@ -103,61 +101,84 @@ const amountInWords = computed(() => {
 </script>
 
 <template>
-    <div class="w-full max-w-4xl mx-auto bg-white text-black print:p-8 print:m-0 print:min-h-screen print:flex print:flex-col print:justify-center relative">
+    <div class="receipt-container">
         
-        <div class="w-full border-2 border-black p-10 relative">
-            <div class="text-center mb-10 border-b-2 border-black pb-6">
-                <h1 class="text-3xl font-bold uppercase tracking-widest mb-2">Official Receipt</h1>
-                <!-- <p class="text-sm font-medium">Local Government Unit / MTFRB</p> -->
-                <p class="text-xs text-gray-500 mt-2">Printed on: {{ printDateTime }}</p>
-            </div>
+        <div class="text-center mb-3">
+            <h1 class="text-[14px] font-bold uppercase tracking-wide">Official Receipt</h1>
+            <p class="text-[10px] text-gray-600 mt-1">Printed: {{ printDateTime }}</p>
+        </div>
 
-            <div class="mb-8 space-y-2">
-                <p class="text-lg">
-                    <span class="font-bold w-40 inline-block">O.R. No:</span> 
-                    <span class="text-red-600 font-bold font-mono tracking-wider">{{ payment.or_number }}</span>
-                </p>
-                <p class="text-base">
-                    <span class="font-bold w-40 inline-block">Date:</span> 
-                    {{ formattedDate }}
-                </p>
-                <p class="text-base">
-                    <span class="font-bold w-40 inline-block">Assessment Ref:</span> 
-                    #{{ payment.application_reference_id || payment.assessment_id }}
-                </p>
+        <div class="border-y border-dashed border-gray-400 py-2 mb-3 text-[11px] space-y-1">
+            <div class="flex justify-between items-start">
+                <span class="font-bold mr-2">O.R. No:</span> 
+                <span class="font-mono font-bold text-right">{{ payment.or_number }}</span>
             </div>
-
-            <div class="space-y-6 text-base leading-loose mb-4">
-                <div class="flex">
-                    <span class="font-bold w-40 shrink-0">Received from:</span>
-                    <span class="border-b border-black flex-1 uppercase px-4 font-semibold">{{ payeeName }}</span>
-                </div>
-                <div class="flex">
-                    <span class="font-bold w-40 shrink-0">Address:</span>
-                    <span class="border-b border-black flex-1 px-4">{{ payeeAddress }}</span>
-                </div>
-                <div class="flex">
-                    <span class="font-bold w-40 shrink-0">The sum of:</span>
-                    <span class="border-b border-black flex-1 px-4 uppercase font-bold italic text-sm">{{ amountInWords }}</span>
-                </div>
-                <div class="flex">
-                    <span class="font-bold w-40 shrink-0">Amount:</span>
-                    <span class="border-b border-black flex-1 px-4 font-mono font-bold text-lg">{{ formatCurrency(payment.amount_paid) }}</span>
-                </div>
+            <div class="flex justify-between items-start">
+                <span class="font-bold mr-2">Date:</span> 
+                <span class="text-right">{{ formattedDate }}</span>
+            </div>
+            <div class="flex justify-between items-start">
+                <span class="font-bold mr-2">Ref:</span> 
+                <span class="text-right">#{{ payment.application_reference_id || payment.assessment_id }}</span>
             </div>
         </div>
+
+        <div class="text-[11px] leading-tight space-y-3 mb-3">
+            <div>
+                <div class="font-bold">Received from:</div>
+                <div class="uppercase pl-2">{{ payeeName }}</div>
+            </div>
+            <div>
+                <div class="font-bold">Address:</div>
+                <div class="pl-2">{{ payeeAddress }}</div>
+            </div>
+            <div>
+                <div class="font-bold">The sum of:</div>
+                <div class="uppercase italic text-[10px] pl-2">{{ amountInWords }}</div>
+            </div>
+        </div>
+
+        <div class="border-y border-dashed border-gray-400 py-3 text-center mb-4">
+            <div class="font-bold text-[12px] uppercase tracking-wider mb-1">Amount Paid</div>
+            <div class="font-mono font-bold text-[18px]">{{ formatCurrency(payment.amount_paid) }}</div>
+        </div>
+
+        <div class="text-center text-[10px] text-gray-600 pb-4">
+            <p>Thank you for your payment!</p>
+            <p class="mt-2">--- End of Receipt ---</p>
+        </div>
+
     </div>
 </template>
 
-<style>
-/* Removes browser headers, footers, and margins */
+<style scoped>
+/* Browser preview styling */
+.receipt-container {
+    width: 58mm;
+    margin: 0 auto;
+    background: white;
+    color: black;
+    font-family: 'Courier New', Courier, monospace; /* Thermal standard font */
+    padding: 2mm;
+}
+
+/* Crucial Print Directives */
 @media print {
     @page {
-        margin: 0; 
+        margin: 0;
+        /* Tells the browser this is a continuous 58mm roll, not an A4 page */
+        size: 58mm auto; 
     }
     body {
+        margin: 0;
+        padding: 0;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
+    }
+    .receipt-container {
+        width: 100%;
+        padding: 2mm;
+        margin: 0;
     }
 }
 </style>

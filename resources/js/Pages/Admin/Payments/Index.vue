@@ -146,7 +146,20 @@ const submitAdd = () => {
     }
     
     addForm.post(route('admin.payments.store'), {
-        onSuccess: () => closeAddModal(),
+        onSuccess: () => {
+            // 1. Close the modal and reset the form as usual
+            closeAddModal();
+            
+            // 2. Inertia automatically updates the page props on success.
+            // Assuming your backend sorts the newest payments at the top, 
+            // the newly created payment will be the first item in the array.
+            const newPayment = props.payments.data[0];
+            
+            // 3. Trigger the print function automatically
+            if (newPayment) {
+                printReceipt(newPayment);
+            }
+        },
     });
 };
 
