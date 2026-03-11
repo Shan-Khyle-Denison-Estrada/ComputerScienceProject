@@ -116,14 +116,24 @@ class SpApproverApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
+            'proposedUnits'
         ]);
 
         $inspectionItems = InspectionItem::all();
 
         $currentUnitId = null;
         $unitInspections = [];
+
+        $proposedUnit = $application->proposedUnits->last();
         
-        if ($application->franchise && $application->franchise->currentActiveUnit) {
+        if ($proposedUnit) {
+            $currentUnitId = $proposedUnit->id;
+            $unitInspections = UnitInspection::where('proposed_unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        } 
+        // Fallback to active unit if no proposed unit exists
+        elseif ($application->franchise && $application->franchise->currentActiveUnit) {
             $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
             $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
                 ->where('application_id', $application->id) 

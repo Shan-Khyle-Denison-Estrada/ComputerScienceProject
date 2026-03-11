@@ -264,6 +264,7 @@ class EvaluatorApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
+            'proposedUnits'
         ]);
 
         $inspectionItems = InspectionItem::all();
@@ -271,7 +272,17 @@ class EvaluatorApplicationController extends Controller
         $currentUnitId = null;
         $unitInspections = [];
         
-        if ($application->franchise && $application->franchise->currentActiveUnit) {
+        // 1. Check if a Proposed Unit exists (For New Franchise / Change of Unit)
+        $proposedUnit = $application->proposedUnits->last();
+
+        if ($proposedUnit) {
+            $currentUnitId = $proposedUnit->id;
+            $unitInspections = UnitInspection::where('proposed_unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        } 
+        // 2. Fallback to existing active unit (For Renewals / Change of Owner)
+        elseif ($application->franchise && $application->franchise->currentActiveUnit) {
             $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
             $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
                 ->where('application_id', $application->id) 

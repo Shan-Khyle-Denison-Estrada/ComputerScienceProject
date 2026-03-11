@@ -174,7 +174,7 @@ const isImageUrl = (url) => {
                                 <div class="grid grid-cols-2 gap-y-4 gap-x-6">
                                     <div><p class="text-sm text-gray-500">Zone</p><p class="font-medium text-gray-900">{{ application.franchise_details.zone }}</p></div>
                                     <div><p class="text-sm text-gray-500">Date Issued</p><p class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</p></div>
-                                    <div><p class="text-sm text-gray-500">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div>
+                                    <!-- <div><p class="text-sm text-gray-500">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div> -->
                                 </div>
                             </section>
                         </div>

@@ -108,22 +108,34 @@ class InspectorApplicationController extends Controller
     {
         $request->validate([
             'inspection_item_id' => 'required|exists:inspection_items,id',
-            'rating' => 'required|string', // Removed hardcoded Pass/Fail
+            'rating' => 'required|string',
             'remarks' => 'nullable|string'
         ]);
 
-        $unitId = $application->franchise->currentActiveUnit->new_unit_id;
+        // 1. Determine if we are inspecting a Proposed Unit or an Existing Unit
+        $proposedUnit = $application->proposedUnits()->latest()->first();
+        
+        $matchConditions = [
+            'application_id' => $application->id,
+            'inspection_item_id' => $request->inspection_item_id,
+        ];
 
+        // 2. Assign the correct ID column based on what exists
+        if ($proposedUnit) {
+            $matchConditions['proposed_unit_id'] = $proposedUnit->id;
+        } elseif ($application->franchise && $application->franchise->currentActiveUnit) {
+            $matchConditions['unit_id'] = $application->franchise->currentActiveUnit->new_unit_id;
+        } else {
+            return redirect()->back()->withErrors(['error' => 'No unit found to inspect for this application.']);
+        }
+
+        // 3. Save the inspection
         UnitInspection::updateOrCreate(
-            [
-                'application_id' => $application->id,
-                'unit_id' => $unitId,
-                'inspection_item_id' => $request->inspection_item_id,
-            ],
+            $matchConditions,
             [
                 'rating' => $request->rating,
                 'remarks' => $request->remarks ?? "Marked as {$request->rating}.",
-                'inspected_by' => auth()->id(),
+                // 'inspected_by' => auth()->id(), // Uncomment if you track the specific inspector
             ]
         );
 
@@ -156,7 +168,6 @@ class InspectorApplicationController extends Controller
 
     public function showNewFranchise(Application $application)
     {
-        // Strictly limit to New Franchise
         abort_if($application->application_type !== 'New Franchise', 404);
 
         $application->load([
@@ -168,6 +179,7 @@ class InspectorApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
+            'proposedUnits' // <-- Crucial: load the proposed units
         ]);
 
         $inspectionItems = InspectionItem::all();
@@ -175,7 +187,17 @@ class InspectorApplicationController extends Controller
         $currentUnitId = null;
         $unitInspections = [];
         
-        if ($application->franchise && $application->franchise->currentActiveUnit) {
+        // Check for Proposed Unit first
+        $proposedUnit = $application->proposedUnits->last();
+
+        if ($proposedUnit) {
+            $currentUnitId = $proposedUnit->id;
+            $unitInspections = UnitInspection::where('proposed_unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        } 
+        // Fallback to active unit if no proposed unit exists
+        elseif ($application->franchise && $application->franchise->currentActiveUnit) {
             $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
             $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
                 ->where('application_id', $application->id) 
