@@ -62,10 +62,12 @@ watch(search, handleSearch);
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('reviewer.applications.showRenewal', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('reviewer.applications.showChangeOfUnit', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Owner'" :href="route('reviewer.applications.showChangeOfOwner', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    
+                                    <Link v-else-if="app.application_type === 'New Franchise'" :href="`/reviewer/applications/new-franchise/${app.id}`" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">
-                                <td colspan="5" class="p-6 text-center text-gray-500">No fully paid, cleared renewals requiring review.</td>
+                                <td colspan="5" class="p-6 text-center text-gray-500">No fully paid, cleared applications requiring review.</td>
                             </tr>
                         </tbody>
                     </table>

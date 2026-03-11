@@ -339,6 +339,8 @@ Route::middleware(['auth', 'role:reviewer'])->prefix('reviewer')->name('reviewer
     Route::get('/applications/renewal/{application}', [ReviewerApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
     Route::get('/applications/change-of-unit/{application}', [ReviewerApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
     Route::get('/applications/change-of-owner/{application}', [ReviewerApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
+    Route::get('/applications/new-franchise/{application}', [ReviewerApplicationController::class, 'showNewFranchise'])
+    ->name('reviewer.applications.showNewFranchise');
     
     Route::post('/applications/{application}/approve', [ReviewerApplicationController::class, 'approve'])->name('applications.approve');
     Route::post('/applications/{application}/reject', [ReviewerApplicationController::class, 'reject'])->name('applications.reject');
