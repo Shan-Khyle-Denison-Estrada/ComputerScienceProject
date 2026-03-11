@@ -14,7 +14,7 @@ class InspectorApplicationController extends Controller
     public function index(Request $request)
     {
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->whereIn('application_type', ['Renewal', 'Change of Unit'])
+            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'New Franchise'])
             ->where('status', 'Pending')
             ->where(function($q) {
                 $q->where('inspector_status', 'Pending')
@@ -30,7 +30,7 @@ class InspectorApplicationController extends Controller
             });
         }
 
-        $applications = $query->latest()->paginate(10)->withQueryString();
+        $applications = $query->latest()->paginate(8)->withQueryString();
 
         return Inertia::render('Inspector/Applications/Index', [
             'applications' => $applications,
@@ -152,5 +152,41 @@ class InspectorApplicationController extends Controller
 
         return redirect()->route('inspector.applications.index')
                          ->with('success', "Application has been returned for physical unit modifications.");
+    }
+
+    public function showNewFranchise(Application $application)
+    {
+        // Strictly limit to New Franchise
+        abort_if($application->application_type !== 'New Franchise', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        
+        if ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('Inspector/Applications/ShowNewFranchise', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
     }
 }

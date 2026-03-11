@@ -318,7 +318,8 @@ Route::middleware(['auth', 'role:inspector'])->group(function () {
     // View Routes
     Route::get('/inspector/applications/renewal/{application}', [InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
     Route::get('/inspector/applications/change-of-unit/{application}', [InspectorApplicationController::class, 'showChangeOfUnit'])->name('inspector.applications.show-change-of-unit');
-
+    Route::get('/inspector/applications/new-franchise/{application}', [InspectorApplicationController::class, 'showNewFranchise'])
+    ->name('inspector.applications.show-new-franchise');
     // Shared Action Routes (Used by both Renewal and Change of Unit)
     Route::post('/inspector/applications/{application}/approve', [InspectorApplicationController::class, 'approve'])
         ->name('inspector.applications.approve');
