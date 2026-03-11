@@ -289,7 +289,10 @@ Route::middleware(['auth', 'role:evaluator'])->group(function () {
     Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show'); // Kept original name for backward compatibility
     Route::get('/evaluator/applications/change-of-owner/{application}', [EvaluatorApplicationController::class, 'showChangeOfOwner'])->name('evaluator.applications.show-change-of-owner');
     Route::get('/evaluator/applications/change-of-unit/{application}', [EvaluatorApplicationController::class, 'showChangeOfUnit'])->name('evaluator.applications.show-change-of-unit');
-    Route::get('/evaluator/applications/new-franchise/{application}', [EvaluatorApplicationController::class, 'showFranchiseOwnerAccount'])->name('evaluator.applications.show-new-franchise');
+    Route::get('/evaluator/applications/franchise-owner-account/{application}', [EvaluatorApplicationController::class, 'showFranchiseOwnerAccount'])
+    ->name('evaluator.applications.show-franchise-owner-account');
+    Route::get('/evaluator/applications/new-franchise/{application}', [EvaluatorApplicationController::class, 'showNewFranchise'])
+    ->name('evaluator.applications.show-new-franchise');
 
     // Generic Action Routes
     Route::post('/evaluator/applications/{application}/approve', [EvaluatorApplicationController::class, 'approve'])
