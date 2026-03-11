@@ -67,10 +67,11 @@ watch(search, handleSearch);
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('tab_approver.applications.showRenewal', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('tab_approver.applications.showChangeOfUnit', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Owner'" :href="route('tab_approver.applications.showChangeOfOwner', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-else-if="app.application_type === 'New Franchise'" :href="route('tab_approver.applications.show-new-franchise', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">
-                                <td colspan="5" class="p-6 text-center text-gray-500">No applications requiring Tabulation approval.</td>
+                                <td colspan="5" class="p-6 text-center text-gray-500">No applications requiring TAB Chairman approval.</td>
                             </tr>
                         </tbody>
                     </table>

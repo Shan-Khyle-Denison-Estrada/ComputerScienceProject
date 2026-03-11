@@ -100,8 +100,8 @@ Route::post('/complaints/report', [ComplaintController::class, 'store'])->name('
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
 
-    Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
-    ->name('admin.applications.show-new-franchise');
+    // Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
+    // ->name('admin.applications.show-new-franchise');
     
     // 1. Dashboard
     Route::get('/admin/dashboard', [AdminDashboardController::class, 'index'])->name('admin.dashboard');
@@ -370,6 +370,8 @@ Route::middleware(['auth', 'role:tab_approver'])->prefix('tab-approver')->name('
     Route::get('/applications/renewal/{application}', [TabApproverApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
     Route::get('/applications/change-of-unit/{application}', [TabApproverApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
     Route::get('/applications/change-of-owner/{application}', [TabApproverApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
+    Route::get('/applications/new-franchise/{application}', [App\Http\Controllers\TabApprover\TabApproverApplicationController::class, 'showNewFranchise'])
+    ->name('applications.show-new-franchise');
     
     Route::post('/applications/{application}/approve', [TabApproverApplicationController::class, 'approve'])->name('applications.approve');
     Route::post('/applications/{application}/reject', [TabApproverApplicationController::class, 'reject'])->name('applications.reject');
@@ -403,6 +405,9 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
     Route::get('admin/drivers/{driver}', [DriverController::class, 'show'])->name('admin.drivers.show');
 
     Route::post('/applications/new-franchise/{application}/inspect', [ApplicationNewFranchiseShowController::class, 'updateInspection'])->name('admin.applications.new-franchise.inspect');
+
+    Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
+    ->name('admin.applications.show-new-franchise');
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---

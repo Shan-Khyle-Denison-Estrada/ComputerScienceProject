@@ -19,12 +19,12 @@ class TabApproverApplicationController extends Controller
         // 3. For Renewal -> SP Approved. For Change of Unit/Owner -> Reviewer Approved (Ignore SP Status).
         // 4. Tab Status is Pending or Null
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'Change of Owner'])
+            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'Change of Owner', 'New Franchise'])
             ->where('status', 'Pending')
             ->where(function ($q) {
                 // Rule 1: Renewal requires SP Approval
                 $q->where(function ($sub) {
-                    $sub->where('application_type', 'Renewal')
+                    $sub->whereIn('application_type', ['Renewal', 'New Franchise'])
                         ->where('sp_status', 'Approved');
                 })
                 // Rule 2: Change of Unit & Owner bypass SP Approval but require Reviewer Approval
@@ -175,5 +175,40 @@ class TabApproverApplicationController extends Controller
 
         return redirect()->route('tab_approver.applications.index')
                          ->with('success', "Application has been rejected.");
+    }
+
+    public function showNewFranchise(Application $application)
+    {
+        abort_if($application->application_type !== 'New Franchise', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        
+        if ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('TabApprover/Applications/ShowNewFranchise', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
     }
 }
