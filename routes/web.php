@@ -54,7 +54,10 @@ Route::get('/dashboard', function () {
         UserRole::EVALUATOR->value => redirect()->route('evaluator.applications.index'),
         UserRole::INSPECTOR->value => redirect()->route('inspector.applications.index'),
         UserRole::CITY_ANTI_POLLUTION_OFFICER->value => redirect()->route('capo.applications.index'),
-        UserRole::REVIEWER->value, UserRole::SP_APPROVER->value, UserRole::TAB_APPROVER->value => redirect()->route('reviewer.applications.index'),
+        // UserRole::REVIEWER->value, UserRole::SP_APPROVER->value, UserRole::TAB_APPROVER->value => redirect()->route('reviewer.applications.index'),
+        UserRole::REVIEWER->value, => redirect()->route('reviewer.applications.index'),
+        UserRole::SP_APPROVER->value => redirect()->route('sp_approver.applications.index'),
+        UserRole::TAB_APPROVER->value => redirect()->route('tab_approver.applications.index'),
         UserRole::RELEASER->value => redirect()->route('admin.franchises.index'),
         UserRole::ENCODER->value => redirect()->route('admin.applications.index'),
         default => Inertia::render('Dashboard'), // Fallback if a role has no specific route
@@ -350,6 +353,8 @@ Route::middleware(['auth', 'role:reviewer'])->prefix('reviewer')->name('reviewer
 Route::middleware(['auth', 'role:sp_approver'])->group(function () {
     Route::get('/sp-approver/applications', [SpApproverApplicationController::class, 'index'])->name('sp_approver.applications.index');
     Route::get('/sp-approver/applications/renewal/{application}', [SpApproverApplicationController::class, 'showRenewal'])->name('sp_approver.applications.show');
+    Route::get('/sp-approver/applications/new-franchise/{application}', [SpApproverApplicationController::class, 'showNewFranchise'])
+    ->name('sp_approver.applications.show-new-franchise');
 
     Route::post('/sp-approver/applications/renewal/{application}/approve', [SpApproverApplicationController::class, 'approve'])
         ->name('sp_approver.applications.renewal.approve');

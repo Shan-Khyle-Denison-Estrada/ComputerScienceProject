@@ -18,7 +18,7 @@ class SpApproverApplicationController extends Controller
         // 2. Reviewer Approved (Which inherently implies Evaluator, Inspector, CAPO, and Paid Assessment are cleared)
         // 3. SP Status is Pending or Null
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->where('application_type', 'Renewal')
+            ->whereIn('application_type', ['Renewal', 'New Franchise'])
             ->where('status', 'Pending')
             ->where('reviewer_status', 'Approved') 
             ->where(function($q) {
@@ -84,7 +84,7 @@ class SpApproverApplicationController extends Controller
         $application->update(['sp_status' => 'Approved']);
         
         return redirect()->route('sp_approver.applications.index')
-        ->with('success', "Renewal has been approved by the Sangguniang Panlungsod.");
+        ->with('success', "Application has been approved by the Sangguniang Panlungsod.");
     }
 
     public function reject(Request $request, Application $application)
@@ -100,6 +100,41 @@ class SpApproverApplicationController extends Controller
         ]);
 
         return redirect()->route('sp_approver.applications.index')
-        ->with('success', "Renewal has been rejected by the Sangguniang Panlungsod.");
+        ->with('success', "Application has been rejected by the Sangguniang Panlungsod.");
+    }
+
+    public function showNewFranchise(Application $application)
+    {
+        abort_if($application->application_type !== 'New Franchise', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        
+        if ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('SpApprover/Applications/ShowNewFranchise', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
     }
 }

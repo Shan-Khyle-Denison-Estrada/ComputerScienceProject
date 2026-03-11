@@ -64,7 +64,9 @@ watch(search, handleSearch);
                                     </span>
                                 </td>
                                 <td class="p-4 text-sm">
-                                    <Link :href="route('sp_approver.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-if="app.application_type === 'Renewal'" :href="route('sp_approver.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-else-if="app.application_type === 'New Franchise'" :href="route('sp_approver.applications.show-new-franchise', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-else :href="route('sp_approver.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review File &rarr;</Link>
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">
