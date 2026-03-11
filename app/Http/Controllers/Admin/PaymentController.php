@@ -67,37 +67,31 @@ class PaymentController extends Controller
 public function store(Request $request)
     {
         $validated = $request->validate([
-            'assessment_id' => 'nullable|exists:assessments,id', // Validate it exists
+            'assessment_id' => 'nullable|exists:assessments,id',
             'amount_paid' => 'required|numeric|min:0',
             'payee_first_name' => 'required|string|max:255',
             'payee_middle_name' => 'nullable|string|max:255',
             'payee_last_name' => 'required|string|max:255',
             'payee_contact_number' => 'nullable|string|max:20',
             'payee_street_address' => 'nullable|string|max:255',
+            'payee_province' => 'required|string|max:255', // <-- ADDED
+            'payee_city' => 'required|string|max:255',
             'payee_barangay' => 'required|string|max:255',
-            'payee_city' => 'nullable|string|max:255',
         ]);
 
         DB::transaction(function () use ($validated) {
-            // 1. Generate auto or_number
-            // lockForUpdate() prevents race conditions if multiple payments happen simultaneously
             $latestPayment = Payment::lockForUpdate()->latest('id')->first();
             $nextSequence = $latestPayment ? $latestPayment->id + 1 : 1;
             
-            // Format example: OR-20231024-0001
             $validated['or_number'] = 'OR-' . now()->format('Ymd') . '-' . str_pad($nextSequence, 4, '0', STR_PAD_LEFT);
 
-            // 2. Create Payment
             Payment::create($validated);
 
-            // 3. Update Assessment Status if applicable
             if (!empty($validated['assessment_id'])) {
                 $assessment = Assessment::with('payments')->find($validated['assessment_id']);
                 
-                // Recalculate total paid (including the new one)
                 $totalPaid = $assessment->payments()->sum('amount_paid');
 
-                // Check if fully paid
                 if ($totalPaid >= $assessment->total_amount_due) {
                     $assessment->update(['assessment_status' => 'paid']);
                 }

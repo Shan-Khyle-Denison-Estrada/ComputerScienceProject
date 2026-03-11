@@ -44,8 +44,9 @@ const payeeName = computed(() => {
 });
 
 const payeeAddress = computed(() => {
-    const { payee_street_address, payee_barangay, payee_city } = props.payment;
-    return [payee_street_address, payee_barangay, payee_city].filter(Boolean).join(', ');
+    // Added payee_province to the destructured object and the array
+    const { payee_street_address, payee_barangay, payee_city, payee_province } = props.payment;
+    return [payee_street_address, payee_barangay, payee_city, payee_province].filter(Boolean).join(', ');
 });
 
 // Helper function to convert numbers to words
@@ -127,6 +128,10 @@ const amountInWords = computed(() => {
             <div>
                 <div class="font-bold">Received from:</div>
                 <div class="uppercase pl-2">{{ payeeName }}</div>
+            </div>
+            <div v-if="payment.payee_contact_number">
+                <div class="font-bold">Contact No:</div>
+                <div class="pl-2">{{ payment.payee_contact_number }}</div>
             </div>
             <div>
                 <div class="font-bold">Address:</div>

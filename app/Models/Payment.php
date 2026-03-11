@@ -18,11 +18,11 @@ class Payment extends Model
         'payee_last_name',
         'payee_contact_number',
         'payee_street_address',
+        'payee_province', // <-- ADDED THIS LINE
         'payee_barangay',
         'payee_city',
     ];
 
-// Scope for handling Search and Filtering
     public function scopeFilter($query, array $filters)
     {
         // Search by Payee Name, Contact Number, or OR Number
@@ -31,7 +31,7 @@ class Payment extends Model
                 $q->where('payee_first_name', 'like', '%'.$search.'%')
                   ->orWhere('payee_last_name', 'like', '%'.$search.'%')
                   ->orWhere('payee_contact_number', 'like', '%'.$search.'%')
-                  ->orWhere('or_number', 'like', '%'.$search.'%'); // <-- ADDED THIS LINE
+                  ->orWhere('or_number', 'like', '%'.$search.'%'); 
             });
         });
 
@@ -41,7 +41,6 @@ class Payment extends Model
         });
     }
 
-    // NEW: Relationship to Assessment
     public function assessment()
     {
         return $this->belongsTo(Assessment::class);
