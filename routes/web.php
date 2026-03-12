@@ -32,12 +32,22 @@ use App\Http\Controllers\TabApprover\TabApproverApplicationController;
 use App\Http\Controllers\Encoder\EncoderApplicationController;
 use App\Http\Controllers\Public\NewFranchiseController;
 use App\Http\Controllers\Admin\ApplicationNewFranchiseShowController;
+use App\Http\Controllers\Public\ApplicationCompletionController;
 use Illuminate\Support\Facades\Auth; // <-- Add this
 use App\Enums\UserRole; // <-- Add this
 use App\Models\Franchise;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+// Add this outside of your auth middleware (so the applicant can access it via email)
+Route::get('/application/{application}/complete', [ApplicationCompletionController::class, 'edit'])
+    ->name('application.complete')
+    ->middleware('signed'); // Secures the route using Laravel's signature hash
+
+Route::post('/application/{application}/complete', [ApplicationCompletionController::class, 'update'])
+    ->name('application.complete.submit')
+    ->middleware('signed');
 
 Route::post('/apply/send-otp', [ApplicationController::class, 'sendOtp'])->name('application.send-otp');
 Route::post('/apply/verify-otp', [ApplicationController::class, 'verifyOtp'])->name('application.verify-otp');  
@@ -99,6 +109,9 @@ Route::post('/complaints/report', [ComplaintController::class, 'store'])->name('
 
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'role:admin'])->group(function () {
+
+    Route::post('/admin/applications', [AdminApplicationController::class, 'store'])
+            ->name('admin.applications.store');
 
     Route::get('/dashboard/report/download', [AdminDashboardController::class, 'downloadReport'])->name('admin.dashboard.report.download');
 

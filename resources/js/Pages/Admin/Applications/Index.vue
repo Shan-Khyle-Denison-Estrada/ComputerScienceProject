@@ -8,6 +8,7 @@ import Pagination from '@/Components/Pagination.vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import { ref, computed, watch } from 'vue';
 import debounce from 'lodash/debounce';
+import CreateApplicationModal from '@/Components/Modals/CreateApplicationModal.vue';
 
 // --- PROPS (Real Data from Backend) ---
 const props = defineProps({
@@ -15,7 +16,11 @@ const props = defineProps({
     evaluationRequirements: Array,
     inspectionRequirements: Array,
     filters: Object,
-    isEncoder: Boolean 
+    isEncoder: Boolean,
+    zones: { type: Array, default: () => [] },
+    unitMakes: { type: Array, default: () => [] },
+    operators: { type: Array, default: () => [] },
+    franchises: { type: Array, default: () => [] }
 });
 
 // --- CONSTANTS ---
@@ -25,12 +30,18 @@ const applicationTypes = [
     'New Franchise', 
     'Renewal',
     'Change of Owner',
+    'Change of Owner (Deceased)',
     'Change of Unit'
 ];
 
 // --- STATE MANAGEMENT ---
 const showFilterModal = ref(false);
 const showRequirementsModal = ref(false);
+const showCreateApplicationModal = ref(false); // Add this state
+
+// Add control functions below your other modal toggles
+const openCreateApplicationModal = () => showCreateApplicationModal.value = true;
+const closeCreateApplicationModal = () => showCreateApplicationModal.value = false;
 
 // Initialize search variables using the props filters
 const search = ref(props.filters?.search || '');
@@ -205,6 +216,11 @@ const getApplicationRoute = (app) => {
                 <PrimaryButton v-if="!isEncoder" @click="openRequirementsModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
                     Manage Requirements
+                </PrimaryButton>
+
+                <PrimaryButton v-if="!isEncoder" @click="openCreateApplicationModal" class="flex items-center gap-2 !bg-emerald-600 hover:!bg-emerald-700">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
+                    Create Application
                 </PrimaryButton>
             </div>
         </div>
@@ -417,6 +433,16 @@ const getApplicationRoute = (app) => {
                 </div>
             </div>
         </transition>
+
+        <CreateApplicationModal 
+            :show="showCreateApplicationModal" 
+            :franchises="props.franchises" 
+            :zones="props.zones"
+            :unitMakes="props.unitMakes"
+            :operators="props.operators"
+            @close="closeCreateApplicationModal"
+            @submit="closeCreateApplicationModal"
+        />
 
     </AuthenticatedLayout>
 </template>

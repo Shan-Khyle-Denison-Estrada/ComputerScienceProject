@@ -14,7 +14,7 @@ class ApplicationEvaluation extends Model
         'requirement_id',
         'file_path',
         'is_compliant',
-        'remarks'
+        'remarks',
     ];
 
     // [!code focus] This was missing
