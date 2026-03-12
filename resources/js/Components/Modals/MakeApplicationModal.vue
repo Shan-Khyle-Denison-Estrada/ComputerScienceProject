@@ -4,7 +4,7 @@ import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useForm, usePage } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 
 const props = defineProps({
     show: { type: Boolean, required: true },
@@ -13,31 +13,40 @@ const props = defineProps({
     barangays: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
     operators: { type: Array, default: () => [] },
-    units: { type: Array, default: () => [] }
+    units: { type: Array, default: () => [] },
+    applications: { type: Array, default: () => [] }
 });
 
 const emit = defineEmits(['close', 'submit']);
 const page = usePage();
+
+// --- PSGC API STATES ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+
+const selectedProvinceCode = ref('');
+const selectedCityCode = ref('');
 
 // --- MODAL STATES ---
 const currentStep = ref(1); 
 const selectedType = ref('change_unit'); 
 const ownerMode = ref('existing');
 const unitMode = ref('existing');
-const barangayQuery = ref('');
-const showBarangayDropdown = ref(false);
 const docPreviews = ref({}); 
 const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); 
 
 // Warning Modal States
 const showWarningModal = ref(false);
 const warningMessage = ref('');
+const conflictingApplication = ref(null);
 
 const applicationTypes = [
     { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
     { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+    // Add the Renewal option here
+    { id: 'renewal', name: 'Renewal', description: 'Renew existing franchise.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' } 
 ];
-
 // --- FORMS ---
 const form = useForm({
     type: 'change_unit', 
@@ -56,8 +65,9 @@ const form = useForm({
     new_owner_email: '', 
     new_owner_tin: '', 
     new_owner_address: '', 
+    new_owner_province: '', 
+    new_owner_city: '',
     new_owner_barangay: '', 
-    new_owner_city: 'Zamboanga City',
     
     // Unit Fields
     existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
@@ -66,6 +76,93 @@ const form = useForm({
     // Document uploads
     documents: {} 
 });
+
+// --- FORMATTERS ---
+const formatContactNumber = (val) => {
+    let parts = val.replace(/[^0-9]/g, '');
+    if (parts.length > 11) parts = parts.substring(0, 11);
+    
+    let formatted = parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+    
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) {
+        formatted += '-';
+    }
+    return formatted;
+};
+
+const formatTinNumber = (val) => {
+    let parts = val.replace(/[^0-9]/g, '');
+    if (parts.length > 12) parts = parts.substring(0, 12);
+    
+    let formatted = parts.substring(0, 3);
+    if (parts.length >= 4) formatted += '-' + parts.substring(3, 6);
+    if (parts.length >= 7) formatted += '-' + parts.substring(6, 9);
+    if (parts.length >= 10) formatted += '-' + parts.substring(9, 12);
+    
+    if (val.endsWith('-') && (parts.length === 3 || parts.length === 6 || parts.length === 9)) {
+        formatted += '-';
+    }
+    return formatted;
+};
+
+// --- API FETCHING LOGIC ---
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load provinces:", error);
+    }
+});
+
+const fetchCities = async (provinceCode) => {
+    if (!provinceCode) return;
+    try {
+        const isNCR = provinceCode === '130000000';
+        const endpoint = isNCR 
+            ? 'https://psgc.gitlab.io/api/regions/130000000/cities-municipalities'
+            : `https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`;
+        const res = await fetch(endpoint);
+        citiesList.value = (await res.json()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) { console.error(error); }
+};
+
+const fetchBarangays = async (cityCode) => {
+    if (!cityCode) return;
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
+        barangaysList.value = (await res.json()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) { console.error(error); }
+};
+
+// --- API DROPDOWN HANDLERS ---
+const handleProvinceChange = async (event) => {
+    const code = event.target.value;
+    selectedProvinceCode.value = code;
+    const p = provincesList.value.find(x => x.code === code);
+    form.new_owner_province = p ? p.name : '';
+    
+    form.new_owner_city = ''; form.new_owner_barangay = '';
+    selectedCityCode.value = '';
+    citiesList.value = []; barangaysList.value = [];
+    
+    await fetchCities(code);
+};
+
+const handleCityChange = async (event) => {
+    const code = event.target.value;
+    selectedCityCode.value = code;
+    const c = citiesList.value.find(x => x.code === code);
+    form.new_owner_city = c ? c.name : '';
+
+    form.new_owner_barangay = ''; barangaysList.value = [];
+    
+    await fetchBarangays(code);
+};
 
 // Watch for Server-Side Validation Errors as a fallback
 watch(() => form.errors.selected_franchise_id, (newError) => {
@@ -84,7 +181,6 @@ const currentEvaluationRequirements = computed(() => {
     return props.evaluationRequirements[typeObj.name] || [];
 });
 
-const filteredBarangays = computed(() => props.barangays.filter(b => b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())));
 const isUnitRequired = computed(() => ['change_unit'].includes(selectedType.value));
 const isOwnerRequired = computed(() => ['change_owner'].includes(selectedType.value));
 const isFranchiseSelectRequired = computed(() => true); 
@@ -101,12 +197,21 @@ const duplicateApplicationError = computed(() => {
     if (!selectedFranchise) return null;
 
     if (selectedType.value === 'change_unit') {
-        if (selectedFranchise.has_active_change_unit) {
+        if (selectedFranchise.conflicting_change_unit) {
             return `An active Change of Unit application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
         }
     } else if (selectedType.value === 'change_owner') {
-        if (selectedFranchise.has_active_change_owner) {
+        if (selectedFranchise.conflicting_change_owner) {
             return `An active Change of Owner application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
+        }
+    } else if (selectedType.value === 'renewal') {
+        // Handle explicit active renewal collision
+        if (selectedFranchise.conflicting_renewal) {
+            return `A Renewal application for the current fiscal year already exists for this franchise.`;
+        } 
+        // NEW CRITERIA: Ensure they can only manually create if one was previously rejected
+        else if (!selectedFranchise.has_rejected_renewal) {
+            return `Manual creation of Renewal applications is disabled. You may only manually create a renewal if your auto-generated renewal application has been Rejected.`;
         }
     }
     
@@ -117,6 +222,20 @@ const validateFranchiseSelection = () => {
     const error = duplicateApplicationError.value;
     if (error) {
         warningMessage.value = error;
+        
+        const selectedFranchise = props.franchises.find(f => f.id == form.selected_franchise_id);
+        
+        // Directly pull the conflicting application from the selected franchise object
+        if (selectedType.value === 'renewal') {
+            conflictingApplication.value = selectedFranchise?.conflicting_renewal || null;
+        } else if (selectedType.value === 'change_unit') {
+            conflictingApplication.value = selectedFranchise?.conflicting_change_unit || null;
+        } else if (selectedType.value === 'change_owner') {
+            conflictingApplication.value = selectedFranchise?.conflicting_change_owner || null;
+        } else {
+            conflictingApplication.value = null;
+        }
+
         showWarningModal.value = true;
         form.selected_franchise_id = '';
     }
@@ -132,6 +251,7 @@ const isStep2Valid = computed(() => {
         if (ownerMode.value === 'new') {
             if (!form.new_owner_first_name || !form.new_owner_last_name || 
                 !form.new_owner_contact || !form.new_owner_address || 
+                !form.new_owner_province || !form.new_owner_city || 
                 !form.new_owner_barangay || !form.new_owner_tin) {
                 return false;
             }
@@ -158,6 +278,13 @@ const closeModal = () => {
     docPreviews.value = {}; 
     unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
     ownerMode.value = 'existing'; unitMode.value = 'existing';
+    
+    // Reset API state
+    selectedProvinceCode.value = '';
+    selectedCityCode.value = '';
+    citiesList.value = [];
+    barangaysList.value = [];
+
     emit('close');
 };
 
@@ -200,6 +327,15 @@ const submit = () => {
     } else if (selectedType.value === 'change_owner') {
         form.owner_mode = ownerMode.value; 
         form.post(route('franchise.applications.store-change-owner'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('submit'); 
+                closeModal();
+            },
+        });
+    } else if (selectedType.value === 'renewal') {
+        // Handle Renewal Submission
+        form.post(route('franchise.applications.store-renewal'), {
             preserveScroll: true,
             onSuccess: () => {
                 emit('submit'); 
@@ -278,26 +414,39 @@ const submit = () => {
                                 <div><InputLabel value="Last Name" /><TextInput v-model="form.new_owner_last_name" class="w-full text-sm py-1.5 mt-1" /></div>
                                 
                                 <div class="sm:col-span-2"><InputLabel value="Email Address" /><TextInput type="email" v-model="form.new_owner_email" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Contact Number" /><TextInput v-model="form.new_owner_contact" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
+                                <div>
+                                    <InputLabel value="Contact Number" />
+                                    <TextInput v-model="form.new_owner_contact" @input="form.new_owner_contact = formatContactNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/>
+                                </div>
                                 
-                                <div><InputLabel value="TIN Number" /><TextInput v-model="form.new_owner_tin" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div>
+                                    <InputLabel value="TIN Number" />
+                                    <TextInput v-model="form.new_owner_tin" @input="form.new_owner_tin = formatTinNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="XXX-XXX-XXX-XXX" />
+                                </div>
                                 
                                 <div class="sm:col-span-2"><InputLabel value="Street Address" /><TextInput v-model="form.new_owner_address" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div class="sm:col-span-2">
-                                    <InputLabel value="Barangay" />
-                                    <div class="relative mt-1">
-                                        <TextInput v-model="barangayQuery" @focus="showBarangayDropdown = true" placeholder="Search..." class="w-full text-sm py-1.5" />
-                                        <div v-if="showBarangayDropdown" class="absolute z-10 w-full bg-white border mt-1 rounded shadow-lg max-h-32 overflow-y-auto">
-                                            <div v-for="brgy in filteredBarangays" :key="brgy.id" 
-                                                @click="form.new_owner_barangay = brgy.name; barangayQuery = brgy.name; showBarangayDropdown = false" 
-                                                class="px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer">
-                                                {{ brgy.name }}
-                                            </div>
-                                            <div v-if="filteredBarangays.length === 0" class="px-3 py-2 text-sm text-gray-500 italic">No barangays found.</div>
-                                        </div>
-                                    </div>
+                                
+                                <div>
+                                    <InputLabel value="Province" />
+                                    <select v-model="selectedProvinceCode" @change="handleProvinceChange" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="" disabled>-- Select Province --</option>
+                                        <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
+                                    </select>
                                 </div>
-                                <div><InputLabel value="City" /><TextInput v-model="form.new_owner_city" disabled class="w-full text-sm py-1.5 mt-1 bg-gray-100" /></div>
+                                <div>
+                                    <InputLabel value="City/Municipality" />
+                                    <select v-model="selectedCityCode" @change="handleCityChange" :disabled="!citiesList.length" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                        <option value="" disabled>-- Select City --</option>
+                                        <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel value="Barangay" />
+                                    <select v-model="form.new_owner_barangay" :disabled="!barangaysList.length" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                        <option value="" disabled>-- Select Barangay --</option>
+                                        <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
 
@@ -429,23 +578,35 @@ const submit = () => {
         </div>
     </transition>
 
-    <transition name="fade">
-        <div v-if="showWarningModal" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-            <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showWarningModal = false"></div>
-            <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center transform transition-all">
-                <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4">
-                    <svg class="h-7 w-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                    </svg>
-                </div>
-                <h3 class="text-lg font-bold text-gray-900 mb-2">Application Prohibited</h3>
-                <p class="text-sm text-gray-600 mb-6 px-2">{{ warningMessage }}</p>
-                <PrimaryButton @click="showWarningModal = false" class="w-full justify-center !bg-red-600 hover:!bg-red-700 focus:!ring-red-500">
-                    Acknowledge
-                </PrimaryButton>
+<transition name="fade">
+    <div v-if="showWarningModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+        <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showWarningModal = false"></div>
+        
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center transform transition-all">
+            <div class="mx-auto flex items-center justify-center h-14 w-14 rounded-full bg-red-100 mb-4">
+                <svg class="h-7 w-7 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                </svg>
             </div>
+            <h3 class="text-lg font-bold text-gray-900 mb-2">Application Prohibited</h3>
+            <p class="text-sm text-gray-600 mb-6 px-2">{{ warningMessage }}</p>
+
+            <div v-if="conflictingApplication" class="mb-6 bg-gray-50 border border-gray-200 rounded-xl p-4 text-left">
+                <p class="text-[10px] text-gray-500 uppercase font-bold tracking-wider mb-2">Existing Application Record</p>
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-bold text-gray-900 font-mono">{{ conflictingApplication.ref_no }}</span>
+                    <span class="px-2 py-0.5 bg-blue-100 text-blue-800 rounded text-[10px] font-bold uppercase">{{ conflictingApplication.status }}</span>
+                </div>
+                <p class="text-sm text-gray-700 font-medium">{{ conflictingApplication.type || conflictingApplication.application_type }}</p>
+                <p class="text-xs text-gray-500 mt-2 italic">"{{ conflictingApplication.remarks || 'No remarks provided.' }}"</p>
+            </div>
+
+            <PrimaryButton @click="showWarningModal = false" class="w-full justify-center !bg-red-600 hover:!bg-red-700 focus:!ring-red-500">
+                Understood
+            </PrimaryButton>
         </div>
-    </transition>
+    </div>
+</transition>
 </template>
 
 <style scoped>

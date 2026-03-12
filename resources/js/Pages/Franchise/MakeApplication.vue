@@ -343,14 +343,15 @@ const resubmitForInspection = () => {
 
         <MakeApplicationModal 
             :show="showNewAppModal" 
-            :evaluationRequirements="evaluationRequirements"
-            :franchises="franchises"
-            :barangays="barangays"
-            :unitMakes="unitMakes"
-            :operators="operators"
-            :units="units"
-            @close="showNewAppModal = false"
-            @submit="handleNewApplicationSubmit"
+            :applications="applications"
+            :evaluationRequirements="evaluationRequirements" 
+            :franchises="franchises" 
+            :barangays="barangays" 
+            :unitMakes="unitMakes" 
+            :operators="operators" 
+            :units="units" 
+            @close="showNewAppModal = false" 
+            @submit="handleNewApplicationSubmit" 
         />
 
         <ComplyApplicationModal 

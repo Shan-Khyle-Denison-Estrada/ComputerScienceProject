@@ -16,6 +16,7 @@ use App\Models\Complaint;
 use App\Models\NatureOfRedFlag;
 use App\Models\NatureOfComplaint;
 use App\Models\SystemSetting;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -153,6 +154,10 @@ class FranchiseController extends Controller
             ];
         });
 
+        // Fetch active approvers
+        $tabApprover = User::where('role', 'tab_approver')->where('status', 'active')->first();
+        $spApprover = User::where('role', 'sp_approver')->where('status', 'active')->first();
+
         return Inertia::render('Admin/Franchises/Show', [
             'franchise' => $franchise,
             'operators' => Operator::with('user')->get(),
@@ -162,6 +167,8 @@ class FranchiseController extends Controller
             'complaintNatures' => NatureOfComplaint::all(),
             'systemSetting' => SystemSetting::first(), // <-- FETCH AND PASS THE SETTINGS
             'userRole' => auth()->user()->role->value ?? auth()->user()->role,
+            'tabApprover' => $tabApprover, // <-- ADDED
+            'spApprover' => $spApprover,   // <-- ADDED
         ]);
     }
 

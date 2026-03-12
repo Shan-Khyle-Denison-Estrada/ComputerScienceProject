@@ -143,7 +143,7 @@ const handleSearch = () => {
                                     <div class="font-medium text-gray-900">
                                         {{ franchise.current_ownership.new_owner.user.last_name }}, {{ franchise.current_ownership.new_owner.user.first_name }}
                                     </div>
-                                    <div class="text-xs text-gray-500">Since: {{ franchise.current_ownership.date_transferred }}</div>
+                                    <!-- <div class="text-xs text-gray-500">Since: {{ franchise.current_ownership.date_transferred }}</div> -->
                                 </div>
                                 <div v-else class="text-gray-400 italic">No Owner</div>
                             </td>

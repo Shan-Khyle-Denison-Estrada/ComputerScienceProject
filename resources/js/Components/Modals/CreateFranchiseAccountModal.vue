@@ -5,11 +5,11 @@ import TextInput from '@/Components/TextInput.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { useForm } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 
 const props = defineProps({
     show: Boolean,
-    barangays: { type: Array, default: () => [] },
+    barangays: { type: Array, default: () => [] }, // You can keep this to prevent prop errors, or remove if parent no longer passes it
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
     application: { type: Object, default: null } 
@@ -25,10 +25,25 @@ const steps = [
     { id: 3, title: 'Security', desc: 'Account Credentials' }
 ];
 
+// --- API STATE FOR ADDRESSES ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load locations:", error);
+    }
+});
+
 // --- STATE ---
 const ownerPhotoPreview = ref(null);
-const barangayQuery = ref('');
-const showBarangayDropdown = ref(false);
 
 const franchiseUIStates = ref([
     { isExpanded: true, previews: { front: null, back: null, left: null, right: null } }
@@ -43,20 +58,54 @@ const form = useForm({
     contact_number: '',
     tin_number: '',
     street_address: '',
-    // [!code focus] CHANGE TO ID
-    barangay_id: '', 
-    city: 'Zamboanga City',
-    password: '',
-    password_confirmation: '',
+    province: '', // Added province
+    city: '',     // Reset to empty for API logic
+    barangay: '', // Set as string for API logic
     franchises: []
 });
 
-// --- HELPERS ---
-const filteredBarangays = computed(() => {
-    if (!barangayQuery.value) return props.barangays;
-    return props.barangays.filter(b => b.name.toLowerCase().includes(barangayQuery.value.toLowerCase()));
+// --- ADDRESS WATCHERS ---
+watch(() => form.province, async (newProvinceName) => {
+    if (!newProvinceName) {
+        citiesList.value = [];
+        barangaysList.value = [];
+        return;
+    }
+    
+    const selectedProv = provincesList.value.find(p => p.name === newProvinceName);
+    if (selectedProv) {
+        try {
+            const url = selectedProv.isNCR 
+                ? `https://psgc.gitlab.io/api/regions/${selectedProv.code}/cities-municipalities`
+                : `https://psgc.gitlab.io/api/provinces/${selectedProv.code}/cities-municipalities`;
+                
+            const res = await fetch(url);
+            let cities = await res.json();
+            citiesList.value = cities.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (error) {
+            console.error("Failed to fetch cities", error);
+        }
+    }
 });
 
+watch(() => form.city, async (newCityName) => {
+    if (!newCityName) {
+        barangaysList.value = [];
+        return;
+    }
+    const selectedCity = citiesList.value.find(c => c.name === newCityName);
+    if (selectedCity) {
+        try {
+            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selectedCity.code}/barangays`);
+            let barangays = await res.json();
+            barangaysList.value = barangays.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (error) {
+            console.error("Failed to fetch barangays", error);
+        }
+    }
+});
+
+// --- HELPERS ---
 const getZoneName = (id) => {
     // Safely check if zones is paginated (.data) or a normal array
     const zoneList = props.zones?.data || (props.zones?.length ? props.zones : dummyZones);
@@ -69,12 +118,6 @@ const getZoneName = (id) => {
 // --- METHODS ---
 const nextStep = () => { if (currentStep.value < 3) currentStep.value++; };
 const prevStep = () => { if (currentStep.value > 1) currentStep.value--; };
-
-const selectBarangay = (name) => {
-    form.barangay = name;
-    barangayQuery.value = name;
-    showBarangayDropdown.value = false;
-};
 
 const handleOwnerPhoto = (e) => {
     const file = e.target.files[0];
@@ -126,7 +169,7 @@ const submit = () => {
         onError: (errors) => {
             console.error("Submission Errors:", errors);
             // Optionally set currentStep to where the error is
-            if(errors.first_name || errors.email) currentStep.value = 1;
+            if(errors.first_name || errors.email || errors.province) currentStep.value = 1;
             if(errors['franchises.0.plate_number']) currentStep.value = 2;
         }
     });
@@ -155,16 +198,21 @@ function populateForm(app) {
     form.contact_number = user.contact || '';
     form.tin_number = user.tin_number || '';
     form.street_address = user.street || '';
-    form.city = user.city || 'Zamboanga City';
-    form.owner_photo_path = user.photo_path || user.user_photo || '';
-
-    // [!code focus] BARANGAY: FIX SAME AS ZONE
-    // Direct ID assignment. No string matching required.
-    form.barangay_id = user.barangay_id || '';
     form.owner_photo_path = user.user_photo_path || user.photo_path || '';
 
+    // Set API string values directly
+    form.province = user.province || '';
+    
+    // Use timeouts to allow the API watchers to fetch the appropriate city/barangay lists before assignment
+    setTimeout(() => {
+        form.city = user.city || '';
+        setTimeout(() => {
+            form.barangay = user.barangay || '';
+        }, 500);
+    }, 500);
+
     // 2. FRANCHISE INFO
-const sourceUnits = (app.proposed_units && app.proposed_units.length > 0) 
+    const sourceUnits = (app.proposed_units && app.proposed_units.length > 0) 
         ? app.proposed_units 
         : ((app.proposedUnits && app.proposedUnits.length > 0) 
             ? app.proposedUnits 
@@ -185,9 +233,8 @@ const sourceUnits = (app.proposed_units && app.proposed_units.length > 0)
                 motor_number: unit.motor_number || '',
                 cr_number: unit.cr_number || '',
                 model_year: unit.model_year || '',
-                date_issued: new Date().toISOString().split('T')[0],
+                date_issued: unit.date_issued,
                 // We send the existing paths (strings) to the backend
-                // [!code ++] CAPTURE RAW PATHS
                 unit_front_photo_path: unit.unit_front_photo_path || '', 
                 unit_back_photo_path: unit.unit_back_photo_path || '',   
                 unit_left_photo_path: unit.unit_left_photo_path || '',   
@@ -270,16 +317,38 @@ const sourceUnits = (app.proposed_units && app.proposed_units.length > 0)
 
                         <div>
                             <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Address</h3>
-                            <div class="grid grid-cols-3 gap-3">
-                                <div><InputLabel value="Street Address" class="text-[11px]" /><TextInput v-model="form.street_address" class="w-full text-xs py-1.5" /></div>
+                            <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <InputLabel value="Barangay" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
-                                    <select v-model="form.barangay_id" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5">
-                                        <option value="" disabled>Select Barangay</option>
-                                        <option v-for="b in barangays" :key="b.id" :value="b.id">{{ b.name }}</option>
+                                    <InputLabel value="Street Address" class="text-[11px]" />
+                                    <TextInput v-model="form.street_address" class="w-full text-xs py-1.5" />
+                                </div>
+                                <div>
+                                    <InputLabel value="Province" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.province" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5">
+                                        <option value="" disabled>Select Province</option>
+                                        <option v-for="prov in provincesList" :key="prov.code" :value="prov.name">
+                                            {{ prov.name }}
+                                        </option>
                                     </select>
                                 </div>
-                                <div><InputLabel value="City" class="text-[11px]" /><TextInput v-model="form.city" class="w-full text-xs py-1.5 bg-gray-50"/></div>
+                                <div>
+                                    <InputLabel value="City/Municipality" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.city" :disabled="!citiesList.length" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5 disabled:bg-gray-100">
+                                        <option value="" disabled>Select City</option>
+                                        <option v-for="city in citiesList" :key="city.code" :value="city.name">
+                                            {{ city.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel value="Barangay" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.barangay" :disabled="!barangaysList.length" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5 disabled:bg-gray-100">
+                                        <option value="" disabled>Select Barangay</option>
+                                        <option v-for="brgy in barangaysList" :key="brgy.code" :value="brgy.name">
+                                            {{ brgy.name }}
+                                        </option>
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -403,9 +472,11 @@ const sourceUnits = (app.proposed_units && app.proposed_units.length > 0)
                             <TextInput v-model="form.email" class="w-full text-sm py-1.5 bg-gray-50 text-gray-500" readonly />
                             <p class="text-[10px] text-gray-400 mt-1">Username is auto-filled from email.</p>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div><InputLabel value="Password" class="text-[11px]" /><TextInput type="password" v-model="form.password" class="w-full text-sm py-1.5" placeholder="••••••••" /></div>
-                            <div><InputLabel value="Confirm Password" class="text-[11px]" /><TextInput type="password" v-model="form.password_confirmation" class="w-full text-sm py-1.5" placeholder="••••••••" /></div>
+                        <div class="bg-green-50 p-4 rounded-md border border-green-200 mt-3">
+                            <p class="text-xs text-green-700 font-medium flex items-start gap-2">
+                                <svg class="w-4 h-4 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                A secure, system-generated password will be automatically emailed to the applicant. They will be required to change it upon their first login.
+                            </p>
                         </div>
                     </div>
                 </div>

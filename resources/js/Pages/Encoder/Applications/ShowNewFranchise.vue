@@ -10,7 +10,7 @@ import CreateFranchiseAccountModal from '@/Components/Modals/CreateFranchiseAcco
 
 const props = defineProps({
     application: Object,
-    barangays: { type: Array, default: () => [] },
+    // barangays: { type: Array, default: () => [] },
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
 });
@@ -41,7 +41,7 @@ const application = computed(() => {
             contact: app.contact_number || 'N/A',
             email: app.email || 'N/A',
             tin_number: app.tin_number || 'N/A',
-            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}, ${app.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
             zone: app.zone?.description || 'N/A',
         },
         proposed_unit: {

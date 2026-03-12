@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\Enums\UserRole; 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use Illuminate\Http\RedirectResponse;
@@ -25,26 +24,17 @@ class AuthenticatedSessionController extends Controller
     public function store(LoginRequest $request): RedirectResponse
     {
         $request->authenticate();
-
         $request->session()->regenerate();
 
-        $url = match($request->user()->role) {
-            \App\Enums\UserRole::ADMIN => route('admin.dashboard', absolute: false),
-            \App\Enums\UserRole::FRANCHISE_OWNER => route('franchise.dashboard', absolute: false),
-            \App\Enums\UserRole::EVALUATOR => route('evaluator.applications.index', absolute: false),
-            \App\Enums\UserRole::INSPECTOR => route('inspector.applications.index', absolute: false),
-            \App\Enums\UserRole::CITY_ANTI_POLLUTION_OFFICER => route('capo.applications.index', absolute: false),
-            \App\Enums\UserRole::REVIEWER => route('reviewer.applications.index', absolute: false),
-            \App\Enums\UserRole::SP_APPROVER => route('sp_approver.applications.index', absolute: false),
-            \App\Enums\UserRole::TAB_APPROVER => route('tab_approver.applications.index', absolute: false),
-            \App\Enums\UserRole::ENCODER => route('admin.applications.index', absolute: false),
-            \App\Enums\UserRole::COLLECTOR => route('admin.assessments.index', absolute: false),
-            \App\Enums\UserRole::RELEASER => route('admin.franchises.index', absolute: false),
-            default => route('login'), 
-        };
+        $user = $request->user();
 
-        // Change this line from redirect()->intended($url) to just redirect($url)
-        return redirect($url); 
+        // THIS IS THE CRITICAL CHECK
+        if ($user->force_password_change) {
+            return redirect()->route('password.force-change'); 
+        }
+
+        // Redirect to the traffic director, which will route them to their specific panel
+        return redirect()->intended(route('dashboard', absolute: false));
     }
 
     public function destroy(Request $request): RedirectResponse

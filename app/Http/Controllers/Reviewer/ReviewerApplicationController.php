@@ -13,26 +13,28 @@ class ReviewerApplicationController extends Controller
 {
     public function index(Request $request)
     {
-        // STRICT FILTERING: 
-        // 1. Pending Application Status
-        // 2. Evaluator, Inspector, & CAPO Approved (Inspector & CAPO conditional)
-        // 3. Assessment is Fully Paid
-        // 4. Reviewer Status is Pending or Null
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
             ->where('application_type', '!=', 'Franchise Owner Account') 
             ->where('status', 'Pending')
             ->where('evaluator_status', 'Approved')
             ->where(function ($q) {
                 $q->where(function ($subQuery) {
-                    $subQuery->whereIn('application_type', ['Renewal', 'Change of Unit'])
+                    // Include New Franchise here
+                    $subQuery->whereIn('application_type', ['Renewal', 'Change of Unit', 'New Franchise'])
                              ->where('inspector_status', 'Approved')
                              ->where('capo_status', 'Approved');
                 })
                 ->orWhere('application_type', 'Change of Owner'); 
             })
-            ->whereHas('assessment', function ($q) {
-                $q->where('assessment_status', 'Paid'); 
+            
+            // THE FIX: Allow applications with Paid assessments OR no assessments at all
+            ->where(function($q) {
+                $q->whereDoesntHave('assessment')
+                  ->orWhereHas('assessment', function($subQuery) {
+                      $subQuery->where('assessment_status', 'Paid');
+                  });
             })
+            
             ->where(function($q) {
                 $q->where('reviewer_status', 'Pending')
                   ->orWhereNull('reviewer_status');
@@ -42,8 +44,10 @@ class ReviewerApplicationController extends Controller
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('reference_number', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+                  ->orWhereHas('user', function($userQuery) use ($search) {
+                      $userQuery->where('first_name', 'like', "%{$search}%")
+                                ->orWhere('last_name', 'like', "%{$search}%");
+                  });
             });
         }
 
@@ -54,7 +58,7 @@ class ReviewerApplicationController extends Controller
             'filters' => $request->only(['search']),
         ]);
     }
-
+    
     public function showRenewal(Application $application)
     {
         abort_if($application->application_type !== 'Renewal', 404);
@@ -119,7 +123,7 @@ class ReviewerApplicationController extends Controller
         ]);
     }
 
-public function showChangeOfOwner(Application $application)
+    public function showChangeOfOwner(Application $application)
     {
         abort_if($application->application_type !== 'Change of Owner', 404);
 
@@ -166,5 +170,50 @@ public function showChangeOfOwner(Application $application)
 
         return redirect()->route('reviewer.applications.index')
                          ->with('success', "Application has been returned.");
+    }
+
+    public function showNewFranchise(Application $application)
+    {
+        abort_if($application->application_type !== 'New Franchise', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+            'proposedUnits'
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+
+        $proposedUnit = $application->proposedUnits->last();
+        
+        if ($proposedUnit) {
+            $currentUnitId = $proposedUnit->id;
+            $unitInspections = UnitInspection::where('proposed_unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        } 
+        // Fallback to active unit if no proposed unit exists
+        elseif ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('Reviewer/Applications/ShowNewFranchise', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
     }
 }

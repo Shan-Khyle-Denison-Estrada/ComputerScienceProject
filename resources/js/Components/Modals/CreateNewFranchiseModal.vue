@@ -1,0 +1,513 @@
+<script setup>
+import Modal from '@/Components/Modal.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import TextInput from '@/Components/TextInput.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { useForm } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted } from 'vue';
+
+const props = defineProps({
+    show: Boolean,
+    barangays: { type: Array, default: () => [] }, 
+    zones: { type: Array, default: () => [] },
+    unitMakes: { type: Array, default: () => [] },
+    application: { type: Object, default: null } 
+});
+
+const emit = defineEmits(['close']);
+
+// --- STEPPER STATE ---
+const currentStep = ref(1);
+const steps = [
+    { id: 1, title: 'Owner Profile', desc: 'Personal Information' },
+    { id: 2, title: 'Franchise & Unit', desc: 'Zone & Tricycle Details' },
+    { id: 3, title: 'Security', desc: 'Account Credentials' }
+];
+
+// --- API STATE FOR ADDRESSES ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load locations:", error);
+    }
+});
+
+// --- STATE ---
+const ownerPhotoPreview = ref(null);
+
+const franchiseUIStates = ref([
+    { isExpanded: true, previews: { front: null, back: null, left: null, right: null } }
+]);
+
+const form = useForm({
+    owner_photo_path: '',
+    first_name: '',
+    middle_name: '',
+    last_name: '',
+    email: '',
+    contact_number: '',
+    tin_number: '',
+    street_address: '',
+    province: '', 
+    city: '',     
+    barangay: '', 
+    franchises: []
+});
+
+// --- ADDRESS WATCHERS ---
+watch(() => form.province, async (newProvinceName) => {
+    if (!newProvinceName) {
+        citiesList.value = [];
+        barangaysList.value = [];
+        return;
+    }
+    
+    const selectedProv = provincesList.value.find(p => p.name === newProvinceName);
+    if (selectedProv) {
+        try {
+            const url = selectedProv.isNCR 
+                ? `https://psgc.gitlab.io/api/regions/${selectedProv.code}/cities-municipalities`
+                : `https://psgc.gitlab.io/api/provinces/${selectedProv.code}/cities-municipalities`;
+                
+            const res = await fetch(url);
+            let cities = await res.json();
+            citiesList.value = cities.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (error) {
+            console.error("Failed to fetch cities", error);
+        }
+    }
+});
+
+watch(() => form.city, async (newCityName) => {
+    if (!newCityName) {
+        barangaysList.value = [];
+        return;
+    }
+    const selectedCity = citiesList.value.find(c => c.name === newCityName);
+    if (selectedCity) {
+        try {
+            const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${selectedCity.code}/barangays`);
+            let barangays = await res.json();
+            barangaysList.value = barangays.sort((a, b) => a.name.localeCompare(b.name));
+        } catch (error) {
+            console.error("Failed to fetch barangays", error);
+        }
+    }
+});
+
+// --- HELPERS ---
+const getZoneName = (id) => {
+    const zoneList = props.zones?.data || (props.zones?.length ? props.zones : dummyZones);
+    const zone = zoneList.find(z => String(z.id) === String(id));
+    return zone ? (zone.name || zone.description) : 'No Zone';
+};
+
+// --- METHODS ---
+const nextStep = () => { if (currentStep.value < 3) currentStep.value++; };
+const prevStep = () => { if (currentStep.value > 1) currentStep.value--; };
+
+const handleOwnerPhoto = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        form.owner_photo = file;
+        ownerPhotoPreview.value = URL.createObjectURL(file);
+    }
+};
+
+const toggleFranchise = (index) => {
+    franchiseUIStates.value[index].isExpanded = !franchiseUIStates.value[index].isExpanded;
+};
+
+const addFranchise = () => {
+    franchiseUIStates.value.forEach(state => state.isExpanded = false);
+    form.franchises.push({
+        franchise_number: '', zone_id: '', date_issued: new Date().toISOString().split('T')[0],
+        make_id: '', model_year: '', plate_number: '', cr_number: '',
+        motor_number: '', chassis_number: '',
+        unit_front_photo_path: '', unit_back_photo_path: '', unit_left_photo_path: '', unit_right_photo_path: '',
+        unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
+    });
+    franchiseUIStates.value.push({
+        isExpanded: true,
+        previews: { front: null, back: null, left: null, right: null }
+    });
+};
+
+const removeFranchise = (index) => {
+    if (form.franchises.length > 1) {
+        form.franchises.splice(index, 1);
+        franchiseUIStates.value.splice(index, 1);
+        if (franchiseUIStates.value.length > 0) {
+            franchiseUIStates.value[franchiseUIStates.value.length - 1].isExpanded = true;
+        }
+    }
+};
+
+const handleUnitPhoto = (e, index, side) => {
+    const file = e.target.files[0];
+    if (file) {
+        form.franchises[index][`unit_${side}_photo`] = file;
+        franchiseUIStates.value[index].previews[side] = URL.createObjectURL(file);
+    }
+};
+
+const submit = () => {
+    form.post(route('admin.applications.finalize', props.application.id), {
+        onSuccess: () => emit('close'),
+        onError: (errors) => {
+            console.error("Submission Errors:", errors);
+            if(errors.first_name || errors.email || errors.province) currentStep.value = 1;
+            if(errors['franchises.0.plate_number']) currentStep.value = 2;
+        }
+    });
+};
+
+const dummyZones = [{id:1, name:'Zone 1'}, {id:2, name:'Zone 2'}];
+const dummyMakes = [{id:1, name:'Honda'}, {id:2, name:'Kawasaki'}, {id:3, name:'Suzuki'}];
+
+// --- AUTOFILL TRIGGER ---
+watch(() => props.show, (isOpen) => {
+    if (isOpen && props.application) {
+        console.log("🟢 Modal Open. Application Data:", props.application);
+        populateForm(props.application);
+    } else if (!isOpen) {
+        currentStep.value = 1;
+    }
+});
+
+// 2. Update Populate Logic
+function populateForm(app) {
+    // 1. PERSONAL INFO
+    form.first_name = app.first_name || '';
+    form.middle_name = app.middle_name || '';
+    form.last_name = app.last_name || '';
+    form.email = app.email || '';
+    form.contact_number = app.contact_number || app.contact || '';
+    form.tin_number = app.tin_number || '';
+    form.street_address = app.street_address || app.street || '';
+    form.owner_photo_path = app.user_photo_path || app.photo_path || '';
+
+    // Set API string values directly
+    form.province = app.province || '';
+    
+    // Use timeouts to allow the API watchers to fetch the appropriate city/barangay lists before assignment
+    setTimeout(() => {
+        form.city = app.city || '';
+        setTimeout(() => {
+            form.barangay = app.barangay || '';
+        }, 500);
+    }, 500);
+
+    // 2. FRANCHISE INFO
+    const sourceUnits = (app.proposed_units && app.proposed_units.length > 0) 
+        ? app.proposed_units 
+        : ((app.proposedUnits && app.proposedUnits.length > 0) 
+            ? app.proposedUnits 
+            : (app.franchises || []));
+    
+    // Clear and Rebuild
+    form.franchises = [];
+    franchiseUIStates.value = []; 
+
+if (sourceUnits.length > 0) {
+        sourceUnits.forEach(unit => {
+            form.franchises.push({
+                franchise_number: unit.franchise_number || '', 
+                zone_id: unit.zone_id || '',
+                make_id: unit.make_id || unit.unit_make_id || '',
+                plate_number: unit.plate_number || unit.plate_no || '',
+                chassis_number: unit.chassis_number || unit.chassis_no || '',
+                motor_number: unit.motor_number || unit.motor_no || '',
+                cr_number: unit.cr_number || unit.cr_no || '',
+                model_year: unit.model_year || unit.year || '',
+                date_issued: unit.date_issued || new Date().toISOString().split('T')[0],
+                
+                // Send the existing path string back to the server so it knows to keep/copy it
+                unit_front_photo_path: unit.unit_front_photo || '', 
+                unit_back_photo_path: unit.unit_back_photo || '',   
+                unit_left_photo_path: unit.unit_left_photo || '',   
+                unit_right_photo_path: unit.unit_right_photo || '',
+                
+                // Placeholders for new file uploads
+                unit_front_photo: null, 
+                unit_back_photo: null, 
+                unit_left_photo: null, 
+                unit_right_photo: null
+            });
+
+            // UI State for Images (Ensures they show up in the preview boxes)
+            franchiseUIStates.value.push({
+                isExpanded: true,
+                previews: {
+                    front: unit.unit_front_photo ? `/storage/${unit.unit_front_photo}` : null,
+                    back: unit.unit_back_photo ? `/storage/${unit.unit_back_photo}` : null,
+                    left: unit.unit_left_photo ? `/storage/${unit.unit_left_photo}` : null,
+                    right: unit.unit_right_photo ? `/storage/${unit.unit_right_photo}` : null
+                }
+            });
+        });
+    } else {
+        form.franchises.push({
+            franchise_number: '', zone_id: '', date_issued: new Date().toISOString().split('T')[0],
+            make_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
+            unit_front_photo_path: '', unit_back_photo_path: '', unit_left_photo_path: '', unit_right_photo_path: '',
+            unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null
+        });
+        franchiseUIStates.value.push({ isExpanded: true, previews: { front: null, back: null, left: null, right: null } });
+    }
+}
+</script>
+
+<template>
+    <Modal :show="show" @close="emit('close')" maxWidth="2xl">
+        <div class="flex flex-col h-[600px] bg-white rounded-lg overflow-hidden">
+            
+            <div class="p-4 border-b border-gray-100 flex-none bg-gray-50/50">
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="text-sm font-bold text-gray-800 uppercase tracking-tight">Create Account</h2>
+                    <span class="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">Step {{ currentStep }} of 3</span>
+                </div>
+                <div class="flex gap-2 mb-2">
+                    <div v-for="s in steps" :key="s.id" :class="[currentStep >= s.id ? 'bg-blue-500' : 'bg-gray-200']" class="h-1 flex-1 rounded-full transition-all duration-300"></div>
+                </div>
+                <div class="text-center">
+                    <span class="text-xs font-semibold text-gray-700">{{ steps[currentStep-1].title }}</span>
+                </div>
+            </div>
+
+            <div class="flex-1 overflow-y-auto p-5 custom-scrollbar">
+                
+                <div v-if="currentStep === 1" class="flex gap-6 animate-fade-in">
+                    
+                    <div class="w-32 flex-none flex flex-col items-center pt-2">
+                        <div class="w-28 h-28 rounded-full border-2 border-dashed border-gray-200 flex items-center justify-center overflow-hidden relative group bg-gray-50 mb-3 hover:border-blue-400 transition-colors">
+                            <img v-if="ownerPhotoPreview" :src="ownerPhotoPreview" class="w-full h-full object-cover" />
+                            <img v-else-if="form.owner_photo_path" :src="form.owner_photo_path.startsWith('http') ? form.owner_photo_path : `/storage/${form.owner_photo_path}`" class="w-full h-full object-cover" />
+                            <div v-else class="text-center p-2">
+                                <svg class="w-8 h-8 mx-auto text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                                <span class="text-[9px] text-gray-400 block mt-1 font-bold">UPLOAD PHOTO</span>
+                            </div>
+                            <input type="file" class="absolute inset-0 opacity-0 cursor-pointer" @change="handleOwnerPhoto" />
+                        </div>
+                        <p class="text-[10px] text-gray-400 text-center leading-tight">Click to upload owner's 1x1 or profile picture.</p>
+                    </div>
+
+                    <div class="flex-1 space-y-4">
+                        <div>
+                            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Personal Details</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div><InputLabel value="First Name" class="text-[11px]" /><TextInput v-model="form.first_name" class="w-full text-xs py-1.5" /></div>
+                                <div><InputLabel value="Middle Name" class="text-[11px]" /><TextInput v-model="form.middle_name" class="w-full text-xs py-1.5" /></div>
+                                <div><InputLabel value="Last Name" class="text-[11px]" /><TextInput v-model="form.last_name" class="w-full text-xs py-1.5" /></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Contact & Info</h3>
+                            <div class="grid grid-cols-3 gap-3">
+                                <div class="col-span-1"><InputLabel value="Email Address" class="text-[11px]" /><TextInput type="email" v-model="form.email" class="w-full text-xs py-1.5" /></div>
+                                <div><InputLabel value="Contact No." class="text-[11px]" /><TextInput v-model="form.contact_number" class="w-full text-xs py-1.5" /></div>
+                                <div><InputLabel value="TIN No." class="text-[11px]" /><TextInput v-model="form.tin_number" class="w-full text-xs py-1.5 font-mono" placeholder="000-000-000" /></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">Address</h3>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <InputLabel value="Street Address" class="text-[11px]" />
+                                    <TextInput v-model="form.street_address" class="w-full text-xs py-1.5" />
+                                </div>
+                                <div>
+                                    <InputLabel value="Province" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.province" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5">
+                                        <option value="" disabled>Select Province</option>
+                                        <option v-for="prov in provincesList" :key="prov.code" :value="prov.name">
+                                            {{ prov.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel value="City/Municipality" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.city" :disabled="!citiesList.length" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5 disabled:bg-gray-100">
+                                        <option value="" disabled>Select City</option>
+                                        <option v-for="city in citiesList" :key="city.code" :value="city.name">
+                                            {{ city.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel value="Barangay" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <select v-model="form.barangay" :disabled="!barangaysList.length" class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5 disabled:bg-gray-100">
+                                        <option value="" disabled>Select Barangay</option>
+                                        <option v-for="brgy in barangaysList" :key="brgy.code" :value="brgy.name">
+                                            {{ brgy.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentStep === 2" class="space-y-4 animate-fade-in">
+                    <div class="flex justify-between items-center mb-1">
+                        <span class="text-[10px] font-bold text-gray-400 uppercase">Assigned Franchises</span>
+                    </div>
+
+                    <div v-for="(franchise, index) in form.franchises" :key="index" class="border border-gray-200 rounded-lg overflow-hidden transition-all duration-300" :class="franchiseUIStates[index].isExpanded ? 'bg-white shadow-sm ring-1 ring-blue-100' : 'bg-gray-50/50'">
+                        
+                        <div @click="toggleFranchise(index)" class="flex justify-between items-center p-3 cursor-pointer hover:bg-gray-50 select-none bg-gray-50/30">
+                            <div class="flex items-center gap-3">
+                                <span class="text-[11px] font-bold text-gray-700">Franchise #{{ index + 1 }}</span>
+                                <span v-if="!franchiseUIStates[index].isExpanded" class="text-[10px] text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                    {{ franchise.zone_id ? getZoneName(franchise.zone_id) : 'No Zone' }} • {{ franchise.plate_number || 'No Plate' }}
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button v-if="form.franchises.length > 1" @click.stop="removeFranchise(index)" class="text-gray-300 hover:text-red-500 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                                </button>
+                                <svg class="w-4 h-4 text-gray-400 transition-transform duration-200" :class="{ 'rotate-180': franchiseUIStates[index].isExpanded }" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" /></svg>
+                            </div>
+                        </div>
+                        
+                        <div v-show="franchiseUIStates[index].isExpanded" class="p-4 border-t border-gray-100 bg-white animate-fade-in">
+                            <div class="grid grid-cols-4 gap-4">
+                                <div>
+                                    <InputLabel value="Franchise Number" class="text-[10px]" />
+                                    <TextInput v-model="franchise.franchise_number" placeholder="" class="w-full text-xs py-1.5 uppercase font-mono" />
+                                </div>
+                                <div>
+                                    <InputLabel value="Zone" class="text-[10px]" />
+                                    <select v-model="franchise.zone_id" class="w-full text-xs py-1.5 border-gray-300 rounded shadow-sm focus:border-blue-500">
+                                        <option value="" disabled>Select</option>
+                                        <option v-for="z in (props.zones?.data || props.zones?.length ? props.zones : dummyZones)" :key="z.id" :value="z.id">
+                                            {{ z.description || z.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <InputLabel value="Date Issued" class="text-[11px] text-gray-500 uppercase tracking-wider font-bold" />
+                                    <TextInput 
+                                        type="date" 
+                                        v-model="franchise.date_issued" 
+                                        class="w-full text-sm border-gray-300 focus:border-green-500 focus:ring-green-500 rounded-md shadow-sm py-1.5"
+                                    />
+                                </div>
+                                <div>
+                                    <InputLabel value="Make / Brand" class="text-[10px]" />
+                                    <select v-model="franchise.make_id" class="w-full text-xs py-1.5 border-gray-300 rounded shadow-sm">
+                                        <option value="" disabled>Select</option>
+                                        <option v-for="m in (props.unitMakes?.length ? props.unitMakes : dummyMakes)" :key="m.id" :value="m.id">{{ m.name }}</option>
+                                    </select>
+                                </div>
+                                <div><InputLabel value="Model Year" class="text-[10px]" /><TextInput type="number" v-model="franchise.model_year" placeholder="YYYY" class="w-full text-xs py-1.5" /></div>
+
+                                <div><InputLabel value="Plate Number" class="text-[10px]" /><TextInput v-model="franchise.plate_number" placeholder="ABC 123" class="w-full text-xs py-1.5 uppercase font-mono" /></div>
+                                <div><InputLabel value="CR Number" class="text-[10px]" /><TextInput v-model="franchise.cr_number" placeholder="Cert. Reg" class="w-full text-xs py-1.5 uppercase" /></div>
+                                <div><InputLabel value="Motor Number" class="text-[10px]" /><TextInput v-model="franchise.motor_number" class="w-full text-xs py-1.5 uppercase" /></div>
+                                <div><InputLabel value="Chassis Number" class="text-[10px]" /><TextInput v-model="franchise.chassis_number" class="w-full text-xs py-1.5 uppercase" /></div>
+                            </div>
+
+                            <div class="mt-4 pt-3 border-t border-gray-100">
+                                <span class="text-[9px] font-bold text-gray-400 uppercase block mb-2">Unit Photos</span>
+                                <div class="grid grid-cols-4 gap-2 mt-4">
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Front</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.front">
+                                            <img :src="franchiseUIStates[index].previews.front" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
+
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Back</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.back">
+                                            <img :src="franchiseUIStates[index].previews.back" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
+
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Left</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.left">
+                                            <img :src="franchiseUIStates[index].previews.left" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
+
+                                    <div class="border p-2 rounded text-center">
+                                        <span class="text-[10px] font-bold text-gray-500">Right</span>
+                                        <div v-if="franchiseUIStates[index]?.previews?.right">
+                                            <img :src="franchiseUIStates[index].previews.right" class="h-16 w-full object-cover rounded" />
+                                        </div>
+                                        <div v-else class="text-xs text-gray-400 italic">No Image</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-if="currentStep === 3" class="animate-fade-in flex gap-6">
+                    <div class="w-1/3 bg-blue-50 p-5 rounded-lg border border-blue-100 flex flex-col items-center justify-center text-center">
+                        <div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-3 shadow-sm text-blue-500">
+                            <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" /></svg>
+                        </div>
+                        <h4 class="text-sm font-bold text-blue-900 mb-1">Secure Account</h4>
+                        <p class="text-[11px] text-blue-700 leading-relaxed">
+                            These credentials will be used by the franchise owner to log in to their mobile application portal.
+                        </p>
+                    </div>
+
+                    <div class="w-2/3 space-y-4 pt-2">
+                        <div>
+                            <InputLabel value="Portal ID / Email" class="text-[11px]" />
+                            <TextInput v-model="form.email" class="w-full text-sm py-1.5 bg-gray-50 text-gray-500" readonly />
+                            <p class="text-[10px] text-gray-400 mt-1">Username is auto-filled from email.</p>
+                        </div>
+                        <div class="bg-green-50 p-4 rounded-md border border-green-200 mt-3">
+                            <p class="text-xs text-green-700 font-medium flex items-start gap-2">
+                                <svg class="w-4 h-4 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                A secure, system-generated password will be automatically emailed to the applicant. They will be required to change it upon their first login.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="p-4 border-t border-gray-100 bg-gray-50 flex justify-between">
+                <SecondaryButton @click="prevStep" v-if="currentStep > 1" class="text-xs">Back</SecondaryButton>
+                <div v-else></div>
+                <div class="flex gap-2">
+                    <SecondaryButton @click="emit('close')" class="text-xs">Cancel</SecondaryButton>
+                    <PrimaryButton v-if="currentStep < 3" @click="nextStep" class="text-xs">Next &rarr;</PrimaryButton>
+                    <PrimaryButton v-else @click="submit" :disabled="form.processing" class="text-xs bg-green-600 hover:bg-green-700 ring-green-500">Create Account</PrimaryButton>
+                </div>
+            </div>
+        </div>
+    </Modal>
+</template>
+
+<style scoped>
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+.custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.animate-fade-in { animation: fadeIn 0.3s ease-out; }
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+</style>

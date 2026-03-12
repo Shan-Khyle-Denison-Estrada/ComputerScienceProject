@@ -5,10 +5,10 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue';
-import Modal from '@/Components/Modal.vue'; // <-- ADDED: Modal import
-import ReceiptPrint from '@/Components/ReceiptPrint.vue'; // <-- ADDED: ReceiptPrint import
+import Modal from '@/Components/Modal.vue'; 
+import ReceiptPrint from '@/Components/ReceiptPrint.vue'; 
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { ref, computed, watch, nextTick } from 'vue'; // <-- ADDED: nextTick
+import { ref, computed, watch, nextTick, onMounted } from 'vue'; // <-- ADDED onMounted
 
 // --- PROPS ---
 const props = defineProps({
@@ -22,37 +22,60 @@ const props = defineProps({
 // --- STATE MANAGEMENT ---
 const showAddModal = ref(false);
 const showFilterModal = ref(false);
-const showViewModal = ref(false); // <-- ADDED: View modal state
-const selectedPayment = ref(null); // <-- ADDED: Selected payment state
+const showViewModal = ref(false); 
+const selectedPayment = ref(null); 
 const search = ref(props.filters.search || '');
 
 // --- DROPDOWN STATE ---
-const barangayQuery = ref('');
-const showBarangayDropdown = ref(false);
-
 const assessmentQuery = ref('');
 const showAssessmentDropdown = ref(false);
 const selectedAssessmentDetails = ref(null); 
 
-// --- COMPUTED FILTERS ---
-const filteredBarangays = computed(() => {
-    if (!barangayQuery.value) return props.barangays;
-    return props.barangays.filter(b => 
-        b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())
-    );
+const activeDropdown = ref(null);
+
+// --- API State for Addresses ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load locations:", error);
+    }
 });
 
+// --- COMPUTED FILTERS ---
 const filteredAssessments = computed(() => {
     if (!assessmentQuery.value) return props.assessments;
     const query = assessmentQuery.value.toLowerCase();
     
     return props.assessments.filter(a => {
-        // Use the new reference_number or fallback to ASM format
         const ref = a.reference_number || a.application_reference_id || `ASM-${a.id}`;
         const matchRef = ref.toLowerCase().includes(query);
         const matchLabel = a.label && a.label.toLowerCase().includes(query);
         return matchRef || matchLabel;
     });
+});
+
+const filteredProvinces = computed(() => {
+    if (!addForm.payee_province) return provincesList.value;
+    return provincesList.value.filter(p => p.name.toLowerCase().includes(addForm.payee_province.toLowerCase()));
+});
+
+const filteredCities = computed(() => {
+    if (!addForm.payee_city) return citiesList.value;
+    return citiesList.value.filter(c => c.name.toLowerCase().includes(addForm.payee_city.toLowerCase()));
+});
+
+const filteredBarangays = computed(() => {
+    if (!addForm.payee_barangay) return barangaysList.value;
+    return barangaysList.value.filter(b => b.name.toLowerCase().includes(addForm.payee_barangay.toLowerCase()));
 });
 
 // --- WATCHERS ---
@@ -71,12 +94,6 @@ watch(assessmentQuery, (newVal) => {
 });
 
 // --- SELECTION ACTIONS ---
-const selectBarangay = (name) => {
-    addForm.payee_barangay = name;
-    barangayQuery.value = name;
-    showBarangayDropdown.value = false;
-};
-
 const selectAssessment = (assessment) => {
     addForm.assessment_id = assessment.id;
     assessmentQuery.value = assessment.reference_number 
@@ -88,6 +105,51 @@ const selectAssessment = (assessment) => {
     showAssessmentDropdown.value = false;
 };
 
+const selectProvince = async (prov) => {
+    addForm.payee_province = prov.name;
+    addForm.clearErrors('payee_province');
+    activeDropdown.value = null;
+    
+    addForm.payee_city = '';
+    addForm.payee_barangay = '';
+    citiesList.value = [];
+    barangaysList.value = [];
+
+    try {
+        if (prov.isNCR) {
+            const res = await fetch(`https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities`);
+            citiesList.value = await res.json();
+        } else {
+            const res = await fetch(`https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`);
+            citiesList.value = await res.json();
+        }
+    } catch (error) {
+        console.error("Failed to load cities:", error);
+    }
+};
+
+const selectCity = async (city) => {
+    addForm.payee_city = city.name;
+    addForm.clearErrors('payee_city');
+    activeDropdown.value = null;
+    
+    addForm.payee_barangay = '';
+    barangaysList.value = [];
+
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+        barangaysList.value = await res.json();
+    } catch (error) {
+        console.error("Failed to load barangays:", error);
+    }
+};
+
+const selectBarangay = (brgy) => {
+    addForm.payee_barangay = brgy.name;
+    addForm.clearErrors('payee_barangay');
+    activeDropdown.value = null;
+};
+
 // --- FORMS ---
 const addForm = useForm({
     assessment_id: '',
@@ -97,8 +159,9 @@ const addForm = useForm({
     payee_last_name: '',
     payee_contact_number: '',
     payee_street_address: '',
-    payee_barangay: '',
+    payee_province: '',
     payee_city: '',
+    payee_barangay: '',
 });
 
 const filterForm = ref({
@@ -122,11 +185,24 @@ const formatDate = (dateString) => {
     });
 };
 
+const formatContactNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/\D/g, ''); 
+    if (parts.length > 11) parts = parts.substring(0, 11); 
+
+    let formatted = '';
+    if (parts.length > 0) formatted += parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) formatted += '-';
+
+    return formatted;
+};
+
 // --- ACTIONS ---
 const openAddModal = () => {
     showAddModal.value = true;
     document.body.style.overflow = 'hidden'; 
-    barangayQuery.value = '';
     assessmentQuery.value = '';
     selectedAssessmentDetails.value = null;
 };
@@ -135,18 +211,21 @@ const closeAddModal = () => {
     showAddModal.value = false;
     document.body.style.overflow = '';
     addForm.reset();
-    showBarangayDropdown.value = false;
     showAssessmentDropdown.value = false;
+    activeDropdown.value = null;
     selectedAssessmentDetails.value = null;
 };
 
 const submitAdd = () => {
-    if (!addForm.payee_barangay && barangayQuery.value) {
-        addForm.payee_barangay = barangayQuery.value;
-    }
-    
     addForm.post(route('admin.payments.store'), {
-        onSuccess: () => closeAddModal(),
+        onSuccess: () => {
+            closeAddModal();
+            const newPayment = props.payments.data[0];
+            
+            if (newPayment) {
+                printReceipt(newPayment);
+            }
+        },
     });
 };
 
@@ -197,7 +276,6 @@ const closeViewModal = () => {
 const printReceipt = async (payment) => {
     selectedPayment.value = payment;
     
-    // Temporarily hide the modal if it's open to prevent overlay issues while printing
     const wasViewModalOpen = showViewModal.value;
     if (wasViewModalOpen) {
         showViewModal.value = false;
@@ -218,6 +296,8 @@ const printReceipt = async (payment) => {
 
 <template>
     <Head title="Manage Payments" />
+
+    <div v-if="activeDropdown" @click="activeDropdown = null" class="fixed inset-0 z-10 hidden md:block"></div>
 
     <div class="print:hidden">
         <AuthenticatedLayout>
@@ -282,7 +362,7 @@ const printReceipt = async (payment) => {
                                 </td>
                                 <td class="px-6 py-4 text-gray-600">
                                     <div class="text-sm">{{ payment.payee_barangay }}, {{ payment.payee_city }}</div>
-                                    <div class="text-xs text-gray-400">{{ payment.payee_street_address }}</div>
+                                    <div class="text-xs text-gray-400">{{ payment.payee_street_address }} <span v-if="payment.payee_province">, {{ payment.payee_province }}</span></div>
                                 </td>
                                 <td class="px-6 py-4">
                                     <span v-if="payment.assessment_id" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
@@ -336,7 +416,7 @@ const printReceipt = async (payment) => {
 
                     <div class="relative w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh] md:max-h-[85vh] transform transition-all">
                         
-                        <div class="w-full md:w-2/3 flex flex-col min-h-0 bg-white">
+                        <div class="w-full md:w-2/3 flex flex-col min-h-0 bg-white relative z-20">
                             
                             <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-white shrink-0">
                                 <div>
@@ -413,7 +493,14 @@ const printReceipt = async (payment) => {
                                             </div>
                                             <div class="col-span-12 md:col-span-6">
                                                 <InputLabel>Contact Number</InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_contact_number" placeholder="09xxxxxxxxx" />
+                                                <TextInput 
+                                                    type="text" 
+                                                    class="mt-1 block w-full" 
+                                                    v-model="addForm.payee_contact_number" 
+                                                    @input="addForm.payee_contact_number = formatContactNumber($event.target.value)" 
+                                                    maxlength="13" 
+                                                    placeholder="09XX-XXX-XXXX" 
+                                                />
                                             </div>
                                         </div>
                                     </div>
@@ -431,34 +518,75 @@ const printReceipt = async (payment) => {
                                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_street_address" placeholder="House No., Street Name" required />
                                             </div>
                                             
-                                            <div class="col-span-12 md:col-span-6 relative">
-                                                <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                                                <TextInput 
-                                                    type="text" 
-                                                    class="mt-1 block w-full" 
-                                                    v-model="barangayQuery" 
-                                                    @focus="showBarangayDropdown = true"
-                                                    @input="showBarangayDropdown = true"
-                                                    placeholder="Select Barangay..." 
-                                                    autocomplete="off"
-                                                    required
-                                                />
-                                                <div v-if="showBarangayDropdown && filteredBarangays.length > 0" class="absolute z-20 w-full bg-white border border-gray-200 mt-1 rounded-lg shadow-xl max-h-48 overflow-y-auto">
-                                                    <div 
-                                                        v-for="barangay in filteredBarangays" 
-                                                        :key="barangay.id"
-                                                        @click="selectBarangay(barangay.name)"
-                                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 transition-colors"
-                                                    >
-                                                        {{ barangay.name }}
+                                            <div class="col-span-12 md:col-span-4 relative">
+                                                <InputLabel>Province <span class="text-red-500">*</span></InputLabel>
+                                                <div class="relative z-20">
+                                                    <TextInput 
+                                                        v-model="addForm.payee_province" 
+                                                        @focus="activeDropdown = 'province'"
+                                                        @input="addForm.clearErrors('payee_province')"
+                                                        class="mt-1 block w-full"
+                                                        placeholder="Search Province..."
+                                                        autocomplete="off"
+                                                        required
+                                                    />
+                                                    <div v-if="activeDropdown === 'province'" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto ring-1 ring-black ring-opacity-5">
+                                                        <ul class="py-1">
+                                                            <li v-for="prov in filteredProvinces" :key="prov.code" @click="selectProvince(prov)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                                                {{ prov.name }}
+                                                            </li>
+                                                            <li v-if="!filteredProvinces.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                                        </ul>
                                                     </div>
                                                 </div>
-                                                <div v-if="showBarangayDropdown" @click="showBarangayDropdown = false" class="fixed inset-0 z-10 bg-transparent cursor-default"></div>
                                             </div>
 
-                                            <div class="col-span-12 md:col-span-6">
-                                                <InputLabel>City <span class="text-red-500">*</span></InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_city" required />
+                                            <div class="col-span-12 md:col-span-4 relative">
+                                                <InputLabel>City/Municipality <span class="text-red-500">*</span></InputLabel>
+                                                <div class="relative z-20">
+                                                    <TextInput 
+                                                        v-model="addForm.payee_city" 
+                                                        @focus="activeDropdown = 'city'"
+                                                        @input="addForm.clearErrors('payee_city')"
+                                                        :disabled="!citiesList.length"
+                                                        class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-500"
+                                                        placeholder="Search City..."
+                                                        autocomplete="off"
+                                                        required
+                                                    />
+                                                    <div v-if="activeDropdown === 'city' && citiesList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto ring-1 ring-black ring-opacity-5">
+                                                        <ul class="py-1">
+                                                            <li v-for="city in filteredCities" :key="city.code" @click="selectCity(city)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                                                {{ city.name }}
+                                                            </li>
+                                                            <li v-if="!filteredCities.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="col-span-12 md:col-span-4 relative">
+                                                <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
+                                                <div class="relative z-20">
+                                                    <TextInput 
+                                                        v-model="addForm.payee_barangay" 
+                                                        @focus="activeDropdown = 'barangay'"
+                                                        @input="addForm.clearErrors('payee_barangay')"
+                                                        :disabled="!barangaysList.length"
+                                                        class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-500"
+                                                        placeholder="Search Barangay..."
+                                                        autocomplete="off"
+                                                        required
+                                                    />
+                                                    <div v-if="activeDropdown === 'barangay' && barangaysList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto ring-1 ring-black ring-opacity-5">
+                                                        <ul class="py-1">
+                                                            <li v-for="brgy in filteredBarangays" :key="brgy.code" @click="selectBarangay(brgy)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700 transition-colors">
+                                                                {{ brgy.name }}
+                                                            </li>
+                                                            <li v-if="!filteredBarangays.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                                        </ul>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -498,9 +626,9 @@ const printReceipt = async (payment) => {
                             </div>
                         </div>
 
-                        <div class="w-full md:w-1/3 bg-gray-50 border-t md:border-t-0 md:border-l border-gray-200 flex flex-col min-h-0 relative">
+                        <div class="w-full md:w-1/3 bg-gray-50 border-t md:border-t-0 md:border-l border-gray-200 flex flex-col min-h-0 relative z-10">
                             
-                            <button @click="closeAddModal" class="hidden md:flex absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-full p-2 shadow-sm transition-all z-10 border border-gray-200">
+                            <button @click="closeAddModal" class="hidden md:flex absolute top-4 right-4 text-gray-400 hover:text-gray-700 bg-white hover:bg-gray-100 rounded-full p-2 shadow-sm transition-all border border-gray-200">
                                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
@@ -630,7 +758,7 @@ const printReceipt = async (payment) => {
                         <div class="border-t border-gray-200 pt-4 mt-2">
                             <p class="font-bold text-gray-500 mb-1">Payee Information</p>
                             <p class="uppercase font-semibold text-gray-900">{{ selectedPayment.payee_first_name }} {{ selectedPayment.payee_middle_name || '' }} {{ selectedPayment.payee_last_name }}</p>
-                            <p class="text-gray-600 mt-1">{{ selectedPayment.payee_street_address }}, {{ selectedPayment.payee_barangay }}, {{ selectedPayment.payee_city }}</p>
+                            <p class="text-gray-600 mt-1">{{ selectedPayment.payee_street_address }}, {{ selectedPayment.payee_barangay }}, {{ selectedPayment.payee_city }}<span v-if="selectedPayment.payee_province">, {{ selectedPayment.payee_province }}</span></p>
                         </div>
                     </div>
 

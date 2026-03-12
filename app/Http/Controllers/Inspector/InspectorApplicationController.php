@@ -14,7 +14,7 @@ class InspectorApplicationController extends Controller
     public function index(Request $request)
     {
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->whereIn('application_type', ['Renewal', 'Change of Unit'])
+            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'New Franchise'])
             ->where('status', 'Pending')
             ->where(function($q) {
                 $q->where('inspector_status', 'Pending')
@@ -30,7 +30,7 @@ class InspectorApplicationController extends Controller
             });
         }
 
-        $applications = $query->latest()->paginate(10)->withQueryString();
+        $applications = $query->latest()->paginate(8)->withQueryString();
 
         return Inertia::render('Inspector/Applications/Index', [
             'applications' => $applications,
@@ -108,22 +108,34 @@ class InspectorApplicationController extends Controller
     {
         $request->validate([
             'inspection_item_id' => 'required|exists:inspection_items,id',
-            'rating' => 'required|string', // Removed hardcoded Pass/Fail
+            'rating' => 'required|string',
             'remarks' => 'nullable|string'
         ]);
 
-        $unitId = $application->franchise->currentActiveUnit->new_unit_id;
+        // 1. Determine if we are inspecting a Proposed Unit or an Existing Unit
+        $proposedUnit = $application->proposedUnits()->latest()->first();
+        
+        $matchConditions = [
+            'application_id' => $application->id,
+            'inspection_item_id' => $request->inspection_item_id,
+        ];
 
+        // 2. Assign the correct ID column based on what exists
+        if ($proposedUnit) {
+            $matchConditions['proposed_unit_id'] = $proposedUnit->id;
+        } elseif ($application->franchise && $application->franchise->currentActiveUnit) {
+            $matchConditions['unit_id'] = $application->franchise->currentActiveUnit->new_unit_id;
+        } else {
+            return redirect()->back()->withErrors(['error' => 'No unit found to inspect for this application.']);
+        }
+
+        // 3. Save the inspection
         UnitInspection::updateOrCreate(
-            [
-                'application_id' => $application->id,
-                'unit_id' => $unitId,
-                'inspection_item_id' => $request->inspection_item_id,
-            ],
+            $matchConditions,
             [
                 'rating' => $request->rating,
                 'remarks' => $request->remarks ?? "Marked as {$request->rating}.",
-                'inspected_by' => auth()->id(),
+                // 'inspected_by' => auth()->id(), // Uncomment if you track the specific inspector
             ]
         );
 
@@ -152,5 +164,51 @@ class InspectorApplicationController extends Controller
 
         return redirect()->route('inspector.applications.index')
                          ->with('success', "Application has been returned for physical unit modifications.");
+    }
+
+    public function showNewFranchise(Application $application)
+    {
+        abort_if($application->application_type !== 'New Franchise', 404);
+
+        $application->load([
+            'user',
+            'franchise.currentOwnership.newOwner.user', 
+            'franchise.currentActiveUnit.newUnit.make', 
+            'franchise.zone', 
+            'zone',
+            'evaluations.requirement',
+            'assessment.particulars',
+            'assessment.payments',
+            'proposedUnits' // <-- Crucial: load the proposed units
+        ]);
+
+        $inspectionItems = InspectionItem::all();
+
+        $currentUnitId = null;
+        $unitInspections = [];
+        
+        // Check for Proposed Unit first
+        $proposedUnit = $application->proposedUnits->last();
+
+        if ($proposedUnit) {
+            $currentUnitId = $proposedUnit->id;
+            $unitInspections = UnitInspection::where('proposed_unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        } 
+        // Fallback to active unit if no proposed unit exists
+        elseif ($application->franchise && $application->franchise->currentActiveUnit) {
+            $currentUnitId = $application->franchise->currentActiveUnit->new_unit_id;
+            $unitInspections = UnitInspection::where('unit_id', $currentUnitId)
+                ->where('application_id', $application->id) 
+                ->get();
+        }
+
+        return Inertia::render('Inspector/Applications/ShowNewFranchise', [
+            'application' => $application,
+            'inspectionItems' => $inspectionItems,
+            'unitInspections' => $unitInspections,
+            'currentUnitId' => $currentUnitId
+        ]);
     }
 }

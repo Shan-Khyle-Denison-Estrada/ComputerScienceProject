@@ -25,6 +25,7 @@ class SettingsController extends Controller
         $settings = SystemSetting::first() ?? SystemSetting::create([]);
 
         $validated = $request->validate([
+            'allow_new_applications' => 'nullable|boolean', // Added validation rule
             'annual_renewal_start' => 'nullable|string',
             'annual_renewal_due' => 'nullable|string',
             'surcharge_rate' => 'nullable|numeric',

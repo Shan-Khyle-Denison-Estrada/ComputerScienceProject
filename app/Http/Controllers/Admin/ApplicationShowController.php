@@ -66,10 +66,10 @@ class ApplicationShowController extends Controller
                     'id' => $unit->id,
                     'franchise_number' => $unit->franchise_number ?? 'N/A',
                     'make_id' => $unit->make_id,
-// 🚨 FIX: Prioritize the unit's zone_id, fallback to application's zone_id if missing
-    'zone_id' => $unit->zone_id ?? $application->zone_id,
-    'zone_name' => $unit->zone->description ?? $application->zone->description ?? 'N/A',
-                    'date_issued' => 'Pending',
+                // 🚨 FIX: Prioritize the unit's zone_id, fallback to application's zone_id if missing
+                    'zone_id' => $unit->zone_id ?? $application->zone_id,
+                    'zone_name' => $unit->zone->description ?? $application->zone->description ?? 'N/A',
+                    'date_issued' => $unit->date_issued,
                     'make_name' => $unit->make->name ?? 'N/A',
                     'model_year' => $unit->model_year,
                     'plate_number' => $unit->plate_number,
@@ -111,14 +111,14 @@ class ApplicationShowController extends Controller
             $contactNumber = $application->user->contact_number;
         }
 
-        $barangayId = $application->user->barangay_id ?? null;
-        if (!$barangayId && $application->barangay) {
-            // Try to find the barangay by name (case-insensitive) to get its ID
-            $found = Barangay::where('name', 'LIKE', $application->barangay)->first();
-            if ($found) {
-                $barangayId = $found->id;
-            }
-        }
+        // $barangayId = $application->user->barangay_id ?? null;
+        // if (!$barangayId && $application->barangay) {
+        //     // Try to find the barangay by name (case-insensitive) to get its ID
+        //     $found = Barangay::where('name', 'LIKE', $application->barangay)->first();
+        //     if ($found) {
+        //         $barangayId = $found->id;
+        //     }
+        // }
 
         // 5. Construct Data Object
         $appData = [
@@ -138,8 +138,9 @@ class ApplicationShowController extends Controller
                 'street' => $application->street_address,
                 'barangay' => $application->barangay,
                 'city' => $application->city,
+                'province' => $application->province,
                 // [!code focus] PASS THE RESOLVED ID
-                'barangay_id' => $barangayId, 
+                // 'barangay_id' => $barangayId, 
                 
                 // Keep name for fallback display if needed
                 'barangay_name' => $application->barangay,
@@ -155,13 +156,13 @@ class ApplicationShowController extends Controller
             'receipt' => null,  
         ];
 
-        $barangays = Barangay::orderBy('name')->get();
+        // $barangays = Barangay::orderBy('name')->get();
         $zones = Zone::all();
         $unitMakes = UnitMake::orderBy('name')->get();
 
         return Inertia::render('Admin/Applications/Show', [
             'application' => $appData,
-            'barangays' => $barangays, // [!code ++] Pass to view
+            // 'barangays' => $barangays, // [!code ++] Pass to view
             'zones' => $zones,         // [!code ++] Pass to view
             'unitMakes' => $unitMakes,  // [!code ++] Pass to view
             'isEncoder' => $isEncoder,
@@ -246,11 +247,11 @@ class ApplicationShowController extends Controller
             'street_address' => 'required|string|max:255',
             
             // [!code focus] CORRECT: Validate that the ID exists, don't fetch name yet
-            'barangay_id' => 'required|exists:barangays,id', 
+            'barangay' => 'required|string|max:255',
             
             'city' => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
-            'password' => 'required|string|min:8|confirmed',
 
             // Franchise / Unit Info
             'franchises' => 'required|array|min:1',
@@ -276,7 +277,7 @@ class ApplicationShowController extends Controller
                 
                 // [!code focus] FETCH BARANGAY NAME HERE (Inside the logic block)
                 // If your users table stores the name (string), fetch it now:
-                $barangayName = Barangay::find($validated['barangay_id'])->name;
+                // $barangayName = Barangay::find($validated['barangay_id'])->name;
 
                 // A. HANDLE USER PHOTO
                 $userPhotoPath = null;
@@ -291,6 +292,9 @@ class ApplicationShowController extends Controller
                     }
                 }
 
+                // Generate a random 10-character password
+                $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
+
                 // A. Create User (Franchise Owner)
                 $user = User::create([
                     'user_photo' => $userPhotoPath, // Save the NEW path
@@ -298,14 +302,16 @@ class ApplicationShowController extends Controller
                     'middle_name' => $validated['middle_name'],
                     'last_name' => $validated['last_name'],
                     'email' => $validated['email'],
-                    'password' => Hash::make($validated['password']),
+                    'password' => Hash::make($generatedPassword),
+                    'force_password_change' => true, // Flag to trigger change on first login
                     'contact_number' => $validated['contact_number'],
                     'street_address' => $validated['street_address'],
                     
                     // [!code focus] SAVE THE NAME STRING
-                    'barangay' => $barangayName, 
+                    'barangay' => $validated['barangay'],
                     
                     'city' => $validated['city'],
+                    'province' => $validated['province'],
                     'role' => 'franchise_owner', 
                     'status' => 'active',
                 ]);
@@ -398,10 +404,12 @@ class ApplicationShowController extends Controller
                     'status' => 'Completed', 
                     'franchise_id' => isset($franchise) ? $franchise->id : null,
                 ]);
+                // E. Send Email to the User
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
 
             });
 
-            return redirect()->back()->with('success', 'Franchise Account created successfully!');
+            return redirect()->back()->with('success', 'Franchise Account created successfully! Credentials have been emailed to the applicant.');
 
         } catch (\Exception $e) {
             return redirect()->back()->withErrors(['error' => 'Transaction Failed: ' . $e->getMessage()]);

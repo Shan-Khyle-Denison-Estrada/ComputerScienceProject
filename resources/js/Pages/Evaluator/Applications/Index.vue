@@ -72,8 +72,12 @@ watch(search, handleSearch);
                                         :href="route('evaluator.applications.show-change-of-unit', app.id)" 
                                         class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
                                         
-                                    <Link v-else-if="app.application_type === 'New Franchise' || app.application_type === 'Franchise Owner Account'" 
+                                    <Link v-else-if="app.application_type === 'New Franchise'" 
                                         :href="route('evaluator.applications.show-new-franchise', app.id)" 
+                                        class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
+
+                                    <Link v-else-if="app.application_type === 'Franchise Owner Account'" 
+                                        :href="route('evaluator.applications.show-franchise-owner-account', app.id)" 
                                         class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
                                         
                                     <Link v-else 

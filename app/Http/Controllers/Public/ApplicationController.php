@@ -3,15 +3,18 @@
 namespace App\Http\Controllers\Public;
 
 use App\Http\Controllers\Controller;
+use App\Mail\ApplicationOtpMail;
+use App\Mail\ApplicationSubmittedMail;
 use App\Models\Application;
-use App\Models\ApplicationEvaluation; // Ensure this Model exists
-use App\Models\Barangay;
+use App\Models\ApplicationEvaluation;
 use App\Models\EvaluationRequirement;
 use App\Models\ProposedUnit;
 use App\Models\UnitMake;
 use App\Models\Zone;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Cache; // <-- Import Cache
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 
@@ -19,7 +22,6 @@ class ApplicationController extends Controller
 {
     public function create()
     {
-        // Fetch requirements for the form
         $relevantGroups = ['Franchise Owner Account', 'General', 'New Franchise'];
         
         $requirements = EvaluationRequirement::where('is_active', true)
@@ -29,7 +31,7 @@ class ApplicationController extends Controller
             ->groupBy('group');
 
         return Inertia::render('Apply', [
-            'barangays' => Barangay::orderBy('name')->get(),
+            // 'barangays' => Barangay::orderBy('name')->get(), <-- REMOVE THIS
             'zones' => Zone::all(),
             'unitMakes' => UnitMake::orderBy('name')->get(),
             'requirements' => $requirements,
@@ -38,30 +40,30 @@ class ApplicationController extends Controller
 
     public function store(Request $request)
     {
-        // 1. Fetch requirements to build dynamic validation rules
         $relevantGroups = ['Franchise Owner Account', 'General', 'New Franchise'];
         $requiredDocs = EvaluationRequirement::where('is_active', true)
             ->whereIn('group', $relevantGroups)
             ->get();
 
-        // 2. Define Base Rules
         $rules = [
-            // Applicant
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'contact_number' => 'required|string|max:20',
             'street_address' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255',
+            'province' => 'required|string|max:255', // <-- ADD THIS
             'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
+            // ... (keep the rest of your rules exactly the same)
 
             // Units
             'units' => 'required|array|min:1',
             'units.*.make_id' => 'required|exists:unit_makes,id',
             'units.*.zone_id' => 'required|exists:zones,id',
             'units.*.franchise_number' => 'nullable|string|max:255',
+            'units.*.date_issued' => 'required|date', // <-- ADD THIS RULE
             'units.*.motor_number' => 'required|string|max:255',
             'units.*.chassis_number' => 'required|string|max:255',
             'units.*.model_year' => 'required|integer|min:1900|max:'.(date('Y')+1),
@@ -109,6 +111,7 @@ class ApplicationController extends Controller
                 'street_address' => $validated['street_address'],
                 'barangay' => $validated['barangay'],
                 'city' => $validated['city'],
+                'province' => $validated['province'],
                 'submitted_at' => now(),
             ]);
 
@@ -145,6 +148,7 @@ class ApplicationController extends Controller
                     'make_id' => $unitData['make_id'],
                     'zone_id' => $unitData['zone_id'],
                     'franchise_number' => $unitData['franchise_number'] ?? null,
+                    'date_issued' => $unitData['date_issued'],
                     'plate_number' => $unitData['plate_number'] ?? 'To Follow',
                     'motor_number' => $unitData['motor_number'],
                     'cr_number' => $unitData['cr_number'],
@@ -163,6 +167,11 @@ class ApplicationController extends Controller
 
             DB::commit();
 
+            // SEND EMAIL NOTIFICATION HERE
+            Mail::to($application->email)->send(
+                new \App\Mail\ApplicationSubmittedMail($referenceNumber, $application->first_name)
+            );
+
             return back()->with('success', "Application submitted successfully! Ref No: $referenceNumber");
 
         } catch (\Exception $e) {
@@ -170,5 +179,39 @@ class ApplicationController extends Controller
             // Return the specific error for debugging
             return back()->withErrors(['error' => 'Submission Failed: ' . $e->getMessage()]);
         }
+    }
+
+    public function sendOtp(Request $request)
+    {
+        $request->validate(['email' => 'required|email']);
+
+        // Generate a 6-digit OTP
+        $otp = rand(100000, 999999);
+
+        // Store OTP in cache for 10 minutes
+        Cache::put('otp_' . $request->email, $otp, now()->addMinutes(10));
+
+        // Send Email
+        Mail::to($request->email)->send(new ApplicationOtpMail($otp));
+
+        return response()->json(['message' => 'OTP sent successfully']);
+    }
+
+    public function verifyOtp(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required|numeric'
+        ]);
+
+        $cachedOtp = Cache::get('otp_' . $request->email);
+
+        if ($cachedOtp && $cachedOtp == $request->otp) {
+            // OTP is correct, clear it from cache
+            Cache::forget('otp_' . $request->email);
+            return response()->json(['message' => 'Email verified successfully']);
+        }
+
+        return response()->json(['message' => 'Invalid or expired verification code.'], 422);
     }
 }

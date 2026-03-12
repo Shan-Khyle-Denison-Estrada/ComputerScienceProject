@@ -7,7 +7,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; 
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
@@ -32,6 +32,30 @@ const addSignatureInput = ref(null);
 const editSignaturePreview = ref(null);
 const editSignatureInput = ref(null);
 
+// --- FORMATTER ---
+const formatContactNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/[^0-9]/g, '');
+    if (parts.length > 11) parts = parts.substring(0, 11);
+    
+    let formatted = parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+    
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) {
+        formatted += '-';
+    }
+    return formatted;
+};
+
+// --- PSGC API STATES ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+
+const selectedProvinceCode = ref('');
+const selectedCityCode = ref('');
+
 // --- FORMS ---
 
 // 1. ADD USER FORM
@@ -42,11 +66,10 @@ const addForm = useForm({
     email: '',
     contact_number: '',    
     street_address: '',    
+    province: '', // Added province
     barangay: '',          
     city: '',              
     role: 'admin', 
-    password: '',
-    password_confirmation: '',
     photo: null,
     signature: null, 
 });
@@ -60,6 +83,7 @@ const editForm = useForm({
     email: '',
     contact_number: '',    
     street_address: '',    
+    province: '', // Added province
     barangay: '',          
     city: '',              
     role: '',
@@ -76,6 +100,63 @@ const filterForm = ref({
     status: props.filters.status || '',
 });
 
+// --- API FETCHING LOGIC ---
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load provinces:", error);
+    }
+});
+
+const fetchCities = async (provinceCode) => {
+    if (!provinceCode) return;
+    try {
+        const isNCR = provinceCode === '130000000';
+        const endpoint = isNCR 
+            ? 'https://psgc.gitlab.io/api/regions/130000000/cities-municipalities'
+            : `https://psgc.gitlab.io/api/provinces/${provinceCode}/cities-municipalities`;
+        const res = await fetch(endpoint);
+        citiesList.value = (await res.json()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) { console.error(error); }
+};
+
+const fetchBarangays = async (cityCode) => {
+    if (!cityCode) return;
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${cityCode}/barangays`);
+        barangaysList.value = (await res.json()).sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) { console.error(error); }
+};
+
+// --- API DROPDOWN HANDLERS ---
+const handleProvinceChange = async (event, formInstance) => {
+    const code = event.target.value;
+    selectedProvinceCode.value = code;
+    const p = provincesList.value.find(x => x.code === code);
+    formInstance.province = p ? p.name : '';
+    
+    formInstance.city = ''; formInstance.barangay = '';
+    selectedCityCode.value = '';
+    citiesList.value = []; barangaysList.value = [];
+    
+    await fetchCities(code);
+};
+
+const handleCityChange = async (event, formInstance) => {
+    const code = event.target.value;
+    selectedCityCode.value = code;
+    const c = citiesList.value.find(x => x.code === code);
+    formInstance.city = c ? c.name : '';
+
+    formInstance.barangay = ''; barangaysList.value = [];
+    
+    await fetchBarangays(code);
+};
+
 // --- ACTIONS: ADD USER ---
 const openAddModal = () => showAddModal.value = true;
 const closeAddModal = () => {
@@ -83,6 +164,9 @@ const closeAddModal = () => {
     addForm.reset();
     addPhotoPreview.value = null;
     addSignaturePreview.value = null;
+    // Reset API state
+    selectedProvinceCode.value = ''; selectedCityCode.value = '';
+    citiesList.value = []; barangaysList.value = [];
 };
 
 const triggerAddPhoto = () => addPhotoInput.value.click();
@@ -111,7 +195,7 @@ const submitAdd = () => {
 };
 
 // --- ACTIONS: EDIT USER ---
-const openEditModal = (user) => {
+const openEditModal = async (user) => {
     editForm.id = user.id; 
     editForm.first_name = user.first_name;
     editForm.middle_name = user.middle_name;
@@ -121,6 +205,7 @@ const openEditModal = (user) => {
     // Populate new fields
     editForm.contact_number = user.contact_number;
     editForm.street_address = user.street_address;
+    editForm.province = user.province || ''; // Load province
     editForm.barangay = user.barangay;
     editForm.city = user.city;
 
@@ -130,6 +215,23 @@ const openEditModal = (user) => {
     editPhotoPreview.value = user.user_photo ? `/storage/${user.user_photo}` : null;
     editSignaturePreview.value = user.signature_photo ? `/storage/${user.signature_photo}` : null;
     
+    // Reverse lookup for API Address Dropdowns
+    if (editForm.province && provincesList.value.length > 0) {
+        const p = provincesList.value.find(x => x.name === editForm.province);
+        if (p) {
+            selectedProvinceCode.value = p.code;
+            await fetchCities(p.code);
+            
+            if (editForm.city) {
+                const c = citiesList.value.find(x => x.name === editForm.city);
+                if (c) {
+                    selectedCityCode.value = c.code;
+                    await fetchBarangays(c.code);
+                }
+            }
+        }
+    }
+
     showEditModal.value = true;
 };
 
@@ -138,6 +240,9 @@ const closeEditModal = () => {
     editForm.reset();
     editPhotoPreview.value = null;
     editSignaturePreview.value = null;
+    // Reset API state
+    selectedProvinceCode.value = ''; selectedCityCode.value = '';
+    citiesList.value = []; barangaysList.value = [];
 };
 
 const triggerEditPhoto = () => editPhotoInput.value.click();
@@ -200,7 +305,7 @@ const resetFilters = () => {
         <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">User Management</h1>
-                <p class="text-gray-600 text-sm">Manage administrator accounts.</p>
+                <p class="text-gray-600 text-sm">Manage authenticated accounts.</p>
             </div>
 
             <div class="flex items-center gap-3">
@@ -350,24 +455,37 @@ const resetFilters = () => {
                         </div>
                         <div>
                             <InputLabel>Contact Number</InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" />
+                            <TextInput type="text" class="mt-1 block w-full" @input="addForm.contact_number = formatContactNumber($event.target.value)" v-model="addForm.contact_number" placeholder="09XX-XXX-XXXX" />
                         </div>
                     </div>
 
                     <div class="border-t pt-2">
                         <h3 class="text-sm font-medium text-gray-700 mb-2">Address Info</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
                                 <InputLabel>Street</InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street_address" />
                             </div>
                             <div>
-                                <InputLabel>Barangay</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.barangay" />
+                                <InputLabel>Province</InputLabel>
+                                <select v-model="selectedProvinceCode" @change="(e) => handleProvinceChange(e, addForm)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="" disabled>-- Select Province --</option>
+                                    <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
+                                </select>
                             </div>
                             <div>
                                 <InputLabel>City</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" />
+                                <select v-model="selectedCityCode" @change="(e) => handleCityChange(e, addForm)" :disabled="!citiesList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                    <option value="" disabled>-- Select City --</option>
+                                    <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <InputLabel>Barangay</InputLabel>
+                                <select v-model="addForm.barangay" :disabled="!barangaysList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                    <option value="" disabled>-- Select Barangay --</option>
+                                    <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -409,15 +527,11 @@ const resetFilters = () => {
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <InputLabel>Password <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="password" class="mt-1 block w-full" v-model="addForm.password" required />
-                        </div>
-                        <div>
-                            <InputLabel>Confirm Password <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="password" class="mt-1 block w-full" v-model="addForm.password_confirmation" required />
-                        </div>
+                    <div class="col-span-2 bg-blue-50 p-4 rounded-md border border-blue-200 mt-2">
+                        <p class="text-xs text-blue-800 font-medium flex items-start gap-2">
+                            <svg class="w-4 h-4 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            A secure, system-generated password will be automatically emailed to this user. They will be required to change it upon their first login.
+                        </p>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3 border-t pt-4">
@@ -472,24 +586,37 @@ const resetFilters = () => {
                         </div>
                         <div>
                             <InputLabel>Contact Number</InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" />
+                            <TextInput type="text" class="mt-1 block w-full" @input="editForm.contact_number = formatContactNumber($event.target.value)" v-model="editForm.contact_number" placeholder="09XX-XXX-XXXX" />
                         </div>
                     </div>
 
                     <div class="border-t pt-2">
                         <h3 class="text-sm font-medium text-gray-700 mb-2">Address Info</h3>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
                                 <InputLabel>Street</InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full" v-model="editForm.street_address" />
                             </div>
                             <div>
-                                <InputLabel>Barangay</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.barangay" />
+                                <InputLabel>Province</InputLabel>
+                                <select v-model="selectedProvinceCode" @change="(e) => handleProvinceChange(e, editForm)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                    <option value="" disabled>-- Select Province --</option>
+                                    <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
+                                </select>
                             </div>
                             <div>
                                 <InputLabel>City</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.city" />
+                                <select v-model="selectedCityCode" @change="(e) => handleCityChange(e, editForm)" :disabled="!citiesList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                    <option value="" disabled>-- Select City --</option>
+                                    <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
+                                </select>
+                            </div>
+                            <div class="md:col-span-2">
+                                <InputLabel>Barangay</InputLabel>
+                                <select v-model="editForm.barangay" :disabled="!barangaysList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                    <option value="" disabled>-- Select Barangay --</option>
+                                    <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
+                                </select>
                             </div>
                         </div>
                     </div>

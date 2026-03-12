@@ -52,10 +52,10 @@ class UserController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users',
             'contact_number' => 'nullable|string|max:255', 
-            'street_address' => 'nullable|string|max:255', 
+            'street_address' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:255',
             'barangay' => 'nullable|string|max:255',       
             'city' => 'nullable|string|max:255',           
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'role' => ['required', Rule::enum(UserRole::class)], 
             'photo' => 'nullable|image|max:2048', 
             'signature' => 'nullable|image|max:2048', 
@@ -81,22 +81,27 @@ class UserController extends Controller
                 ->update(['status' => 'inactive']);
         }
         // ---------------------------------------------------------
-
-        User::create([
+        $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
+        $user = User::create([
             'first_name' => $request->first_name,
             'middle_name' => $request->middle_name,
             'last_name' => $request->last_name,
             'email' => $request->email,
             'contact_number' => $request->contact_number, 
             'street_address' => $request->street_address, 
+            'province' => $request->province,
             'barangay' => $request->barangay,             
             'city' => $request->city,                     
-            'password' => Hash::make($request->password),
+            'password' => Hash::make($generatedPassword),
+            'force_password_change' => true,
             'role' => $request->role, 
             'user_photo' => $photoPath,
             'signature_photo' => $signaturePath, 
             'status' => 'active', // Defaulting to active
         ]);
+
+        // Send Email to the new Staff User
+        \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
 
         return back()->with('success', 'User account created successfully.');
     }
@@ -111,7 +116,8 @@ class UserController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'contact_number' => 'nullable|string|max:255', 
-            'street_address' => 'nullable|string|max:255', 
+            'street_address' => 'nullable|string|max:255',
+            'province' => 'nullable|string|max:255',
             'barangay' => 'nullable|string|max:255',       
             'city' => 'nullable|string|max:255',           
             'role' => ['required', Rule::enum(UserRole::class)], 
@@ -126,7 +132,8 @@ class UserController extends Controller
             'last_name' => $request->last_name,
             'email' => $request->email,
             'contact_number' => $request->contact_number, 
-            'street_address' => $request->street_address, 
+            'street_address' => $request->street_address,
+            'province' => $request->province,
             'barangay' => $request->barangay,             
             'city' => $request->city,                     
             'role' => $request->role,

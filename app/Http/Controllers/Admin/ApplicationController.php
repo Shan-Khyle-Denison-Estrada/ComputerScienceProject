@@ -6,9 +6,20 @@ use App\Http\Controllers\Controller;
 use App\Models\Application;
 use App\Models\EvaluationRequirement;
 use App\Models\InspectionItem;
+use App\Models\Zone;
+use App\Models\UnitMake;
+use App\Models\User;
+use App\Models\Franchise;
+use App\Models\ProposedUnit;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
+use App\Mail\InitialApplicationCreated;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 
 class ApplicationController extends Controller
 {
@@ -19,8 +30,7 @@ class ApplicationController extends Controller
         $type = $request->input('type');
 
         $user = auth()->user();
-        // Handle Enum user role safely
-        $isEncoder = strtolower($user->role->value) === 'encoder';
+        $isEncoder = strtolower($user->role->value ?? $user->role) === 'encoder';
 
         // 1. Fetch Applications and map to Frontend structure via Pagination
         $applications = Application::query()
@@ -81,12 +91,40 @@ class ApplicationController extends Controller
             ];
         });
 
+        // 3. FETCH DATA FOR THE MODALS
+        $zones = Zone::select('id', 'description', 'color')->get();
+        $unitMakes = UnitMake::select('id', 'name')->get();
+        
+        // Fetch Operators (Using User Model with franchise_owner role)
+        $operators = User::where('role', 'franchise_owner')
+            ->select('id', 'first_name', 'last_name')
+            ->get();
+
+        // Fetch Franchises to allow transferring owner (Deceased scenario)
+        $franchises = Franchise::with('currentActiveUnit.newUnit')->get()->map(function($f) {
+            return [
+                'id' => $f->id,
+                // Make sure to use 'franchise_number' based on your Franchise model's fillable properties
+                'franchise_number' => $f->franchise_number, 
+                'unit' => [
+                    // Safely access the deeply nested plate number using PHP's nullsafe operator (?->)
+                    'plate_number' => $f->currentActiveUnit?->newUnit?->plate_number ?? 'N/A'
+                ]
+            ];
+        });
+
         return Inertia::render('Admin/Applications/Index', [
             'applications' => $applications,
             'evaluationRequirements' => $evalReqs,
             'inspectionRequirements' => $inspReqs,
             'filters' => $request->only(['search', 'status', 'type']),
-            'isEncoder' => $isEncoder
+            'isEncoder' => $isEncoder,
+            
+            // Add Modal Data Props here
+            'zones' => $zones,
+            'unitMakes' => $unitMakes,
+            'operators' => $operators,
+            'franchises' => $franchises
         ]);
     }
 
@@ -374,5 +412,81 @@ class ApplicationController extends Controller
             InspectionItem::destroy($id);
         }
         return back()->with('success', 'Requirement deleted.');
+    }
+
+    public function store(Request $request)
+    {
+        $request->validate([
+            'application_type' => 'required|string',
+            'owner_mode' => 'required|in:new,existing',
+            'existing_operator_id' => 'nullable|exists:users,id',
+            'new_owner_email' => 'required_if:owner_mode,new|email|nullable',
+        ]);
+
+        DB::beginTransaction();
+        try {
+            $settings = SystemSetting::first();
+            $fiscalYear = $settings->current_fiscal_year ?? date('Y');
+            $referenceNumber = 'APP-' . $fiscalYear . '-' . strtoupper(Str::random(6));
+
+            $applicantData = [];
+            if ($request->owner_mode === 'existing') {
+                $user = User::with('operator')->findOrFail($request->existing_operator_id);
+                $applicantData = [
+                    'user_id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'middle_name' => $user->middle_name,
+                    'last_name' => $user->last_name,
+                    'email' => $user->email,
+                    'contact_number' => $user->contact_number,
+                    'tin_number' => $user->operator ? $user->operator->tin_number : null,
+                    'street_address' => $user->street_address,
+                    'barangay' => $user->barangay,
+                    'city' => $user->city,
+                    'province' => $user->province,
+                ];
+            } else {
+                $applicantData = [
+                    'first_name' => $request->new_owner_first_name,
+                    'middle_name' => $request->new_owner_middle_name,
+                    'last_name' => $request->new_owner_last_name,
+                    'email' => $request->new_owner_email,
+                    'contact_number' => $request->new_owner_contact,
+                    'tin_number' => $request->new_owner_tin,
+                    'street_address' => $request->new_owner_address,
+                    'barangay' => $request->new_owner_barangay,
+                    'city' => $request->new_owner_city,
+                    'province' => $request->new_owner_province,
+                ];
+            }
+
+            // Create Application - NO UNITS ARE SAVED HERE ANYMORE
+            $application = Application::create(array_merge($applicantData, [
+                'reference_number' => $referenceNumber,
+                'application_type' => $request->application_type,
+                'franchise_id' => $request->selected_franchise_id,
+                'status' => 'Initial',
+                'remarks' => $request->remarks,
+                'submitted_at' => null, 
+            ]));
+
+            DB::commit();
+
+            $signedUrl = URL::temporarySignedRoute(
+                'application.complete', 
+                now()->addDays(7), 
+                ['application' => $application->id]
+            );
+
+            if ($application->email) {
+                Mail::to($application->email)->send(new InitialApplicationCreated($application, $signedUrl));
+            }
+
+            return back()->with('success', 'Initial application created. An email with a secure link has been sent to the applicant.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to create application: ' . $e->getMessage()]);
+        }
     }
 }

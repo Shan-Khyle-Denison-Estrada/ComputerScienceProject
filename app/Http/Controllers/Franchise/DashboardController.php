@@ -138,4 +138,66 @@ class DashboardController extends Controller
 
         return redirect()->back()->with('success', 'Active driver updated successfully.');
     }
+
+/**
+     * Update the schedule for a specific driver assignment.
+     */
+    public function updateDriverSchedule(Request $request, $franchiseId, $assignmentId)
+    {
+        $request->validate([
+            'schedule' => 'required|array',
+            'schedule.*.day' => 'required|string',
+            'schedule.*.is_off' => 'required|boolean',
+            'schedule.*.start' => 'nullable|string',
+            'schedule.*.end' => 'nullable|string',
+        ]);
+
+        $newSchedule = $request->schedule;
+
+        // Fetch other driver assignments for this franchise to check for overlaps
+        $otherAssignments = DriverAssignment::where('franchise_id', $franchiseId)
+            ->where('id', '!=', $assignmentId)
+            ->whereNotNull('schedule')
+            ->get();
+
+        foreach ($newSchedule as $newDay) {
+            // Skip days off
+            if ($newDay['is_off'] || empty($newDay['start']) || empty($newDay['end'])) {
+                continue;
+            }
+
+            $newStart = strtotime($newDay['start']);
+            $newEnd = strtotime($newDay['end']);
+
+            foreach ($otherAssignments as $other) {
+                $otherSchedule = $other->schedule;
+                if (!$otherSchedule) continue;
+
+                foreach ($otherSchedule as $otherDay) {
+                    if ($otherDay['day'] === $newDay['day'] && !$otherDay['is_off'] && !empty($otherDay['start']) && !empty($otherDay['end'])) {
+                        $otherStart = strtotime($otherDay['start']);
+                        $otherEnd = strtotime($otherDay['end']);
+
+                        // Overlap condition: Start A < End B AND End A > Start B
+                        if ($newStart < $otherEnd && $newEnd > $otherStart) {
+                            $driverName = $other->driver ? $other->driver->first_name . ' ' . $other->driver->last_name : 'another driver';
+                            return back()->withErrors([
+                                'schedule' => "Schedule overlap detected on {$newDay['day']} between {$newDay['start']}-{$newDay['end']} with {$driverName}."
+                            ]);
+                        }
+                    }
+                }
+            }
+        }
+
+        $assignment = DriverAssignment::where('franchise_id', $franchiseId)
+            ->where('id', $assignmentId)
+            ->firstOrFail();
+
+        $assignment->update([
+            'schedule' => $newSchedule
+        ]);
+
+        return redirect()->back()->with('success', 'Driver schedule updated successfully.');
+    }
 }

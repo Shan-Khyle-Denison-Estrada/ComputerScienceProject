@@ -26,6 +26,24 @@ const showConfirmDriverModal = ref(false);
 const driverToActivate = ref(null); // Stores the assignment object temporarily
 const processingDriverId = ref(null);
 
+// New Modal State for Driver Schedule
+const showScheduleModal = ref(false);
+const driverToSchedule = ref(null);
+
+const defaultSchedule = [
+    { day: 'Monday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Tuesday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Wednesday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Thursday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Friday', is_off: false, start: '06:00', end: '18:00' },
+    { day: 'Saturday', is_off: true, start: '', end: '' },
+    { day: 'Sunday', is_off: true, start: '', end: '' },
+];
+
+const scheduleForm = useForm({
+    schedule: []
+});
+
 // --- PAGINATION STATE & LOGIC ---
 const currentPage = ref(1);
 const itemsPerPage = 5;
@@ -101,6 +119,28 @@ const confirmActivateDriver = () => {
     });
 };
 
+// --- SCHEDULER LOGIC ---
+const openScheduleModal = (assignment) => {
+    driverToSchedule.value = assignment;
+    // Load existing schedule if available, otherwise fallback to default
+    scheduleForm.schedule = assignment.schedule 
+        ? JSON.parse(JSON.stringify(assignment.schedule)) 
+        : JSON.parse(JSON.stringify(defaultSchedule));
+    showScheduleModal.value = true;
+};
+
+const saveSchedule = () => {
+    if (!driverToSchedule.value) return;
+
+    scheduleForm.post(route('franchise.drivers.schedule', [selectedFranchiseId.value, driverToSchedule.value.id]), {
+        preserveScroll: true,
+        onSuccess: () => {
+            showScheduleModal.value = false;
+            driverToSchedule.value = null;
+        }
+    });
+};
+
 // --- HELPERS ---
 const getOwnerName = (user) => user ? `${user.first_name} ${user.last_name}` : 'Unknown';
 
@@ -138,10 +178,10 @@ const getTabLabel = (tabKey) => {
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
-        <div class="flex flex-1 h-full overflow-hidden relative">
+        <div class="flex flex-col lg:flex-row flex-1 h-full overflow-y-auto lg:overflow-hidden relative gap-4 p-2 md:p-4 bg-gray-50/50">
             
-            <aside class="w-80 rounded-2xl bg-white flex flex-col z-10 shrink-0 border border-gray-200">
-                <div class="p-5 border-b border-gray-100">
+            <aside class="w-full lg:w-80 rounded-2xl bg-white flex flex-col z-10 shrink-0 border border-gray-200 max-h-[35vh] lg:max-h-full lg:h-full shadow-sm">
+                <div class="p-4 md:p-5 border-b border-gray-100 shrink-0">
                     <h2 class="font-bold text-gray-800 text-lg">My Franchises</h2>
                     <p class="text-xs text-gray-500 mt-1">{{ franchises.length }} franchise/s registered</p>
                 </div>
@@ -155,12 +195,12 @@ const getTabLabel = (tabKey) => {
                         v-for="fran in franchises" 
                         :key="fran.id"
                         @click="selectedFranchiseId = fran.id"
-                        class="w-full text-left p-4 rounded-xl border transition-all duration-200 group relative"
+                        class="w-full text-left p-3 md:p-4 rounded-xl border transition-all duration-200 group relative"
                         :class="selectedFranchiseId === fran.id 
                             ? 'bg-blue-50 border-blue-200 shadow-sm ring-1 ring-blue-200' 
                             : 'bg-white border-gray-100 hover:border-blue-200 hover:bg-gray-50'"
                     >
-                        <div class="flex justify-between items-center mb-2">
+                        <div class="flex justify-between items-center mb-1 md:mb-2">
                             <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">ID: {{ fran.franchise_number || 'N/A' }}</span>
                             <div class="w-2 h-2 rounded-full shadow-sm" :class="{
                                 'bg-emerald-500': fran.status === 'renewed',
@@ -168,19 +208,19 @@ const getTabLabel = (tabKey) => {
                                 'bg-rose-500': fran.status === 'terminated'
                             }"></div>
                         </div>
-                        <div class="font-bold text-gray-800 text-lg">
+                        <div class="font-bold text-gray-800 text-base md:text-lg">
                             {{ fran.current_active_unit?.new_unit?.plate_number || 'NO UNIT' }}
                         </div>
-                        <div class="text-xs text-gray-500 truncate mt-1 group-hover:text-blue-600 transition-colors">
+                        <div class="text-[11px] md:text-xs text-gray-500 truncate mt-1 group-hover:text-blue-600 transition-colors">
                             {{ fran.zone?.description.toUpperCase() || 'No Zone Assigned' }}
                         </div>
                     </button>
                 </div>
 
-                <div v-if="operator" class="p-4 bg-white rounded-b-2xl border-t border-gray-200 shrink-0">
+                <div v-if="operator" class="p-3 md:p-4 bg-white rounded-b-2xl border-t border-gray-200 shrink-0">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 font-bold shrink-0">
-                            <img v-if="operator.user.user_photo" :src="'/storage/' + operator.user.user_photo" class="h-full w-full object-cover" />
+                            <img v-if="operator.user.user_photo" :src="'/storage/' + operator.user.user_photo" class="h-full w-full object-cover rounded-full" />
                         </div>
                         <div class="overflow-hidden">
                             <div class="text-sm font-bold text-gray-800 truncate">{{ getOwnerName(operator.user) }}</div>
@@ -190,57 +230,57 @@ const getTabLabel = (tabKey) => {
                 </div>
             </aside>
 
-            <main class="flex-1 flex flex-col h-full overflow-hidden space-y-3 relative">
-                <div v-if="selectedFranchise" class="flex flex-col h-full max-w-6xl mx-auto w-full space-y-3">
+            <main class="flex-1 flex flex-col lg:h-full lg:overflow-hidden space-y-3 relative pb-4 lg:pb-0">
+                <div v-if="selectedFranchise" class="flex flex-col lg:h-full max-w-6xl mx-auto w-full space-y-3">
                     
                     <div class="shrink-0 space-y-3">
-                        <div class="flex flex-col md:flex-row md:items-end justify-between gap-4 border border-gray-200 p-4 bg-white rounded-2xl shadow-sm">
+                        <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border border-gray-200 p-4 md:p-5 bg-white rounded-2xl shadow-sm">
                             <div>
-                                <div class="flex items-center gap-3 mb-2">
-                                    <span class="px-3 py-1 rounded-full text-xs font-bold uppercase border tracking-wide" :class="getStatusClasses(selectedFranchise.status)">
+                                <div class="flex flex-wrap items-center gap-2 md:gap-3 mb-2">
+                                    <span class="px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase border tracking-wide" :class="getStatusClasses(selectedFranchise.status)">
                                         {{ selectedFranchise.status }}
                                     </span>
-                                    <span class="text-gray-400 text-sm font-medium">Franchise #{{ selectedFranchise.franchise_number || 'N/A' }}</span>
+                                    <span class="text-gray-400 text-xs md:text-sm font-medium">Franchise #{{ selectedFranchise.franchise_number || 'N/A' }}</span>
                                 </div>
                                 
                                 <div class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mb-1">Plate Number</div>
-                                <h1 class="text-4xl font-black text-gray-900 tracking-tight">
+                                <h1 class="text-3xl md:text-4xl font-black text-gray-900 tracking-tight break-all">
                                     {{ unit ? unit.plate_number : 'No Active Unit' }}
                                 </h1>
                             </div>
                             <div class="flex gap-3">
-                                <div class="text-right hidden md:block">
-                                    <div class="text-xs text-gray-400 font-bold uppercase">Registration Date</div>
-                                    <div class="text-gray-700 font-medium">{{ formatDate(selectedFranchise.date_issued) }}</div>
+                                <div class="text-left sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
+                                    <div class="text-[10px] md:text-xs text-gray-400 font-bold uppercase">Registration Date</div>
+                                    <div class="text-gray-700 font-medium text-sm md:text-base">{{ formatDate(selectedFranchise.date_issued) }}</div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                             <button 
                                 @click="showCoverageModal = true"
-                                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
+                                class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
                             >
                                 <div class="relative z-10 transition-all duration-300 group-hover:blur-sm group-hover:opacity-50 h-full flex flex-col justify-center">
-                                    <div class="absolute -top-5 -right-5 w-32 h-32 opacity-10 rounded-bl-full pointer-events-none" :style="{ backgroundColor: zone?.color || '#a855f7' }"></div>
-                                    <div class="flex items-start gap-4">
-                                        <div class="p-3 rounded-xl shrink-0" :style="{ backgroundColor: zone?.color ? zone.color + '20' : '#f3e8ff', color: zone?.color ? zone.color : '#9333ea' }">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div class="absolute -top-5 -right-5 w-24 h-24 md:w-32 md:h-32 opacity-10 rounded-bl-full pointer-events-none" :style="{ backgroundColor: zone?.color || '#a855f7' }"></div>
+                                    <div class="flex items-start gap-3 md:gap-4">
+                                        <div class="p-2 md:p-3 rounded-xl shrink-0" :style="{ backgroundColor: zone?.color ? zone.color + '20' : '#f3e8ff', color: zone?.color ? zone.color : '#9333ea' }">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
                                             </svg>
                                         </div>
-                                        <div>
-                                            <h4 class="text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Assigned Zone</h4>
-                                            <div class="font-bold text-gray-800 text-lg leading-tight">{{ zone?.description.toUpperCase() || 'N/A' }}</div>
-                                            <div class="text-[11px] text-gray-500 mt-1 flex items-center gap-1">
+                                        <div class="min-w-0">
+                                            <h4 class="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Assigned Zone</h4>
+                                            <div class="font-bold text-gray-800 text-base md:text-lg leading-tight truncate">{{ zone?.description.toUpperCase() || 'N/A' }}</div>
+                                            <div class="text-[10px] md:text-[11px] text-gray-500 mt-1 flex items-center gap-1">
                                                 Color: <span class="font-bold text-gray-700">{{ zone?.color || 'N/A' }}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
-                                    <div class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center gap-2">
+                                    <div class="bg-gray-900 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center gap-2">
                                         View Coverage
                                     </div>
                                 </div>
@@ -248,55 +288,55 @@ const getTabLabel = (tabKey) => {
 
                             <button 
                                 @click="showUnitModal = true"
-                                class="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
+                                class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-100 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
                             >
                                 <div class="relative z-10 transition-all duration-300 group-hover:blur-sm group-hover:opacity-50 h-full flex flex-col justify-center">
-                                    <div class="absolute -top-5 -right-5 w-32 h-32 opacity-10 rounded-bl-full pointer-events-none bg-blue-500"></div>
-                                    <div class="flex items-start gap-4">
-                                        <div class="p-3 bg-blue-50 text-blue-600 rounded-xl shrink-0">
-                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <div class="absolute -top-5 -right-5 w-24 h-24 md:w-32 md:h-32 opacity-10 rounded-bl-full pointer-events-none bg-blue-500"></div>
+                                    <div class="flex items-start gap-3 md:gap-4">
+                                        <div class="p-2 md:p-3 bg-blue-50 text-blue-600 rounded-xl shrink-0">
+                                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                             </svg>
                                         </div>
-                                        <div>
-                                            <h4 class="text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Vehicle Make</h4>
-                                            <div class="font-bold text-gray-800 text-lg leading-tight">{{ unit?.make?.name || 'N/A' }}</div>
-                                            <div class="text-[11px] text-gray-500 mt-1">
+                                        <div class="min-w-0">
+                                            <h4 class="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Vehicle Make</h4>
+                                            <div class="font-bold text-gray-800 text-base md:text-lg leading-tight truncate">{{ unit?.make?.name || 'N/A' }}</div>
+                                            <div class="text-[10px] md:text-[11px] text-gray-500 mt-1">
                                             Model: <span class="font-bold text-gray-700">{{ unit?.model_year || 'N/A' }}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 z-20">
-                                    <div class="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center gap-2">
+                                    <div class="bg-gray-900 text-white px-3 md:px-4 py-1.5 md:py-2 rounded-lg text-xs md:text-sm font-bold shadow-xl transform scale-90 group-hover:scale-100 transition-transform flex items-center gap-2">
                                         View Unit Details
                                     </div>
                                 </div>
                             </button>
 
-                            <div class="bg-white p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-4 hover:shadow-md transition-shadow">
-                                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-3 md:gap-4 hover:shadow-md transition-shadow">
+                                <div class="p-2 md:p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                                     </svg>
                                 </div>
-                                <div>
-                                    <h4 class="text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Recent Payment</h4>
-                                    <div class="font-bold text-gray-800">{{ payments.length > 0 ? formatCurrency(payments[0].amount_paid) : 'No Records' }}</div>
-                                    <div class="text-sm text-gray-500">{{ payments.length > 0 ? formatDate(payments[0].created_at) : '-' }}</div>
+                                <div class="min-w-0">
+                                    <h4 class="text-[9px] md:text-[10px] font-bold uppercase text-gray-400 mb-1 tracking-wider">Recent Payment</h4>
+                                    <div class="font-bold text-gray-800 text-sm md:text-base truncate">{{ payments.length > 0 ? formatCurrency(payments[0].amount_paid) : 'No Records' }}</div>
+                                    <div class="text-xs md:text-sm text-gray-500">{{ payments.length > 0 ? formatDate(payments[0].created_at) : '-' }}</div>
                                 </div>
                             </div>
                         </div>
                     </div>
 
-                    <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-0">
+                    <div class="flex-1 bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[500px] lg:min-h-0">
                         
-                        <div class="flex border-b border-gray-200 bg-gray-50 px-6 pt-2 gap-6 overflow-x-auto shrink-0">
+                        <div class="flex border-b border-gray-200 bg-gray-50 px-4 md:px-6 pt-2 gap-4 md:gap-6 overflow-x-auto shrink-0 custom-scrollbar">
                             <button 
                                 v-for="tab in ['driver', 'payments', 'units', 'ownership']" 
                                 :key="tab"
                                 @click="activeTab = tab"
-                                class="pb-3 pt-3 text-sm font-bold border-b-2 transition-colors capitalize whitespace-nowrap outline-none focus:outline-none"
+                                class="pb-3 pt-3 text-xs md:text-sm font-bold border-b-2 transition-colors capitalize whitespace-nowrap outline-none focus:outline-none"
                                 :class="activeTab === tab 
                                     ? 'border-blue-600 text-blue-700' 
                                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'"
@@ -307,62 +347,74 @@ const getTabLabel = (tabKey) => {
 
                         <div class="flex-1 overflow-y-auto scroll-smooth custom-scrollbar">
                             
-                            <div v-if="activeTab === 'driver'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
+                            <div v-if="activeTab === 'driver'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
+                                <table class="min-w-full text-sm text-left">
                                     <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">
                                         <tr>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Date Assigned</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Driver Name</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">License Number</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50 text-center">Status</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50 text-right">Action</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Date Assigned</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Driver Name</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">License Number</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 text-center whitespace-nowrap">Status</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 text-right whitespace-nowrap">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         <tr v-if="!selectedFranchise.driver_assignments?.length">
-                                            <td colspan="5" class="px-6 py-12 text-center text-gray-400">No assigned drivers recorded.</td>
+                                            <td colspan="5" class="px-4 md:px-6 py-12 text-center text-gray-400 whitespace-nowrap">No assigned drivers recorded.</td>
                                         </tr>
                                         <tr v-for="assign in paginatedTabData" :key="assign.id" 
                                             class="hover:bg-gray-50 transition-colors"
                                             :class="{'bg-blue-50/30': assign.is_active}">
-                                            <td class="px-6 py-4 text-gray-600">{{ formatDate(assign.created_at) }}</td>
-                                            <td class="px-6 py-4 font-bold text-gray-800">{{ getDriverName(assign.driver) }}</td>
-                                            <td class="px-6 py-4 font-mono text-gray-600">{{ assign.driver?.license_number }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ formatDate(assign.created_at) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-bold text-gray-800 whitespace-nowrap">{{ getDriverName(assign.driver) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-mono text-gray-600 whitespace-nowrap">{{ assign.driver?.license_number }}</td>
                                             
-                                            <td class="px-6 py-4 text-center">
-                                                <span v-if="assign.is_active" class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-green-100 text-green-700 border border-green-200 shadow-sm animate-pulse">
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-center whitespace-nowrap">
+                                                <span v-if="assign.is_active" class="px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase bg-green-100 text-green-700 border border-green-200 shadow-sm animate-pulse">
                                                     Active Driver
                                                 </span>
-                                                <span v-else class="px-3 py-1 rounded-full text-xs font-bold uppercase bg-gray-100 text-gray-500 border border-gray-200">
+                                                <span v-else class="px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase bg-gray-100 text-gray-500 border border-gray-200">
                                                     Inactive
                                                 </span>
                                             </td>
 
-                                            <td class="px-6 py-4 text-right">
-                                                <button 
-                                                    v-if="!assign.is_active"
-                                                    @click="openActivateDriverModal(assign)"
-                                                    :disabled="processingDriverId === assign.driver_id"
-                                                    class="px-4 py-1.5 rounded-lg border border-blue-200 text-blue-600 font-bold text-xs uppercase hover:bg-blue-50 transition-colors disabled:opacity-50"
-                                                >
-                                                    {{ processingDriverId === assign.driver_id ? 'Switching...' : 'Set Active' }}
-                                                </button>
-                                                <span v-else class="text-xs font-bold text-gray-400 uppercase tracking-wide">
-                                                    Currently Selected
-                                                </span>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-right whitespace-nowrap">
+                                                <div class="flex items-center justify-end gap-2">
+                                                    <button 
+                                                        @click="openScheduleModal(assign)"
+                                                        class="px-2 md:px-3 py-1.5 rounded-lg border border-purple-200 text-purple-600 font-bold text-[10px] md:text-xs uppercase hover:bg-purple-50 transition-colors flex items-center gap-1"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                        </svg>
+                                                        Schedule
+                                                    </button>
+
+                                                    <button 
+                                                        v-if="!assign.is_active"
+                                                        @click="openActivateDriverModal(assign)"
+                                                        :disabled="processingDriverId === assign.driver_id"
+                                                        class="px-3 md:px-4 py-1.5 rounded-lg border border-blue-200 text-blue-600 font-bold text-[10px] md:text-xs uppercase hover:bg-blue-50 transition-colors disabled:opacity-50"
+                                                    >
+                                                        {{ processingDriverId === assign.driver_id ? 'Switching...' : 'Set Active' }}
+                                                    </button>
+                                                    <span v-else class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wide px-2">
+                                                        Active
+                                                    </span>
+                                                </div>
                                             </td>
                                         </tr>
                                     </tbody>
                                     <tfoot v-if="totalPages > 1">
                                         <tr>
-                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                                <div class="flex items-center justify-between w-full">
-                                                    <span class="text-sm text-gray-500">
+                                            <td colspan="5" class="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                                                    <span class="text-xs md:text-sm text-gray-500 whitespace-nowrap">
                                                         Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
                                                     </span>
-                                                    <div class="flex gap-2">
-                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
-                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
                                                     </div>
                                                 </div>
                                             </td>
@@ -371,37 +423,37 @@ const getTabLabel = (tabKey) => {
                                 </table>
                             </div>
 
-                            <div v-if="activeTab === 'payments'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
+                            <div v-if="activeTab === 'payments'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
+                                <table class="min-w-full text-sm text-left">
                                     <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">
                                         <tr>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Assessment Date</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Paid On</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Particulars</th>
-                                            <th class="px-6 py-4 font-medium text-right bg-gray-50">Amount Paid</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Assessment Date</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Paid On</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Particulars</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium text-right bg-gray-50 whitespace-nowrap">Amount Paid</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         <tr v-if="payments.length === 0">
-                                            <td colspan="4" class="px-6 py-12 text-center text-gray-400">No payment history available.</td>
+                                            <td colspan="4" class="px-4 md:px-6 py-12 text-center text-gray-400 whitespace-nowrap">No payment history available.</td>
                                         </tr>
                                         <tr v-for="pay in paginatedTabData" :key="pay.id" class="hover:bg-gray-50 transition-colors">
-                                            <td class="px-6 py-4 font-mono text-gray-600">{{ formatDate(pay.assessment_date) }}</td>
-                                            <td class="px-6 py-4 text-gray-600">{{ formatDate(pay.created_at) }}</td>
-                                            <td class="px-6 py-4 font-medium text-gray-800">{{ pay.particulars_string }}</td>
-                                            <td class="px-6 py-4 text-right font-bold text-gray-800">{{ formatCurrency(pay.amount_paid) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-mono text-gray-600 whitespace-nowrap">{{ formatDate(pay.assessment_date) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ formatDate(pay.created_at) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-medium text-gray-800 whitespace-nowrap">{{ pay.particulars_string }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-right font-bold text-gray-800 whitespace-nowrap">{{ formatCurrency(pay.amount_paid) }}</td>
                                         </tr>
                                     </tbody>
                                     <tfoot v-if="totalPages > 1">
                                         <tr>
-                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                                <div class="flex items-center justify-between w-full">
-                                                    <span class="text-sm text-gray-500">
+                                            <td colspan="4" class="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                                                    <span class="text-xs md:text-sm text-gray-500 whitespace-nowrap">
                                                         Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
                                                     </span>
-                                                    <div class="flex gap-2">
-                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
-                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
                                                     </div>
                                                 </div>
                                             </td>
@@ -410,37 +462,37 @@ const getTabLabel = (tabKey) => {
                                 </table>
                             </div>
 
-                            <div v-if="activeTab === 'units'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
+                            <div v-if="activeTab === 'units'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
+                                <table class="min-w-full text-sm text-left">
                                     <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">
                                         <tr>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Date Changed</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Plate Number</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Make / Model</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Remarks</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Date Changed</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Plate Number</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Make / Model</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Remarks</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         <tr v-if="!selectedFranchise.unit_history?.length">
-                                            <td colspan="4" class="px-6 py-12 text-center text-gray-400">No unit changes recorded.</td>
+                                            <td colspan="4" class="px-4 md:px-6 py-12 text-center text-gray-400 whitespace-nowrap">No unit changes recorded.</td>
                                         </tr>
                                         <tr v-for="h in paginatedTabData" :key="h.id" class="hover:bg-gray-50 transition-colors">
-                                            <td class="px-6 py-4 text-gray-600">{{ formatDate(h.date_changed) }}</td>
-                                            <td class="px-6 py-4 font-mono font-bold text-gray-800">{{ h.new_unit?.plate_number }}</td>
-                                            <td class="px-6 py-4 text-gray-600">{{ h.new_unit?.make?.name }}</td>
-                                            <td class="px-6 py-4 text-gray-500 italic">{{ h.remarks || '-' }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ formatDate(h.date_changed) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-mono font-bold text-gray-800 whitespace-nowrap">{{ h.new_unit?.plate_number }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ h.new_unit?.make?.name }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-500 italic whitespace-nowrap">{{ h.remarks || '-' }}</td>
                                         </tr>
                                     </tbody>
                                     <tfoot v-if="totalPages > 1">
                                         <tr>
-                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                                <div class="flex items-center justify-between w-full">
-                                                    <span class="text-sm text-gray-500">
+                                            <td colspan="4" class="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                                                    <span class="text-xs md:text-sm text-gray-500 whitespace-nowrap">
                                                         Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
                                                     </span>
-                                                    <div class="flex gap-2">
-                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
-                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
                                                     </div>
                                                 </div>
                                             </td>
@@ -449,35 +501,35 @@ const getTabLabel = (tabKey) => {
                                 </table>
                             </div>
 
-                            <div v-if="activeTab === 'ownership'" class="overflow-x-auto">
-                                <table class="w-full text-sm text-left">
+                            <div v-if="activeTab === 'ownership'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
+                                <table class="min-w-full text-sm text-left">
                                     <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">
                                         <tr>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Date Transferred</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">New Owner</th>
-                                            <th class="px-6 py-4 font-medium bg-gray-50">Previous Owner</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Date Transferred</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">New Owner</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Previous Owner</th>
                                         </tr>
                                     </thead>
                                     <tbody class="divide-y divide-gray-100">
                                         <tr v-if="!selectedFranchise.ownership_history?.length">
-                                            <td colspan="3" class="px-6 py-12 text-center text-gray-400">No ownership changes recorded.</td>
+                                            <td colspan="3" class="px-4 md:px-6 py-12 text-center text-gray-400 whitespace-nowrap">No ownership changes recorded.</td>
                                         </tr>
                                         <tr v-for="hist in paginatedTabData" :key="hist.id" class="hover:bg-gray-50 transition-colors">
-                                            <td class="px-6 py-4 text-gray-600">{{ formatDate(hist.date_transferred || hist.created_at) }}</td>
-                                            <td class="px-6 py-4 font-bold text-gray-800">{{ getOwnerName(hist.new_owner?.user) }}</td>
-                                            <td class="px-6 py-4 text-gray-500">{{ hist.previous_owner ? getOwnerName(hist.previous_owner.user) : 'N/A' }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ formatDate(hist.date_transferred || hist.created_at) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-bold text-gray-800 whitespace-nowrap">{{ getOwnerName(hist.new_owner?.user) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-500 whitespace-nowrap">{{ hist.previous_owner ? getOwnerName(hist.previous_owner.user) : 'N/A' }}</td>
                                         </tr>
                                     </tbody>
                                     <tfoot v-if="totalPages > 1">
                                         <tr>
-                                            <td colspan="8" class="px-6 py-3 bg-gray-50 border-t border-gray-200">
-                                                <div class="flex items-center justify-between w-full">
-                                                    <span class="text-sm text-gray-500">
+                                            <td colspan="3" class="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                                                    <span class="text-xs md:text-sm text-gray-500 whitespace-nowrap">
                                                         Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
                                                     </span>
-                                                    <div class="flex gap-2">
-                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
-                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
                                                     </div>
                                                 </div>
                                             </td>
@@ -490,23 +542,23 @@ const getTabLabel = (tabKey) => {
                     </div>
                 </div>
 
-                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                <div v-else class="h-full flex flex-col items-center justify-center text-gray-400 p-6 text-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 md:h-16 md:w-16 mb-4 text-gray-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                     </svg>
-                    <p class="text-lg font-medium">Select a franchise to view details</p>
+                    <p class="text-base md:text-lg font-medium">Select a franchise to view details</p>
                 </div>
             </main>
 
             <Modal :show="showConfirmDriverModal" @close="showConfirmDriverModal = false" maxWidth="md">
-                <div class="p-6">
-                    <div class="flex items-center gap-4 mb-4">
-                        <div class="p-3 bg-blue-100 rounded-full text-blue-600 shrink-0">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div class="p-5 md:p-6">
+                    <div class="flex items-center gap-3 md:gap-4 mb-4">
+                        <div class="p-2.5 md:p-3 bg-blue-100 rounded-full text-blue-600 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        <h2 class="text-lg font-bold text-gray-900">Confirm Active Driver</h2>
+                        <h2 class="text-base md:text-lg font-bold text-gray-900">Confirm Active Driver</h2>
                     </div>
                     
                     <p class="text-gray-600 text-sm leading-relaxed mb-6">
@@ -515,58 +567,129 @@ const getTabLabel = (tabKey) => {
                         This action will automatically <span class="text-red-600 font-bold">deactivate</span> the currently assigned driver and log the start of this new shift.
                     </p>
 
-                    <div class="flex justify-end gap-3">
-                        <SecondaryButton @click="showConfirmDriverModal = false">Cancel</SecondaryButton>
+                    <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 w-full">
+                        <SecondaryButton @click="showConfirmDriverModal = false" class="w-full sm:w-auto justify-center">Cancel</SecondaryButton>
                         <PrimaryButton 
                             @click="confirmActivateDriver" 
                             :class="{ 'opacity-25': driverForm.processing }" 
                             :disabled="driverForm.processing"
+                            class="w-full sm:w-auto justify-center"
                         >
                             Confirm Update
                         </PrimaryButton>
                     </div>
                 </div>
             </Modal>
+            
+            <Modal :show="showScheduleModal" @close="showScheduleModal = false" maxWidth="2xl">
+                <div class="p-5 md:p-6">
+                    <div class="flex items-start sm:items-center justify-between mb-5 border-b border-gray-100 pb-4 gap-4">
+                        <div class="flex items-center gap-3">
+                            <div class="p-2 md:p-2.5 bg-purple-100 rounded-full text-purple-600 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 md:h-5 md:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                            </div>
+                            <div>
+                                <h2 class="text-base md:text-lg font-bold text-gray-900 leading-tight">Driver Schedule</h2>
+                                <p class="text-[10px] md:text-xs text-gray-500 font-medium break-words">{{ driverToSchedule ? getDriverName(driverToSchedule.driver) : '' }}</p>
+                            </div>
+                        </div>
+                        <button @click="showScheduleModal = false" class="text-gray-400 hover:text-gray-600 shrink-0">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
 
+                    <form @submit.prevent="saveSchedule">
+                        <div v-if="scheduleForm.errors.schedule" class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                            </svg>
+                            <div class="text-sm font-medium text-red-700">
+                                {{ scheduleForm.errors.schedule }}
+                            </div>
+                        </div>
+                        <div class="space-y-3 mb-6 max-h-[50vh] overflow-y-auto px-1 custom-scrollbar">
+                            <div v-for="(daySched, index) in scheduleForm.schedule" :key="index" 
+                                class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 rounded-xl border transition-colors"
+                                :class="daySched.is_off ? 'bg-gray-50 border-gray-100 opacity-70' : 'bg-white border-gray-200 shadow-sm hover:border-purple-200'"
+                            >
+                                <div class="w-full sm:w-28 shrink-0 flex items-center justify-between sm:block">
+                                    <span class="font-bold text-gray-800 text-sm block">{{ daySched.day }}</span>
+                                    
+                                    <label class="flex sm:hidden items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" v-model="daySched.is_off" class="rounded text-purple-600 focus:ring-purple-500 border-gray-300">
+                                        <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wide">Day Off</span>
+                                    </label>
+                                </div>
+
+                                <label class="hidden sm:flex items-center gap-2 cursor-pointer w-24 shrink-0">
+                                    <input type="checkbox" v-model="daySched.is_off" class="rounded text-purple-600 focus:ring-purple-500 border-gray-300">
+                                    <span class="text-xs font-bold text-gray-500 uppercase tracking-wide">Day Off</span>
+                                </label>
+
+                                <div class="flex items-center gap-2 flex-1 w-full" v-if="!daySched.is_off">
+                                    <input type="time" v-model="daySched.start" required class="block w-full text-sm rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 shadow-sm" />
+                                    <span class="text-gray-400 text-[10px] md:text-xs font-bold shrink-0">TO</span>
+                                    <input type="time" v-model="daySched.end" required class="block w-full text-sm rounded-lg border-gray-300 focus:border-purple-500 focus:ring-purple-500 shadow-sm" />
+                                </div>
+                                <div v-else class="flex-1 px-3 text-xs md:text-sm text-gray-400 italic w-full">
+                                    Not scheduled to work
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4 border-t border-gray-100 w-full">
+                            <SecondaryButton type="button" @click="showScheduleModal = false" class="w-full sm:w-auto justify-center">Cancel</SecondaryButton>
+                            <PrimaryButton type="submit" :class="{ 'opacity-25': scheduleForm.processing }" :disabled="scheduleForm.processing" class="w-full sm:w-auto justify-center bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 border-transparent text-white">
+                                Save Weekly Schedule
+                            </PrimaryButton>
+                        </div>
+                    </form>
+                </div>
+            </Modal>
+            
             <Teleport to="body">
                 <div 
                     v-if="showCoverageModal" 
-                    class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-all" 
+                    class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 backdrop-blur-sm transition-all" 
                     @click.self="showCoverageModal = false"
                 >
-                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200 transform transition-all scale-100">
-                        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-gray-200 transform transition-all scale-100 flex flex-col max-h-[90vh]">
+                        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
                             <div class="flex items-center gap-2">
                                 <div class="w-3 h-3 rounded-full shadow-sm" :style="{ backgroundColor: zone?.color || '#a855f7' }"></div>
-                                <h3 class="font-bold text-gray-800">Zone Coverage Areas</h3>
+                                <h3 class="font-bold text-gray-800 text-sm sm:text-base">Zone Coverage Areas</h3>
                             </div>
-                            <button @click="showCoverageModal = false" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
+                            <button @click="showCoverageModal = false" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50 shrink-0">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
-                        <div class="p-6 max-h-[60vh] overflow-y-auto custom-scrollbar">
+                        <div class="p-4 md:p-6 overflow-y-auto custom-scrollbar">
                             <div v-if="zone?.coverage && zone.coverage.length > 0">
-                                <p class="text-sm text-gray-500 mb-4">
+                                <p class="text-xs sm:text-sm text-gray-500 mb-4">
                                     The <span class="font-bold text-gray-700">{{ zone.description.toUpperCase() }}</span> covers the following {{ zone.coverage.length }} barangays:
                                 </p>
                                 <div class="flex flex-wrap gap-2">
                                     <span 
                                         v-for="(area, index) in zone.coverage" 
                                         :key="index"
-                                        class="px-3 py-1.5 bg-gray-50 text-gray-700 text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 transition-colors select-all"
+                                        class="px-2.5 sm:px-3 py-1 sm:py-1.5 bg-gray-50 text-gray-700 text-xs sm:text-sm font-medium rounded-lg border border-gray-200 hover:border-gray-300 transition-colors select-all"
                                     >
                                         {{ area }}
                                     </span>
                                 </div>
                             </div>
                             <div v-else class="text-center py-8 text-gray-400">
-                                <p>No coverage areas defined for this zone.</p>
+                                <p class="text-sm">No coverage areas defined for this zone.</p>
                             </div>
                         </div>
-                        <div class="p-4 border-t border-gray-100 bg-gray-50 text-right">
-                            <button @click="showCoverageModal = false" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                        <div class="p-3 md:p-4 border-t border-gray-100 bg-gray-50 text-right shrink-0">
+                            <button @click="showCoverageModal = false" class="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
                                 Close
                             </button>
                         </div>
@@ -575,47 +698,47 @@ const getTabLabel = (tabKey) => {
 
                 <div 
                     v-if="showUnitModal" 
-                    class="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-gray-900/60 backdrop-blur-sm transition-all" 
+                    class="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 bg-gray-900/60 backdrop-blur-sm transition-all" 
                     @click.self="showUnitModal = false"
                 >
                    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden border border-gray-200 transform transition-all scale-100 flex flex-col max-h-[90vh]">
-                        <div class="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50 shrink-0">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <div class="p-4 border-b border-gray-100 flex justify-between items-start sm:items-center bg-gray-50 shrink-0 gap-3">
+                            <div class="flex items-center gap-3 w-full">
+                                <div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
                                     </svg>
                                 </div>
-                                <div>
-                                    <h3 class="font-bold text-gray-800 text-lg leading-tight">{{ unit?.make?.name }} {{ unit?.model_year }}</h3>
-                                    <p class="text-xs text-gray-500 font-mono">{{ unit?.plate_number }}</p>
+                                <div class="overflow-hidden">
+                                    <h3 class="font-bold text-gray-800 text-sm sm:text-lg leading-tight truncate">{{ unit?.make?.name }} {{ unit?.model_year }}</h3>
+                                    <p class="text-[10px] sm:text-xs text-gray-500 font-mono">{{ unit?.plate_number }}</p>
                                 </div>
                             </div>
-                            <button @click="showUnitModal = false" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <button @click="showUnitModal = false" class="text-gray-400 hover:text-red-500 transition-colors p-1 rounded-full hover:bg-red-50 shrink-0">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                                 </svg>
                             </button>
                         </div>
 
-                        <div class="p-6 overflow-y-auto custom-scrollbar">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+                        <div class="p-4 md:p-6 overflow-y-auto custom-scrollbar">
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-6">
                                 <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Motor Number</div>
-                                    <div class="font-mono font-bold text-gray-800 text-sm break-all">{{ unit?.motor_number || 'N/A' }}</div>
+                                    <div class="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Motor Number</div>
+                                    <div class="font-mono font-bold text-gray-800 text-xs md:text-sm break-all">{{ unit?.motor_number || 'N/A' }}</div>
                                 </div>
                                 <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Chassis Number</div>
-                                    <div class="font-mono font-bold text-gray-800 text-sm break-all">{{ unit?.chassis_number || 'N/A' }}</div>
+                                    <div class="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Chassis Number</div>
+                                    <div class="font-mono font-bold text-gray-800 text-xs md:text-sm break-all">{{ unit?.chassis_number || 'N/A' }}</div>
                                 </div>
                                 <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
-                                    <div class="text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">CR Number</div>
-                                    <div class="font-mono font-bold text-gray-800 text-sm break-all">{{ unit?.cr_number || 'N/A' }}</div>
+                                    <div class="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">CR Number</div>
+                                    <div class="font-mono font-bold text-gray-800 text-xs md:text-sm break-all">{{ unit?.cr_number || 'N/A' }}</div>
                                 </div>
                             </div>
 
-                            <h4 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Unit Photos</h4>
-                            <div class="grid grid-cols-2 gap-3">
+                            <h4 class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Unit Photos</h4>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                 <div v-for="(photo, label) in {
                                     'Front View': unit?.unit_front_photo, 
                                     'Back View': unit?.unit_back_photo, 
@@ -625,21 +748,21 @@ const getTabLabel = (tabKey) => {
                                     
                                     <img v-if="photo" :src="`/storage/${photo}`" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" :alt="label">
                                     <div v-else class="w-full h-full flex flex-col items-center justify-center text-gray-300">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 sm:h-8 sm:w-8 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                         </svg>
-                                        <span class="text-[10px] font-bold uppercase">No Image</span>
+                                        <span class="text-[9px] md:text-[10px] font-bold uppercase">No Image</span>
                                     </div>
                                     
-                                    <div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[10px] font-bold uppercase py-1 px-2 text-center backdrop-blur-sm">
+                                    <div class="absolute bottom-0 inset-x-0 bg-black/60 text-white text-[9px] md:text-[10px] font-bold uppercase py-1 px-2 text-center backdrop-blur-sm">
                                         {{ label }}
                                     </div>
                                 </div>
                             </div>
                         </div>
 
-                        <div class="p-4 border-t border-gray-100 bg-gray-50 text-right shrink-0">
-                            <button @click="showUnitModal = false" class="px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
+                        <div class="p-3 md:p-4 border-t border-gray-100 bg-gray-50 text-right shrink-0">
+                            <button @click="showUnitModal = false" class="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 rounded-lg text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors shadow-sm">
                                 Close
                             </button>
                         </div>

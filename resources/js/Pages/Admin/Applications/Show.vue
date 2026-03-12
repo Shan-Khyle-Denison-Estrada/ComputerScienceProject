@@ -331,7 +331,7 @@ const formatCurrency = (value) => {
                                  <p class="text-sm font-medium text-gray-800 font-mono">{{ application.applicant.tin_number }}</p>
                              </div>
 
-                             <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Address</p><p class="text-sm font-medium text-gray-800">{{ application.applicant.street }}, {{ application.applicant.barangay_name }}, {{ application.applicant.city }}</p></div>
+                             <div><p class="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-1">Address</p><p class="text-sm font-medium text-gray-800">{{ application.applicant.street }}, {{ application.applicant.barangay_name }}, {{ application.applicant.city }}, {{ application.applicant.province }}</p></div>
                         </div>
                     </div>
                 </div>
@@ -661,7 +661,6 @@ const formatCurrency = (value) => {
             <CreateFranchiseAccountModal 
                 :show="showCreateAccountModal" 
                 :application="application" 
-                :barangays="barangays"
                 :zones="zones"
                 :unitMakes="unitMakes"
                 @close="showCreateAccountModal = false" 

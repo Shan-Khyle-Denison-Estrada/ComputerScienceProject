@@ -66,6 +66,8 @@ watch(search, handleSearch);
                                 <td class="p-4 text-sm">
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('capo.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review & Approve &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('capo.applications.show-change-of-unit', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review & Approve &rarr;</Link>
+                                    
+                                    <Link v-else-if="app.application_type === 'New Franchise'" :href="route('capo.applications.show-new-franchise', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review & Approve &rarr;</Link>
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">
