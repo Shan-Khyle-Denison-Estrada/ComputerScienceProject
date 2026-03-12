@@ -11,6 +11,7 @@ use App\Models\UnitMake;
 use App\Models\User;
 use App\Models\Franchise;
 use App\Models\ProposedUnit;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -413,113 +414,79 @@ class ApplicationController extends Controller
         return back()->with('success', 'Requirement deleted.');
     }
 
-public function store(Request $request)
-{
-    $request->validate([
-        'application_type' => 'required|string',
-        'owner_mode' => 'required|in:new,existing',
-        'existing_operator_id' => 'nullable|exists:users,id',
-        'new_owner_email' => 'required_if:owner_mode,new|email|nullable',
-    ]);
+    public function store(Request $request)
+    {
+        $request->validate([
+            'application_type' => 'required|string',
+            'owner_mode' => 'required|in:new,existing',
+            'existing_operator_id' => 'nullable|exists:users,id',
+            'new_owner_email' => 'required_if:owner_mode,new|email|nullable',
+        ]);
 
-    DB::beginTransaction();
-    try {
-        // Generate a Guaranteed Unique Reference Number
-        do {
-            $referenceNumber = 'APP-' . date('Ymd') . '-' . strtoupper(Str::random(6));
-        } while (Application::where('reference_number', $referenceNumber)->exists());
+        DB::beginTransaction();
+        try {
+            $settings = SystemSetting::first();
+            $fiscalYear = $settings->current_fiscal_year ?? date('Y');
+            $referenceNumber = 'APP-' . $fiscalYear . '-' . strtoupper(Str::random(6));
 
-        // 1. Determine Applicant Data
-        $applicantData = [];
-        if ($request->owner_mode === 'existing') {
-            $user = User::with('operator')->findOrFail($request->existing_operator_id);
-            $applicantData = [
-                'user_id' => $user->id,
-                'first_name' => $user->first_name,
-                'middle_name' => $user->middle_name,
-                'last_name' => $user->last_name,
-                'email' => $user->email,
-                'contact_number' => $user->contact_number,
-                'tin_number' => $user->operator ? $user->operator->tin_number : null,
-                'street_address' => $user->street_address,
-                'barangay' => $user->barangay,
-                'city' => $user->city,
-                'province' => $user->province,
-            ];
-        } else {
-            $applicantData = [
-                'first_name' => $request->new_owner_first_name,
-                'middle_name' => $request->new_owner_middle_name,
-                'last_name' => $request->new_owner_last_name,
-                'email' => $request->new_owner_email,
-                'contact_number' => $request->new_owner_contact,
-                'tin_number' => $request->new_owner_tin,
-                'street_address' => $request->new_owner_address,
-                'barangay' => $request->new_owner_barangay,
-                'city' => $request->new_owner_city,
-                'province' => $request->new_owner_province,
-            ];
-        }
-
-        // 2. Create the Application record
-        $application = Application::create(array_merge($applicantData, [
-            'reference_number' => $referenceNumber, // Use the dynamically generated unique string
-            'application_type' => $request->application_type,
-            'franchise_id' => $request->selected_franchise_id,
-            'status' => 'Initial', 
-            'remarks' => $request->remarks,
-            'submitted_at' => null, 
-        ]));
-
-        // 3. Handle Dynamic Units (If New Franchise)
-        if ($request->application_type === 'New Franchise' && $request->has('units')) {
-            foreach ($request->units as $index => $unitData) {
-                // Upload photos if they exist
-                $frontPhoto = $request->file("units.{$index}.unit_front_photo") ? $request->file("units.{$index}.unit_front_photo")->store('units/photos', 'public') : null;
-                $backPhoto = $request->file("units.{$index}.unit_back_photo") ? $request->file("units.{$index}.unit_back_photo")->store('units/photos', 'public') : null;
-                $leftPhoto = $request->file("units.{$index}.unit_left_photo") ? $request->file("units.{$index}.unit_left_photo")->store('units/photos', 'public') : null;
-                $rightPhoto = $request->file("units.{$index}.unit_right_photo") ? $request->file("units.{$index}.unit_right_photo")->store('units/photos', 'public') : null;
-                
-                $crPhoto = $request->file("units.{$index}.cr_photo") ? $request->file("units.{$index}.cr_photo")->store('units/documents', 'public') : null;
-                $orPhoto = $request->file("units.{$index}.or_photo") ? $request->file("units.{$index}.or_photo")->store('units/documents', 'public') : null;
-
-                $application->proposedUnits()->create([
-                    'make_id' => $unitData['make_id'] ?? null,
-                    'zone_id' => $unitData['zone_id'] ?? null,
-                    'model_year' => $unitData['model_year'] ?? null,
-                    'plate_number' => $unitData['plate_number'] ?? null,
-                    'motor_number' => $unitData['motor_number'] ?? null,
-                    'chassis_number' => $unitData['chassis_number'] ?? null,
-                    'cr_number' => $unitData['cr_number'] ?? null,
-                    'unit_front_photo' => $frontPhoto,
-                    'unit_back_photo' => $backPhoto,
-                    'unit_left_photo' => $leftPhoto,
-                    'unit_right_photo' => $rightPhoto,
-                    'cr_photo' => $crPhoto,
-                    'or_photo' => $orPhoto,
-                ]);
+            $applicantData = [];
+            if ($request->owner_mode === 'existing') {
+                $user = User::with('operator')->findOrFail($request->existing_operator_id);
+                $applicantData = [
+                    'user_id' => $user->id,
+                    'first_name' => $user->first_name,
+                    'middle_name' => $user->middle_name,
+                    'last_name' => $user->last_name,
+                    'email' => $user->email,
+                    'contact_number' => $user->contact_number,
+                    'tin_number' => $user->operator ? $user->operator->tin_number : null,
+                    'street_address' => $user->street_address,
+                    'barangay' => $user->barangay,
+                    'city' => $user->city,
+                    'province' => $user->province,
+                ];
+            } else {
+                $applicantData = [
+                    'first_name' => $request->new_owner_first_name,
+                    'middle_name' => $request->new_owner_middle_name,
+                    'last_name' => $request->new_owner_last_name,
+                    'email' => $request->new_owner_email,
+                    'contact_number' => $request->new_owner_contact,
+                    'tin_number' => $request->new_owner_tin,
+                    'street_address' => $request->new_owner_address,
+                    'barangay' => $request->new_owner_barangay,
+                    'city' => $request->new_owner_city,
+                    'province' => $request->new_owner_province,
+                ];
             }
+
+            // Create Application - NO UNITS ARE SAVED HERE ANYMORE
+            $application = Application::create(array_merge($applicantData, [
+                'reference_number' => $referenceNumber,
+                'application_type' => $request->application_type,
+                'franchise_id' => $request->selected_franchise_id,
+                'status' => 'Initial',
+                'remarks' => $request->remarks,
+                'submitted_at' => null, 
+            ]));
+
+            DB::commit();
+
+            $signedUrl = URL::temporarySignedRoute(
+                'application.complete', 
+                now()->addDays(7), 
+                ['application' => $application->id]
+            );
+
+            if ($application->email) {
+                Mail::to($application->email)->send(new InitialApplicationCreated($application, $signedUrl));
+            }
+
+            return back()->with('success', 'Initial application created. An email with a secure link has been sent to the applicant.');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return back()->withErrors(['error' => 'Failed to create application: ' . $e->getMessage()]);
         }
-
-        DB::commit();
-
-        // 4. Generate a Secure Signed URL (Expires in 7 days)
-        $signedUrl = URL::temporarySignedRoute(
-            'application.complete', 
-            now()->addDays(7), 
-            ['application' => $application->id]
-        );
-
-        // 5. Send Email
-        if ($application->email) {
-            Mail::to($application->email)->send(new InitialApplicationCreated($application, $signedUrl));
-        }
-
-        return back()->with('success', 'Initial application created. An email with a secure link has been sent to the applicant to upload their requirements.');
-
-    } catch (\Exception $e) {
-        DB::rollBack();
-        return back()->withErrors(['error' => 'Failed to create application: ' . $e->getMessage()]);
     }
-}
 }
