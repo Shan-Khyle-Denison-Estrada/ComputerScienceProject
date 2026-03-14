@@ -34,8 +34,8 @@ const user = computed(() => page.props.auth?.user); // <-- Added Auth check here
                         <li><Link href="/" class="hover:text-blue-400 transition-colors">Home</Link></li>
                         <li><Link href="/about" class="hover:text-blue-400 transition-colors">About Us</Link></li>
                         <li><Link href="/ordinances" class="hover:text-blue-400 transition-colors">Ordinances</Link></li>
-                        <li><Link href="/news" class="hover:text-blue-400 transition-colors">News & Updates</Link></li>
-                        <li><Link href="/contact" class="hover:text-blue-400 transition-colors">Contact</Link></li>
+                        <!-- <li><Link href="/news" class="hover:text-blue-400 transition-colors">News & Updates</Link></li>
+                        <li><Link href="/contact" class="hover:text-blue-400 transition-colors">Contact</Link></li> -->
                     </ul>
                 </div>
 
