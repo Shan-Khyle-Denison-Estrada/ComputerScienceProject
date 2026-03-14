@@ -470,8 +470,6 @@ class ApplicationController extends Controller
                 'submitted_at' => null, 
             ]));
 
-            DB::commit();
-
             $signedUrl = URL::temporarySignedRoute(
                 'application.complete', 
                 now()->addDays(7), 
@@ -481,6 +479,8 @@ class ApplicationController extends Controller
             if ($application->email) {
                 Mail::to($application->email)->send(new InitialApplicationCreated($application, $signedUrl));
             }
+
+            DB::commit();
 
             return back()->with('success', 'Initial application created. An email with a secure link has been sent to the applicant.');
 
