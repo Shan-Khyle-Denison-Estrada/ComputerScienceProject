@@ -225,12 +225,12 @@ const resetFilters = () => {
                     <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
 
-                <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
+                <!-- <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
                     Add Owner
-                </PrimaryButton>
+                </PrimaryButton> -->
             </div>
         </div>
 

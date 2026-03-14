@@ -427,6 +427,9 @@ Route::middleware(['auth', 'role:admin,encoder'])->group(function () {
 
     Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
     ->name('admin.applications.show-new-franchise');
+
+    Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
+    Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
@@ -470,8 +473,6 @@ Route::middleware(['auth', 'role:encoder'])->group(function () {
     Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
     Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
     Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
-    Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
-    Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
 });
 
 require __DIR__.'/auth.php';

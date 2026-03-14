@@ -105,10 +105,10 @@ const handleSearch = () => {
                     </span>
                     <input v-model="search" @keyup.enter="handleSearch" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search Franchise ID..." />
                 </div>
-                <PrimaryButton @click="showAddModal = true" class="flex items-center gap-2">
+                <!-- <PrimaryButton @click="showAddModal = true" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     New Franchise
-                </PrimaryButton>
+                </PrimaryButton> -->
             </div>
         </div>
 
