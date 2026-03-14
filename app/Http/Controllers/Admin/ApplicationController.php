@@ -467,7 +467,7 @@ class ApplicationController extends Controller
                 'franchise_id' => $request->selected_franchise_id,
                 'status' => 'Initial',
                 'remarks' => $request->remarks,
-                'submitted_at' => null, 
+                'submitted_at' => now(),
             ]));
 
             $signedUrl = URL::temporarySignedRoute(
