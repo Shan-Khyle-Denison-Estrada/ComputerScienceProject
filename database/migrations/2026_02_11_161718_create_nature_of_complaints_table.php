@@ -22,7 +22,6 @@ return new class extends Migration
             ['name' => 'Arrogance / Discourtesy'],
             ['name' => 'Trip Cutting'],
             ['name' => 'Operating without License'],
-            ['name' => 'Others'],
         ]);
     }
 

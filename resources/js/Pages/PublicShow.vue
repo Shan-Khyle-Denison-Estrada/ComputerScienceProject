@@ -92,7 +92,7 @@ const submitComplaint = () => {
             <div class="text-center text-white mb-4 shrink-0">
                 <div class="uppercase tracking-widest text-[10px] font-bold opacity-80">Official Public Record</div>
                 <h1 class="text-3xl font-black tracking-tight drop-shadow-md">
-                    FRANCHISE #{{ franchise.id }}
+                    FRANCHISE #{{ franchise.franchise_number }}
                 </h1>
                 <div class="mt-1 inline-flex items-center gap-2 bg-white/20 backdrop-blur-md px-3 py-0.5 rounded-full border border-white/30 text-[10px] font-bold uppercase tracking-wide shadow-sm">
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></span>

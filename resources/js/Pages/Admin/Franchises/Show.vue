@@ -900,6 +900,7 @@ const getDriverName = (driver) => {
                                 <option v-for="nature in complaintNatures" :key="nature.id" :value="nature.name">
                                     {{ nature.name }}
                                 </option>
+                                <option value="Other">Other</option>
                             </select>
                             <p v-if="complaintForm.errors.nature_of_complaint" class="text-red-500 text-xs mt-1">{{ complaintForm.errors.nature_of_complaint }}</p>
                         </div>
@@ -977,6 +978,7 @@ const getDriverName = (driver) => {
                             <option v-for="nature in redFlagNatures" :key="nature.id" :value="nature.id">
                                 {{ nature.name }}
                             </option>
+                            <option value="Other">Other</option>
                         </select>
                         <div v-if="redFlagForm.errors.nature_id" class="text-red-500 text-xs mt-1">{{ redFlagForm.errors.nature_id }}</div>
                     </div>

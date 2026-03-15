@@ -90,10 +90,10 @@ const ownerAddress = computed(() => {
                         </thead>
                         <tbody style="display: table-row-group !important;">
                             <tr style="display: table-row !important;">
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-medium">{{ currentUnit?.make?.name || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-medium">{{ currentUnit?.model_year || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-medium">{{ currentUnit?.motor_number || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-medium">{{ currentUnit?.chassis_number || 'N/A' }}</td>
+                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.make?.name || 'N/A' }}</td>
+                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.model_year || 'N/A' }}</td>
+                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.motor_number || 'N/A' }}</td>
+                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.chassis_number || 'N/A' }}</td>
                                 <td style="display: table-cell !important; vertical-align: middle !important;" class="px-2 py-1.5 font-bold">{{ currentUnit?.plate_number || 'N/A' }}</td>
                             </tr>
                         </tbody>
