@@ -120,7 +120,11 @@ const amountInWords = computed(() => {
             </div>
             <div class="flex justify-between items-start">
                 <span class="font-bold mr-2">Ref:</span> 
-                <span class="text-right">#{{ payment.application_reference_id || payment.assessment_id }}</span>
+                <span class="text-right">#{{ payment.assessment_id }}</span>
+            </div>
+            <div v-if="payment.franchise_number" class="flex justify-between items-start">
+                <span class="font-bold mr-2">Fran. No:</span> 
+                <span class="font-bold text-right">{{ payment.franchise_number }}</span>
             </div>
         </div>
 
@@ -128,6 +132,10 @@ const amountInWords = computed(() => {
             <div>
                 <div class="font-bold">Received from:</div>
                 <div class="uppercase pl-2">{{ payeeName }}</div>
+            </div>
+            <div v-if="payment.franchise_owner">
+                <div class="font-bold">Franchise Owner:</div>
+                <div class="uppercase pl-2">{{ payment.franchise_owner }}</div>
             </div>
             <div v-if="payment.payee_contact_number">
                 <div class="font-bold">Contact No:</div>

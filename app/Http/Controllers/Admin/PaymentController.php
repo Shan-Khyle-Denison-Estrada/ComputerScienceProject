@@ -17,10 +17,40 @@ class PaymentController extends Controller
         $filters = $request->only(['search', 'city']);
 
         $payments = Payment::query()
+            // Eager load the nested relationships to prevent N+1 queries
+            ->with([
+                'assessment.franchise.currentOwnership.newOwner.user',
+                'assessment.application.franchise.currentOwnership.newOwner.user'
+            ])
             ->filter($filters)
             ->latest()
             ->paginate(6)
             ->withQueryString();
+
+        // Transform the collection to append franchise details on the fly
+        $payments->getCollection()->transform(function ($payment) {
+            // An assessment might connect to a franchise directly, or via an application
+            $franchise = $payment->assessment?->franchise ?? $payment->assessment?->application?->franchise;
+
+            // Use setAttribute to force Laravel to include these in the JSON response
+            $payment->setAttribute(
+                'franchise_number', 
+                $franchise?->franchise_number ?? 'No Franchise Number'
+            );
+            
+            $payment->setAttribute(
+                'franchise_owner', 
+                $franchise?->currentOwnership?->newOwner?->user?->full_name
+            );
+
+            // Optionally attach application reference id for Vue fallback
+            $payment->setAttribute(
+                'application_reference_id', 
+                $payment->assessment?->application?->reference_number
+            );
+
+            return $payment;
+        });
             
         // Fetch Barangays for the dropdown
         $barangays = Barangay::select('id', 'name')->orderBy('name')->get();

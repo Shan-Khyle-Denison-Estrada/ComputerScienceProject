@@ -339,15 +339,17 @@ const printReceipt = async (payment) => {
                             <tr>
                                 <th class="px-6 py-4">OR Number</th>
                                 <th class="px-6 py-4">Payee Details</th>
-                                <th class="px-6 py-4">Location</th>
+                                <th class="px-6 py-4">Payee Address</th>
+                                <th class="px-6 py-4">Franchise Details</th>
                                 <th class="px-6 py-4">Assessment / Ref ID</th>
                                 <th class="px-6 py-4">Amount</th>
                                 <th class="px-6 py-4">Date Recorded</th>
-                                <th class="px-6 py-4 text-center">Action</th> </tr>
+                                <th class="px-6 py-4 text-center">Action</th> 
+                            </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="payment in payments.data" :key="payment.id" class="hover:bg-gray-50 transition-colors group">
-                                <td class="px-6 py-4 text-gray-500 text-xs font-mono font-bold text-red-600">
+                                <td class="px-6 py-4 text-xs font-mono font-bold text-red-600">
                                     {{ payment.or_number || 'N/A' }}
                                 </td>
                                 <td class="px-6 py-4">
@@ -365,8 +367,19 @@ const printReceipt = async (payment) => {
                                     <div class="text-xs text-gray-400">{{ payment.payee_street_address }} <span v-if="payment.payee_province">, {{ payment.payee_province }}</span></div>
                                 </td>
                                 <td class="px-6 py-4">
+                                    <div v-if="payment.franchise_number" class="text-sm font-medium text-gray-900">
+                                        {{ payment.franchise_number }}
+                                    </div>
+                                    <div v-if="payment.franchise_owner" class="text-xs text-gray-500">
+                                        {{ payment.franchise_owner }}
+                                    </div>
+                                    <span v-if="!payment.franchise_number && !payment.franchise_owner" class="text-gray-400 text-xs italic">
+                                        N/A
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4">
                                     <span v-if="payment.assessment_id" class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                                        #{{ payment.application_reference_id || `ASM-${payment.assessment_id}` }}
+                                        #{{ `ASM-${payment.assessment_id}` }}
                                     </span>
                                     <span v-else class="text-gray-400 text-xs italic">
                                         N/A
@@ -386,7 +399,7 @@ const printReceipt = async (payment) => {
                                 </td>
                             </tr>
                             <tr v-if="payments.data.length === 0">
-                                <td colspan="7" class="px-6 py-10 text-center text-gray-500">
+                                <td colspan="8" class="px-6 py-10 text-center text-gray-500">
                                     No payment records found.
                                 </td>
                             </tr>
