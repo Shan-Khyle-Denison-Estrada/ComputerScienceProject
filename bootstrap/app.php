@@ -22,9 +22,10 @@ return Application::configure(basePath: dirname(__DIR__))
             \App\Http\Middleware\CheckUserStatus::class, // <-- Added CheckUserStatus middleware here
         ]);
 
-        // 2. From the Role snippet: Registering the middleware alias
+        // 2. Registering the middleware aliases
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class, // <-- Added this
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -52,6 +52,8 @@ class AdminDashboardController extends Controller
         // 2. Set Active Filter Context
         $selectedFiscalYear = $request->query('fiscal_year', $defaultFyStr);
         $chartPeriod = $request->query('chart_period', 'monthly');
+        $customStart = $request->query('start_date');
+        $customEnd = $request->query('end_date');
 
         // Ensure selected FY is valid, fallback to default if not
         if (!in_array($selectedFiscalYear, $availableFiscalYears)) {
@@ -94,15 +96,31 @@ class AdminDashboardController extends Controller
             'weekly' => "CONCAT('Week ', WEEK(created_at, 1), ', ', YEAR(created_at))",
             'quarterly' => "CONCAT('Q', QUARTER(created_at), ' ', YEAR(created_at))",
             'annually' => "DATE_FORMAT(created_at, '%Y')",
+            'custom' => "DATE_FORMAT(created_at, '%b %d, %Y')", // Defaulting custom to daily
             default => "DATE_FORMAT(created_at, '%b %Y')", // Monthly
         };
+
+        // Determine Chart Date Scope
+        $chartStartDate = $fyStart;
+        $chartEndDate = $fyEnd;
+
+        if ($chartPeriod === 'custom' && $customStart && $customEnd) {
+            try {
+                $chartStartDate = Carbon::parse($customStart)->startOfDay();
+                $chartEndDate = Carbon::parse($customEnd)->endOfDay();
+            } catch (\Exception $e) {
+                // If invalid date parsing occurs, fallback to fiscal year
+                $chartStartDate = $fyStart;
+                $chartEndDate = $fyEnd;
+            }
+        }
 
         $revenueData = Payment::select(
             DB::raw('sum(amount_paid) as sums'), 
             DB::raw("$dbFormat as label"),
             DB::raw("MIN(created_at) as sort_date") // Ensure sequential chronological sorting
         )
-        ->whereBetween('created_at', [$fyStart, $fyEnd])
+        ->whereBetween('created_at', [$chartStartDate, $chartEndDate])
         ->groupBy('label')
         ->orderBy('sort_date')
         ->get();
@@ -116,7 +134,7 @@ class AdminDashboardController extends Controller
         $recentPayments = Payment::with(['assessment.application.franchise.currentActiveUnit.newUnit']) 
             ->whereBetween('created_at', [$fyStart, $fyEnd])
             ->latest()
-            ->limit(4) // Strictly limit the amount of data returned to 5
+            ->limit(4) // Keeping the limit to 4 as in your original file
             ->get()
             ->map(function ($payment) {
                 return [
@@ -142,11 +160,11 @@ class AdminDashboardController extends Controller
             'filters' => [
                 'fiscal_year' => $selectedFiscalYear,
                 'chart_period' => $chartPeriod,
+                'start_date' => $customStart,
+                'end_date' => $customEnd,
             ]
         ]);
     }
-
-    // Add this new method inside AdminDashboardController
 
     public function report(Request $request)
     {
@@ -200,7 +218,7 @@ class AdminDashboardController extends Controller
         ]);
     }
 
-public function downloadReport(Request $request)
+    public function downloadReport(Request $request)
     {
         $settings = SystemSetting::first();
         $renewalStart = $settings->annual_renewal_start ?? '01-01';

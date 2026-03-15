@@ -44,6 +44,9 @@ class AuthenticatedSessionController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
+        // Wipes the Inertia history so the user can't click back into the app
+        Inertia::clearHistory();
+
         return redirect('/');
     }
 }

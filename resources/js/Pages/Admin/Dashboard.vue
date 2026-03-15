@@ -15,12 +15,21 @@ const props = defineProps({
 // Reactive Filters
 const selectedFiscalYear = ref(props.filters.fiscal_year);
 const selectedPeriod = ref(props.filters.chart_period);
+const customStartDate = ref(props.filters.start_date || '');
+const customEndDate = ref(props.filters.end_date || '');
 
 // Watch Filters and Fetch Data
-watch([selectedFiscalYear, selectedPeriod], () => {
+watch([selectedFiscalYear, selectedPeriod, customStartDate, customEndDate], () => {
+    // If custom is selected, don't query until both dates are populated
+    if (selectedPeriod.value === 'custom' && (!customStartDate.value || !customEndDate.value)) {
+        return;
+    }
+
     router.get(window.location.pathname, {
         fiscal_year: selectedFiscalYear.value,
-        chart_period: selectedPeriod.value
+        chart_period: selectedPeriod.value,
+        start_date: selectedPeriod.value === 'custom' ? customStartDate.value : null,
+        end_date: selectedPeriod.value === 'custom' ? customEndDate.value : null,
     }, {
         preserveState: true,
         preserveScroll: true,
@@ -115,42 +124,41 @@ watch(() => props.chart, () => initChart(), { deep: true });
         <div class="h-full flex flex-col gap-6 overflow-y-auto overflow-x-hidden pb-4 custom-scrollbar">
             
             <div class="flex-none flex flex-col gap-6">
-<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-    <div>
-        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
-        <p class="text-gray-500 text-sm mt-1">Overview of Tricycle Franchise Management System</p>
-    </div>
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                        <h1 class="text-2xl font-bold text-gray-800">Dashboard</h1>
+                        <p class="text-gray-500 text-sm mt-1">Overview of Tricycle Franchise Management System</p>
+                    </div>
 
-    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
-<a :href="`/dashboard/report/download?fiscal_year=${selectedFiscalYear}`" 
-   class="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl shadow-sm transition-colors text-sm font-semibold">
-    
-    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-    </svg>
-    Download Report
-</a>
+                    <div class="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
+                        <a :href="`/dashboard/report/download?fiscal_year=${selectedFiscalYear}`" 
+                           class="w-full sm:w-auto flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-4 py-2.5 rounded-xl shadow-sm transition-colors text-sm font-semibold">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            Download Report
+                        </a>
 
-        <div class="flex items-center justify-between w-full sm:w-auto gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
-            <div class="flex items-center gap-2 whitespace-nowrap">
-                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Fiscal Year:</span>
-            </div>
-            <select v-model="selectedFiscalYear" class="w-full sm:w-auto text-right sm:text-left text-base font-black text-indigo-700 bg-transparent border-none focus:ring-0 p-0 pr-8 min-w-[110px] cursor-pointer">
-                <option v-for="year in props.available_fiscal_years" :key="year" :value="year">
-                    {{ year }}
-                </option>
-            </select>
-        </div>
-    </div>
-</div>
+                        <div class="flex items-center justify-between w-full sm:w-auto gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl shadow-sm">
+                            <div class="flex items-center gap-2 whitespace-nowrap">
+                                <svg class="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                </svg>
+                                <span class="text-xs font-semibold text-indigo-500 uppercase tracking-wider">Fiscal Year:</span>
+                            </div>
+                            <select v-model="selectedFiscalYear" class="w-full sm:w-auto text-right sm:text-left text-base font-black text-indigo-700 bg-transparent border-none focus:ring-0 p-0 pr-8 min-w-[110px] cursor-pointer">
+                                <option v-for="year in props.available_fiscal_years" :key="year" :value="year">
+                                    {{ year }}
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100">
+                    <Link href="/admin/franchises" class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100 cursor-pointer hover:shadow-md hover:border-blue-200 transition-all block group">
                         <div class="flex items-center justify-between mb-4">
-                            <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center group-hover:bg-blue-100 transition-colors">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                             </div>
                             <span class="text-xs font-bold px-2 py-1 rounded" 
@@ -162,11 +170,11 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <span class="text-3xl font-black text-slate-800">{{ props.stats.total_franchises }}</span>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Franchises Created</p>
                         </div>
-                    </div>
+                    </Link>
 
-                    <div class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100">
+                    <Link href="/admin/franchise-owners" class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100 cursor-pointer hover:shadow-md hover:border-emerald-200 transition-all block group">
                         <div class="flex items-center justify-between mb-4">
-                            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
                             </div>
                         </div>
@@ -174,11 +182,11 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <span class="text-3xl font-black text-slate-800">{{ props.stats.total_operators }}</span>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Operators Added</p>
                         </div>
-                    </div>
+                    </Link>
 
-                    <div class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100">
+                    <Link href="/payments" class="bg-white rounded-2xl shadow-sm p-6 flex flex-col justify-between border border-gray-100 cursor-pointer hover:shadow-md hover:border-indigo-200 transition-all block group">
                         <div class="flex items-center justify-between mb-4">
-                            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                            <div class="w-10 h-10 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:bg-indigo-100 transition-colors">
                                 <svg class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                             </div>
                             <span class="text-xs font-bold px-2 py-1 rounded" 
@@ -190,28 +198,38 @@ watch(() => props.chart, () => initChart(), { deep: true });
                             <span class="text-3xl font-medium text-slate-800">{{ formatCurrency(props.stats.total_revenue) }}</span>
                             <p class="text-xs font-bold text-slate-400 uppercase tracking-wider mt-1">Total Collections</p>
                         </div>
-                    </div>
+                    </Link>
                 </div>
             </div>
 
             <div class="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-3 gap-6">
                 
                 <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col min-h-[400px] lg:min-h-0">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                         <h3 class="font-bold text-slate-700">Collection Trends</h3>
                         
-                        <div class="flex items-center gap-3 w-full sm:w-auto justify-between sm:justify-end">
+                        <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end flex-wrap">
                             <div class="flex gap-2 items-center mr-2">
                                 <span class="w-3 h-3 rounded-full bg-blue-500"></span>
                                 <span class="text-xs text-slate-500">Revenue</span>
                             </div>
-                            <select v-model="selectedPeriod" class="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer min-w-[110px]">
-                                <option value="daily">Daily</option>
-                                <option value="weekly">Weekly</option>
-                                <option value="monthly">Monthly</option>
-                                <option value="quarterly">Quarterly</option>
-                                <option value="annually">Annually</option>
-                            </select>
+                            
+                            <div class="flex items-center gap-2">
+                                <div v-if="selectedPeriod === 'custom'" class="flex items-center gap-2 mr-2">
+                                    <input type="date" v-model="customStartDate" class="text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg py-1.5 px-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer" />
+                                    <span class="text-xs text-slate-400 font-medium">to</span>
+                                    <input type="date" v-model="customEndDate" class="text-xs font-medium text-slate-600 bg-white border border-slate-200 rounded-lg py-1.5 px-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer" />
+                                </div>
+
+                                <select v-model="selectedPeriod" class="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 focus:ring-blue-500 focus:border-blue-500 cursor-pointer min-w-[110px]">
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly">Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="annually">Annually</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                            </div>
                         </div>
                     </div>
                     

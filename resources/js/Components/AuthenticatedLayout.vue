@@ -287,7 +287,8 @@ onMounted(() => {
                     <Link 
                         :href="route('logout')" 
                         method="post" 
-                        as="button" 
+                        as="button"
+                        replace
                         class="w-full flex items-center justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors whitespace-nowrap"
                     >
                         <svg class="mr-2 -ml-1 h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -363,7 +364,8 @@ onMounted(() => {
                         <Link 
                             :href="route('logout')" 
                             method="post" 
-                            as="button" 
+                            as="button"
+                            replace
                             class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-gray-100"
                         >
                             Sign Out
