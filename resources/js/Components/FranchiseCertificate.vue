@@ -5,9 +5,10 @@ const props = defineProps({
     franchise: Object,
     currentOwner: Object,
     currentUnit: Object,
-    systemSetting: Object, // <-- Prop for LGU logo
-    tabApprover: Object, // <-- ADDED
-    spApprover: Object,  // <-- ADDED
+    systemSetting: Object, 
+    tabApprover: Object, 
+    spApprover: Object,  
+    template: Object, 
 });
 
 const ownerName = computed(() => {
@@ -15,184 +16,171 @@ const ownerName = computed(() => {
     return `${props.currentOwner.user.first_name} ${props.currentOwner.user.last_name}`;
 });
 
-// NEW: Computed property to correctly format the User's address
 const ownerAddress = computed(() => {
     if (!props.currentOwner || !props.currentOwner.user) return 'N/A';
-    
     const user = props.currentOwner.user;
-    // Filter out null/empty values and join with a comma
     const addressParts = [user.street_address, user.barangay, user.city].filter(Boolean);
-    
     return addressParts.length > 0 ? addressParts.join(', ') : 'N/A';
+});
+
+// The Engine: Parse HTML, inject real data, completely preserve Editor CSS & Layouts
+const parsedContent = computed(() => {
+    if (!props.template || !props.template.content) {
+        return '<div style="text-align: center; padding: 2rem; color: #6b7280; font-family: sans-serif;">No certificate template configured. Please set it up in the settings.</div>';
+    }
+
+    const parser = new DOMParser();
+    const doc = parser.parseFromString(props.template.content, 'text/html');
+
+    // 1. Process Text Variables
+    const textVars = doc.querySelectorAll('span[data-text-variable]');
+    textVars.forEach(el => {
+        const varName = el.getAttribute('data-text-variable');
+        let replacementText = '';
+
+        if (varName === 'franchise_number') replacementText = props.franchise?.franchise_number || 'N/A';
+        if (varName === 'zone_color') replacementText = props.franchise?.zone?.color || 'N/A';
+        if (varName === 'operator_name') replacementText = ownerName.value;
+        if (varName === 'operator_address') replacementText = ownerAddress.value;
+        if (varName === 'unit_make') replacementText = props.currentUnit?.make?.name || 'N/A';
+        if (varName === 'model_year') replacementText = props.currentUnit?.model_year || 'N/A';
+        if (varName === 'motor_no') replacementText = props.currentUnit?.motor_number || 'N/A';
+        if (varName === 'chassis_no') replacementText = props.currentUnit?.chassis_number || 'N/A';
+        if (varName === 'plate_no') replacementText = props.currentUnit?.plate_number || 'N/A';
+        if (varName === 'tab_approver_name') replacementText = props.tabApprover ? `${props.tabApprover.first_name} ${props.tabApprover.last_name}` : 'N/A';
+        if (varName === 'sp_approver_name') replacementText = props.spApprover ? `${props.spApprover.first_name} ${props.spApprover.last_name}` : 'N/A';
+
+        // Clean up editor-only attributes
+        // NOTE: We do NOT touch el.style or el.className anymore. The database now holds the pure CSS inline styles!
+        el.removeAttribute('data-text-variable');
+        
+        // Inject the real text
+        el.textContent = replacementText;
+    });
+
+    // 2. Process Dynamic Images & Signatures
+    const imageVars = doc.querySelectorAll('span[data-type="customImage"]');
+    imageVars.forEach(span => {
+        const varName = span.getAttribute('data-variable');
+        const img = span.querySelector('img');
+        
+        if (img && varName) {
+            const originalSrc = img.getAttribute('src');
+
+            if (varName === 'lgu-logo') img.src = props.systemSetting?.lgu_logo_path ? `/storage/${props.systemSetting.lgu_logo_path}` : originalSrc;
+            else if (varName === 'qr-code') img.src = props.franchise?.qr_code ? `/storage/qrcodes/${props.franchise.qr_code}` : originalSrc;
+            else if (varName === 'tab-signature') img.src = props.tabApprover?.signature_photo ? `/storage/${props.tabApprover.signature_photo}` : originalSrc;
+            else if (varName === 'sp-signature') img.src = props.spApprover?.signature_photo ? `/storage/${props.spApprover.signature_photo}` : originalSrc;
+            
+            const currentSrc = img.getAttribute('src');
+            if (!currentSrc || currentSrc.includes('undefined') || currentSrc.includes('null') || currentSrc === '') {
+                span.style.display = 'none';
+            }
+        }
+    });
+
+    // 3. CRITICAL FIX: Inject physical space into empty lines! 
+    // This stops elements (like the signature line) from shooting upwards during print parsing.
+    doc.querySelectorAll('p').forEach(p => {
+        if (!p.textContent.trim() && p.children.length === 0) {
+            p.innerHTML = '&nbsp;'; 
+        }
+    });
+
+    return doc.body.innerHTML;
+});
+
+const paperDimensions = {
+    'A4': { width: 794, height: 1123 },
+    'Letter': { width: 816, height: 1056 },
+    'Legal': { width: 816, height: 1344 }
+};
+
+const paperStyle = computed(() => {
+    if (!props.template) return {};
+    
+    const size = paperDimensions[props.template.paper_size] || paperDimensions['A4'];
+    const margins = props.template.margins || { top: 1, bottom: 1, left: 1, right: 1 };
+    
+    const pTop = margins.top * 96;
+    const pRight = margins.right * 96;
+    const pBottom = margins.bottom * 96;
+    const pLeft = margins.left * 96;
+
+    return {
+        width: `${size.width}px`,
+        minHeight: `${size.height}px`,
+        padding: `${pTop}px ${pRight}px ${pBottom}px ${pLeft}px`,
+        margin: '0 auto',
+        backgroundColor: 'white',
+        position: 'relative',
+        boxSizing: 'border-box',
+    };
 });
 </script>
 
 <template>
-    <div class="w-full max-w-[800px] bg-white p-6 mx-auto font-serif text-center relative text-black">
-        <div class="relative z-10">
-            
-            <div style="display: flex !important; flex-direction: row !important; flex-wrap: nowrap !important; align-items: flex-start !important; justify-content: space-between !important;" class="mb-5">
-                
-                <div style="width: 130px; height: 130px; flex-shrink: 0;" class="flex items-center justify-center">
-                    <img v-if="systemSetting?.lgu_logo_path" :src="`/storage/${systemSetting.lgu_logo_path}`" alt="LGU Logo" class="w-full h-full object-contain" />
-                    <div v-else class="w-full h-full border-2 border-dashed border-gray-400 flex items-center justify-center rounded-full text-[10px] font-bold text-gray-400 uppercase tracking-widest text-center">
-                        Logo
-                    </div>
-                </div>
-
-                <div style="flex-grow: 1;" class="px-4 flex flex-col items-center justify-center">
-                    <div class="leading-tight mb-3">
-                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Republic of the Philippines</p>
-                        <h1 class="text-xl font-black uppercase tracking-widest text-gray-900 mt-0.5">Tricycle Adjudication Board</h1>
-                        <p class="text-[10px] font-bold text-gray-500 uppercase tracking-widest mt-0.5">Zamboanga City</p>
-                    </div>
-
-                    <div class="leading-tight mb-3">
-                        <h2 class="text-sm font-black uppercase tracking-wider text-gray-900">Certificate of Public Convenience<br/>to Operate Motorized Tricycle</h2>
-                        <p class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5">[Good for one (1) year]</p>
-                    </div>
-
-                    <div class="leading-tight">
-                        <h3 class="text-sm font-black uppercase tracking-widest text-gray-900 inline-block underline">This Serves as a Franchise</h3>
-                        <p class="text-[9px] text-gray-500 uppercase tracking-widest mt-0.5 italic">(Renewal)</p>
-                    </div>
-                </div>
-
-                <div style="width: 130px; height: 130px; flex-shrink: 0;" class="flex items-center justify-center">
-                    <img v-if="franchise?.qr_code" :src="`/storage/qrcodes/${franchise.qr_code}`" alt="QR Code" class="w-full h-full object-contain" />
-                    <div v-else class="w-full h-full border-2 border-dashed border-gray-400 flex items-center justify-center text-[8px] font-bold text-gray-400 uppercase tracking-widest text-center">
-                        NO QR
-                    </div>
-                    <p>{{ franchise.franchise_number }}</p>
-                    <p>{{ franchise.zone.color }}</p>
-                </div>
-            </div>
-            
-            <div class="mb-4 text-gray-900 leading-snug">
-                
-                <div class="flex flex-col gap-1 mb-4 text-sm">
-                    <p class="text-left ml-6"><span class="font-bold">Name of Operator:</span> {{ ownerName }}</p>
-                    <p class="text-left ml-6"><span class="font-bold">Address:</span> {{ ownerAddress }}</p>
-                </div>
-
-                <p class="text-xs text-left tracking-widest ml-6 mb-4 leading-relaxed">The undersigned operator of legal age and a Filipino citizen, is authorized to operate for hire one (1) unit motorized tricycle described hereunder:</p>
-
-                <div class="my-4 mx-12 border border-gray-800">
-                    <table style="display: table !important; width: 100% !important; border-collapse: collapse !important;" class="w-full text-xs text-center">
-                        <thead style="display: table-header-group !important;">
-                            <tr style="display: table-row !important;" class="bg-gray-50 border-b border-gray-800">
-                                <th style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold uppercase text-[9px] tracking-widest">Make</th>
-                                <th style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold uppercase text-[9px] tracking-widest">Year</th>
-                                <th style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold uppercase text-[9px] tracking-widest">Motor No.</th>
-                                <th style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold uppercase text-[9px] tracking-widest">Chassis No.</th>
-                                <th style="display: table-cell !important; vertical-align: middle !important;" class="px-2 py-1.5 font-bold uppercase text-[9px] tracking-widest">Plate No.</th>
-                            </tr>
-                        </thead>
-                        <tbody style="display: table-row-group !important;">
-                            <tr style="display: table-row !important;">
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.make?.name || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.model_year || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.motor_number || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="border-r border-gray-800 px-2 py-1.5 font-bold">{{ currentUnit?.chassis_number || 'N/A' }}</td>
-                                <td style="display: table-cell !important; vertical-align: middle !important;" class="px-2 py-1.5 font-bold">{{ currentUnit?.plate_number || 'N/A' }}</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <p class="text-xs text-left tracking-widest ml-6 mt-4">Subject however, to the following terms and conditions, to wit:</p>
-                
-                <ol class="list-decimal text-left ml-12 mr-6 text-[11px] space-y-1 mb-6 mt-2 leading-tight">
-                    <li>1. This Certificate of Convenience to operate Motorized Tricycle is subject to the legal provisions prescribed in the City Ordinance No. 185 and its amendments, pertinent issuances and such other rules and regulation as maybe promulgated hereafter.</li>
-                    <li>2. The unit herein authorized shall be registered with the LAND TRANSPORTATION OFFICE, ZAMBOANGA CITY upon issuance of this franchise.</li>
-                    <li>3. This Certificate of Public Convenience shall be valid only for a period of one (1) year from date issue.</li>
-                    <li>4. The unit shall not operate during its rest day.</li>
-                    <li>5. The Operator/Driver SHALL CHARGE ONLY THE AUTHORIZED FARE RATE as prescribed under Ordinance No. 185 and its amendments..</li>
-                    <li>6. Operator and/or driver shall secure and accomplish all legal form requirements and submit the same to this office as supporting papers prior to the issuance of this certificate.</li>
-                    <li>7. Copy of this certificate, together with the original or machine copies of the current registration papers of the motorized tricycle shall be kept with the unit(s) at all times while in operation.</li>
-                    <li>8. Any alteration, addition, or deletion on this certificate shall invalidate this certificate.</li>
-                    <li>9. Failure of the operator or the driver to comply with the Ordinance No. 185 and its amendments or any of the conditions herein will be sufficient cause for the suspension or revocation of this certificate by this office.</li>
-                </ol>
-
-                <div class="mt-4">
-                    <p class="font-bold text-sm text-left ml-6 mb-8">CONFORME:</p>
-                    
-                    <div style="display: flex !important; justify-content: center !important; width: 100% !important;">
-                        <div class="text-center flex flex-col items-center">
-                            <div class="w-48 border-b border-gray-800 mb-1.5"></div>
-                            <p class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">Operator Signature</p>
-                        </div>
-                    </div>
-                </div>
-                
-            </div>
-            
-            <p class="text-xs font-bold tracking-widest mt-8 mb-16 uppercase">ISSUED IN ZAMBOANGA CITY, PHILIPPINES</p>
-
-            <div style="display: flex !important; flex-direction: row !important; justify-content: space-around !important; align-items: flex-end !important; margin-top: 40px !important;" class="px-4">
-                
-                <div class="text-center flex flex-col items-center relative h-20 justify-end">
-                    <img v-if="tabApprover?.signature_photo" :src="`/storage/${tabApprover.signature_photo}`" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); height: 100px; object-fit: contain; z-index: 1;" />
-                    <p style="position: relative; z-index: 2; margin-bottom: 2px; text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff, -1px -1px 0 #fff;" class="font-bold text-[12px] uppercase">
-                        {{ tabApprover ? `${tabApprover.first_name} ${tabApprover.last_name}` : '' }}
-                    </p>
-                    <div style="position: relative; z-index: 2;" class="w-48 border-b border-gray-800 mb-1.5"></div>
-                    <p style="position: relative; z-index: 2;" class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">SP Member</p>
-                </div>
-
-                <div class="text-center flex flex-col items-center relative h-20 justify-end">
-                    <img v-if="spApprover?.signature_photo" :src="`/storage/${spApprover.signature_photo}`" style="position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); height: 100px; object-fit: contain; z-index: 1;" />
-                    <p style="position: relative; z-index: 2; margin-bottom: 2px; text-shadow: 1px 1px 0 #fff, -1px 1px 0 #fff, 1px -1px 0 #fff, -1px -1px 0 #fff;" class="font-bold text-[12px] uppercase">
-                        {{ spApprover ? `${spApprover.first_name} ${spApprover.last_name}` : '' }}
-                    </p>
-                    <div style="position: relative; z-index: 2;" class="w-48 border-b border-gray-800 mb-1.5"></div>
-                    <p style="position: relative; z-index: 2;" class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">City Legal Office</p>
-                    <p style="position: relative; z-index: 2;" class="text-[9px] uppercase font-bold text-gray-600 tracking-widest">TAB Chairman</p>
-                </div>
-            </div>
-            
+    <div class="print-container">
+        <div class="certificate-content text-black editor-paper" :style="paperStyle">
+            <div class="ProseMirror" v-html="parsedContent"></div>
         </div>
     </div>
 </template>
 
 <style>
-/* Default: Hide print area on screen */
-#print-area {
-    display: none;
+.print-container {
+    width: 100%;
+    background-color: white;
+    display: flex;
+    justify-content: center;
 }
 
-/* Print Specific Styles */
+.certificate-content {
+    font-family: inherit;
+    line-height: 1.5;
+    color: black;
+}
+
+.certificate-content, .certificate-content * {
+    box-sizing: border-box;
+}
+
+/* === EXACT CLONE OF TIPTAP EDITOR CSS === */
+.editor-paper .ProseMirror { outline: none; min-height: 100%; position: relative; }
+.editor-paper .ProseMirror::after { content: ""; display: table; clear: both; }
+
+.editor-paper .ProseMirror h1 { font-weight: bold; margin: 0; padding: 0; line-height: inherit;}
+.editor-paper .ProseMirror h2 { font-weight: bold; margin: 0; padding: 0; line-height: inherit;}
+.editor-paper .ProseMirror ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+.editor-paper .ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+
+/* Strictly match editor tightness */
+.editor-paper .ProseMirror p { margin: 0; padding: 0; line-height: inherit; text-align: inherit;} 
+
+/* Stable Table Styles */
+.editor-paper .ProseMirror table {
+    border-collapse: collapse; table-layout: fixed; width: 100% !important; max-width: 100% !important; margin: 1em auto; overflow: hidden;
+}
+.editor-paper .ProseMirror table td, .editor-paper .ProseMirror table th {
+    min-width: 1em; border: 1px solid #000; padding: 6px 8px; vertical-align: top; box-sizing: border-box; position: relative; word-wrap: break-word; overflow-wrap: break-word;
+}
+.editor-paper .ProseMirror table th { font-weight: bold; text-align: left; background-color: transparent; }
+
+/* Image Stabilization */
+.editor-paper .ProseMirror img { max-width: 100%; display: inline-block; }
+.editor-paper .ProseMirror span[data-wrap="behind"] img, 
+.editor-paper .ProseMirror span[data-wrap="in-front"] img { max-width: none !important; }
+
+/* Print Specific Overrides */
 @media print {
-    @page {
-        margin: 0;
-        size: auto;
-    }
-
-    body > * {
-        visibility: hidden;
-    }
-
-    #print-area, #print-area * {
-        visibility: visible;
-    }
-
-    /* Print wrapper should strictly be block and absolute to allow inner flows to function normally */
-    #print-area {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        margin: 0;
-        padding: 0;
-        background: white;
-        z-index: 9999;
-        display: block !important; 
-    }
-
+    @page { margin: 0; size: auto; }
+    
+    .print-container { padding: 0; background-color: transparent; align-items: flex-start !important; }
+    .certificate-content { box-shadow: none !important; border: none !important; page-break-after: avoid; page-break-inside: avoid; }
+    
     * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
-        color-adjust: exact !important;
     }
 }
 </style>

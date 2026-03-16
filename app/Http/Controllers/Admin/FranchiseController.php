@@ -169,6 +169,7 @@ class FranchiseController extends Controller
             'userRole' => auth()->user()->role->value ?? auth()->user()->role,
             'tabApprover' => $tabApprover, // <-- ADDED
             'spApprover' => $spApprover,   // <-- ADDED
+            'certificateTemplate' => \App\Models\FranchiseCertificateTemplate::first(),
         ]);
     }
 

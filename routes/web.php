@@ -33,6 +33,7 @@ use App\Http\Controllers\Encoder\EncoderApplicationController;
 use App\Http\Controllers\Public\NewFranchiseController;
 use App\Http\Controllers\Admin\ApplicationNewFranchiseShowController;
 use App\Http\Controllers\Public\ApplicationCompletionController;
+use App\Http\Controllers\CertificateTemplateController;
 use Illuminate\Support\Facades\Auth;
 use App\Enums\UserRole;
 use App\Models\Franchise;
@@ -422,6 +423,10 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin'])->group(functio
 Route::middleware(['auth', 'prevent-back-history', 'role:admin,releaser,encoder'])->group(function () {
     Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
     Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
+
+    // NEW: Just two routes for the single template editor
+    Route::get('/admin/certificate-template', [CertificateTemplateController::class, 'edit'])->name('certificate-template.edit');
+    Route::post('/admin/certificate-template', [CertificateTemplateController::class, 'update'])->name('certificate-template.update');
 });
 
 // --- ENCODER ONLY ROUTES ---
