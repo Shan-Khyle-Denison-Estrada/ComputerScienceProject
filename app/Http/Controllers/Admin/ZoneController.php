@@ -20,14 +20,14 @@ class ZoneController extends Controller
             $query->where('description', 'like', '%' . $request->search . '%');
         }
 
-        // CHANGED: Get full collection (id, name) instead of just pluck('name')
-        $allBarangays = Barangay::orderBy('name')->get(); 
+        // Fetch the system settings to get the configured office address
+        $settings = \App\Models\SystemSetting::first();
+        $adminAddress = $settings ? $settings->address : '';
 
         return Inertia::render('Admin/Zones/Index', [
-            // CHANGED: Replaced get() with paginate(10)->withQueryString()
             'zones' => $query->latest()->paginate(6)->withQueryString(),
             'filters' => $request->only(['search']),
-            'barangays' => $allBarangays,
+            'adminAddress' => $adminAddress, // Pass the configured address instead
         ]);
     }
 

@@ -6,7 +6,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Modal from '@/Components/Modal.vue';
 import { Head, useForm } from '@inertiajs/vue3';
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, computed } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
@@ -68,6 +68,93 @@ const form = useForm({
     faqs: props.settings.faqs || [], 
     _method: 'PUT'
 });
+
+// --- LOCATION API STATE ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+const activeDropdown = ref(null);
+
+// Local states for UI, which will be concatenated into form.address
+const locStreet = ref(props.settings.address || ''); // Loads existing db string here first
+const locProvince = ref('');
+const locCity = ref('');
+const locBarangay = ref('');
+
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load locations:", error);
+    }
+});
+
+const filteredProvinces = computed(() => {
+    if (!locProvince.value) return provincesList.value;
+    return provincesList.value.filter(p => p.name.toLowerCase().includes(locProvince.value.toLowerCase()));
+});
+
+const filteredCities = computed(() => {
+    if (!locCity.value) return citiesList.value;
+    return citiesList.value.filter(c => c.name.toLowerCase().includes(locCity.value.toLowerCase()));
+});
+
+const filteredBarangays = computed(() => {
+    if (!locBarangay.value) return barangaysList.value;
+    return barangaysList.value.filter(b => b.name.toLowerCase().includes(locBarangay.value.toLowerCase()));
+});
+
+// Joins the selected parts and updates the main form field sent to the backend
+const updateFormAddress = () => {
+    const parts = [locStreet.value, locBarangay.value, locCity.value, locProvince.value].filter(Boolean);
+    form.address = parts.join(', ');
+};
+
+const selectProvince = async (prov) => {
+    locProvince.value = prov.name;
+    activeDropdown.value = null;
+    
+    locCity.value = '';
+    locBarangay.value = '';
+    citiesList.value = [];
+    barangaysList.value = [];
+    updateFormAddress();
+
+    try {
+        const res = await fetch(prov.isNCR 
+            ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities` 
+            : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`
+        );
+        citiesList.value = await res.json();
+    } catch (error) {
+        console.error("Failed to load cities:", error);
+    }
+};
+
+const selectCity = async (city) => {
+    locCity.value = city.name;
+    activeDropdown.value = null;
+    
+    locBarangay.value = '';
+    barangaysList.value = [];
+    updateFormAddress();
+
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+        barangaysList.value = await res.json();
+    } catch (error) {
+        console.error("Failed to load barangays:", error);
+    }
+};
+
+const selectBarangay = (brgy) => {
+    locBarangay.value = brgy.name;
+    activeDropdown.value = null;
+    updateFormAddress();
+};
 
 // Automatically update form's dates when month or day changes
 watch([selectedStartMonth, selectedStartDay], ([newMonth, newDay]) => {
@@ -189,6 +276,8 @@ const submitSettings = () => {
     <Head title="System Settings" />
 
     <AuthenticatedLayout>
+        <div v-if="activeDropdown" @click="activeDropdown = null" class="fixed inset-0 z-40"></div>
+        
         <div class="flex flex-col h-[calc(100vh-6rem)] w-full">
             
             <div class="mb-5 flex flex-col md:flex-row md:items-center justify-between gap-4 flex-shrink-0">
@@ -510,10 +599,59 @@ const submitSettings = () => {
                                         <TextInput v-model="form.contact_number" placeholder="e.g. +63 912 345 6789 or (065) 123-4567" class="mt-1 w-full text-sm" />
                                         <div v-if="form.errors.contact_number" class="text-red-500 text-xs mt-1">{{ form.errors.contact_number }}</div>
                                     </div>
-                                    <div>
-                                        <InputLabel>Office Address</InputLabel>
-                                        <TextInput v-model="form.address" placeholder="e.g. City Hall, Dapitan City, Zamboanga del Norte" class="mt-1 w-full text-sm" />
-                                        <div v-if="form.errors.address" class="text-red-500 text-xs mt-1">{{ form.errors.address }}</div>
+                                    
+                                    <div class="md:col-span-2 mt-2 border border-gray-100 rounded-lg p-4 bg-gray-50 relative z-50">
+                                        <div class="flex items-center justify-between mb-3 border-b border-gray-200 pb-2">
+                                            <InputLabel>Office Address</InputLabel>
+                                            <span class="text-xs text-gray-500 text-right">Preview: <span class="font-bold text-blue-600">{{ form.address || 'None' }}</span></span>
+                                        </div>
+                                        
+                                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 relative z-20">
+                                            <div>
+                                                <InputLabel class="!text-xs text-gray-500 mb-1">Street / Building Name</InputLabel>
+                                                <TextInput v-model="locStreet" @input="updateFormAddress" placeholder="e.g. City Hall" class="mt-1 w-full text-sm" />
+                                            </div>
+
+                                            <div class="relative">
+                                                <InputLabel class="!text-xs text-gray-500 mb-1">Province</InputLabel>
+                                                <TextInput v-model="locProvince" @focus="activeDropdown = 'province'" @input="updateFormAddress" placeholder="Search Province..." class="mt-1 w-full text-sm" autocomplete="off" />
+                                                <div v-if="activeDropdown === 'province'" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                                    <ul class="py-1">
+                                                        <li v-for="prov in filteredProvinces" :key="prov.code" @click="selectProvince(prov)" class="px-3 py-1.5 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700">
+                                                            {{ prov.name }}
+                                                        </li>
+                                                        <li v-if="!filteredProvinces.length" class="px-3 py-1.5 text-sm text-gray-500 italic text-center">No results found</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            <div class="relative">
+                                                <InputLabel class="!text-xs text-gray-500 mb-1">City/Municipality</InputLabel>
+                                                <TextInput v-model="locCity" @focus="activeDropdown = 'city'" @input="updateFormAddress" :disabled="!citiesList.length" placeholder="Search City..." class="mt-1 w-full text-sm disabled:bg-gray-200 disabled:cursor-not-allowed" autocomplete="off" />
+                                                <div v-if="activeDropdown === 'city' && citiesList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                                    <ul class="py-1">
+                                                        <li v-for="city in filteredCities" :key="city.code" @click="selectCity(city)" class="px-3 py-1.5 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700">
+                                                            {{ city.name }}
+                                                        </li>
+                                                        <li v-if="!filteredCities.length" class="px-3 py-1.5 text-sm text-gray-500 italic text-center">No results found</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+
+                                            <div class="relative">
+                                                <InputLabel class="!text-xs text-gray-500 mb-1">Barangay</InputLabel>
+                                                <TextInput v-model="locBarangay" @focus="activeDropdown = 'barangay'" @input="updateFormAddress" :disabled="!barangaysList.length" placeholder="Search Barangay..." class="mt-1 w-full text-sm disabled:bg-gray-200 disabled:cursor-not-allowed" autocomplete="off" />
+                                                <div v-if="activeDropdown === 'barangay' && barangaysList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                                    <ul class="py-1">
+                                                        <li v-for="brgy in filteredBarangays" :key="brgy.code" @click="selectBarangay(brgy)" class="px-3 py-1.5 text-sm text-gray-700 cursor-pointer hover:bg-blue-50 hover:text-blue-700">
+                                                            {{ brgy.name }}
+                                                        </li>
+                                                        <li v-if="!filteredBarangays.length" class="px-3 py-1.5 text-sm text-gray-500 italic text-center">No results found</li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div v-if="form.errors.address" class="text-red-500 text-xs mt-2">{{ form.errors.address }}</div>
                                     </div>
                                 </div>
                             </div>

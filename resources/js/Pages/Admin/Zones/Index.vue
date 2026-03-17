@@ -5,24 +5,24 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
+import Pagination from '@/Components/Pagination.vue'; 
 import { Head, useForm, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const props = defineProps({
-    zones: Object, // <-- CHANGED: Array to Object for Pagination
+    zones: Object,
     filters: Object,
-    barangays: Array 
+    adminAddress: String // Replaced barangays Array with adminAddress String
 });
 
 // --- STATE ---
 const showAddModal = ref(false);
 const showEditModal = ref(false);
-const showBarangayModal = ref(false);
 const showCoverageModal = ref(false); 
+const apiBarangays = ref([]); // Holds the dynamically fetched barangays
 
 // --- SEARCH ---
-const search = ref(''); 
+const search = ref('');
 
 const visibleZones = computed(() => {
     // <-- CHANGED: props.zones to props.zones.data
@@ -48,8 +48,48 @@ const isDropdownOpen = ref(false);
 // --- FORMS ---
 const addForm = useForm({ description: '', color: '', coverage: [] });
 const editForm = useForm({ id: null, description: '', color: '', coverage: [], _method: 'PUT' });
-const barangayAddForm = useForm({ name: '' });
-const barangayEditForm = useForm({ id: null, name: '', _method: 'PUT' });
+
+// --- API FETCHING ON MOUNT ---
+onMounted(async () => {
+    // Parse the address to find City and Province (assuming format: "Street, Barangay, City, Province")
+    const parts = props.adminAddress ? props.adminAddress.split(',').map(s => s.trim()) : [];
+    
+    if (parts.length >= 2) {
+        const provinceName = parts[parts.length - 1];
+        const cityName = parts[parts.length - 2];
+
+        try {
+            // 1. Fetch Provinces
+            const provRes = await fetch('https://psgc.gitlab.io/api/provinces');
+            let provinces = await provRes.json();
+            provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+            
+            const prov = provinces.find(p => p.name.toLowerCase() === provinceName.toLowerCase());
+            
+            if (prov) {
+                // 2. Fetch Cities
+                const cityRes = await fetch(prov.isNCR 
+                    ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities` 
+                    : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`
+                );
+                const cities = await cityRes.json();
+                
+                const city = cities.find(c => c.name.toLowerCase() === cityName.toLowerCase());
+                
+                if (city) {
+                    // 3. Fetch Barangays for this specific City
+                    const brgyRes = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+                    const results = await brgyRes.json();
+                    
+                    // Sort alphabetically
+                    apiBarangays.value = results.sort((a, b) => a.name.localeCompare(b.name));
+                }
+            }
+        } catch (error) {
+            console.error("Failed to load official barangays:", error);
+        }
+    }
+});
 
 // --- HELPERS ---
 const toSentenceCase = (str) => {
@@ -79,7 +119,8 @@ const availableBarangays = (formType) => {
     const currentZoneId = formType === 'edit' ? editForm.id : null;
     const globallyUsed = getGloballyUsedBarangays(currentZoneId);
 
-    return props.barangays.filter(b => {
+    // Swap props.barangays for apiBarangays.value
+    return apiBarangays.value.filter(b => {
         return !globallyUsed.has(b.name) && !currentCoverage.includes(b.name);
     });
 };
