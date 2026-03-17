@@ -22,7 +22,7 @@ class ApplicationController extends Controller
 {
     public function create()
     {
-        $relevantGroups = ['Franchise Owner Account', 'General', 'New Franchise'];
+        $relevantGroups = ['Franchise Owner Account',];
         
         $requirements = EvaluationRequirement::where('is_active', true)
             ->whereIn('group', $relevantGroups)
