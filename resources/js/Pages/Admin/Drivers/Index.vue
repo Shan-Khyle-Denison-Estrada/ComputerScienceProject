@@ -14,6 +14,7 @@ const props = defineProps({
     drivers: Object,
     franchiseOwners: Array,
     barangays: Array,
+    existingDriverUserIds: Array,
     filters: Object
 });
 
@@ -21,6 +22,7 @@ const props = defineProps({
 const provincesList = ref([]);
 const citiesList = ref([]);
 const barangaysList = ref([]);
+const showAlreadyDriverModal = ref(false);
 const activeDropdown = ref(null);
 
 onMounted(async () => {
@@ -242,12 +244,45 @@ const fillDetailsFromOwner = (owner, formTarget) => {
     formTarget.city = owner.city || 'Zamboanga City';
 };
 
-// --- SELECTION HANDLERS ---
-const selectAddOwner = (owner) => {
-    addForm.user_id = owner.id;
-    addOwnerSearch.value = `${owner.first_name} ${owner.last_name}`;
-    fillDetailsFromOwner(owner, addForm);
+const selectAddOwner = async (owner) => {
+
+    if (props.existingDriverUserIds && props.existingDriverUserIds.includes(owner.id)) {
+        showAddOwnerDropdown.value = false;
+        addOwnerSearch.value = ''; // Reset the search input
+        showAlreadyDriverModal.value = true; // Show the blocker modal
+        return; // Stop execution
+    }
+    addOwnerSearch.value = owner.first_name + ' ' + owner.last_name;
     showAddOwnerDropdown.value = false;
+    
+    addForm.user_id = owner.id;
+    addForm.first_name = owner.first_name || '';
+    addForm.middle_name = owner.middle_name || '';
+    addForm.last_name = owner.last_name || '';
+    addForm.contact_number = owner.contact_number ? formatContactNumber(owner.contact_number) : '';
+    addForm.street = owner.street_address || ''; // FIXED: Map street_address to street
+    addForm.province = owner.province || '';
+    addForm.city = owner.city || '';
+    addForm.barangay = owner.barangay || '';
+
+    // NEW: Pre-load API locations for the dropdowns so they don't break
+    if (owner.province) {
+        const prov = provincesList.value.find(p => p.name === owner.province);
+        if (prov) {
+            try {
+                const res = await fetch(prov.isNCR ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities` : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`);
+                citiesList.value = await res.json();
+                
+                if (owner.city) {
+                    const city = citiesList.value.find(c => c.name === owner.city);
+                    if (city) {
+                        const res2 = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+                        barangaysList.value = await res2.json();
+                    }
+                }
+            } catch (e) { console.error("Failed to preload locations for autofill:", e); }
+        }
+    }
 };
 
 const selectAddBarangay = (name) => {
@@ -548,8 +583,8 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                                 <TextInput type="text" class="w-full pr-10" v-model="addOwnerSearch" placeholder="Search owner..." @focus="showAddOwnerDropdown = true" @blur="handleAddOwnerBlur" />
                                 <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none"><svg class="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg></div>
                             </div>
-                            <div v-if="showAddOwnerDropdown && filteredAddOwners.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div v-for="owner in filteredAddOwners" :key="owner.id" @click="selectAddOwner(owner)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700">{{ owner.first_name }} {{ owner.last_name }}</div>
+                            <div v-if="showAddOwnerDropdown && filteredAddOwners.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto z-50">
+                                <div v-for="owner in filteredAddOwners" :key="owner.id" @mousedown.prevent="selectAddOwner(owner)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700">{{ owner.first_name }} {{ owner.last_name }}</div>
                             </div>
                         </div>
                     </div>
@@ -759,6 +794,21 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                 <div class="mt-6 flex justify-end gap-3 pt-2">
                     <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
                     <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showAlreadyDriverModal" @close="showAlreadyDriverModal = false" maxWidth="sm">
+            <div class="p-6">
+                <div class="flex items-center justify-center mb-4 text-red-500">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
+                </div>
+                <h2 class="text-lg font-bold text-center text-gray-900 mb-2">Already a Driver</h2>
+                <p class="text-sm text-center text-gray-600 mb-6">
+                    This franchise owner already has an existing driver profile. You cannot register them as a driver again.
+                </p>
+                <div class="flex justify-center">
+                    <PrimaryButton @click="showAlreadyDriverModal = false">Understood</PrimaryButton>
                 </div>
             </div>
         </Modal>

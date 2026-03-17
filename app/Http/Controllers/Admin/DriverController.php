@@ -35,11 +35,13 @@ class DriverController extends Controller
         // Fetch Data for Dropdowns
         $franchiseOwners = User::where('role', 'franchise_owner')->get(); 
         $barangays = Barangay::orderBy('name')->get(); // Fetch Barangays sorted by name
+        $existingDriverUserIds = Driver::whereNotNull('user_id')->pluck('user_id')->toArray();
 
         return Inertia::render('Admin/Drivers/Index', [
             'drivers' => $drivers,
             'franchiseOwners' => $franchiseOwners,
             'barangays' => $barangays, // Pass to View
+            'existingDriverUserIds' => $existingDriverUserIds,
             'filters' => $request->only(['search', 'status']),
         ]);
     }
