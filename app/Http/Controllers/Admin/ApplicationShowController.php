@@ -225,7 +225,7 @@ class ApplicationShowController extends Controller
         // if ($application->evaluations()->where('is_compliant', false)->exists()) { ... }
 
         $application->update([
-            'status' => 'Completed',
+            'status' => 'Approved',
             'reviewed_at' => now()
         ]);
 

@@ -111,7 +111,7 @@ class ApplicationChangeOfUnitShowController extends Controller
 
     public function approveApplication(Application $application)
     {
-        $application->update(['status' => 'Completed']);
+        $application->update(['status' => 'Approved']);
         return redirect()->back()->with('success', 'Application approved. You can now finalize the unit change.');
     }
 
