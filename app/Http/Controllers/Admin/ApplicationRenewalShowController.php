@@ -109,7 +109,7 @@ class ApplicationRenewalShowController extends Controller
             return redirect()->back()->withErrors(['error' => 'Cannot approve renewal: Franchise has more than 3 unresolved complaints.']);
         }
 
-        $application->update(['status' => 'Approved']);
+        $application->update(['status' => 'Completed']);
         return redirect()->back()->with('success', 'Application approved. You can now finalize the renewal.');
     }
 

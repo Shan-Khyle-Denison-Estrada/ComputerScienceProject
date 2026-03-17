@@ -16,7 +16,7 @@ use Inertia\Inertia;
 
 class ApplicationChangeOfUnitShowController extends Controller
 {
-public function show(Application $application)
+    public function show(Application $application)
     {
         abort_if($application->application_type !== 'Change of Unit', 404);
 
@@ -111,7 +111,7 @@ public function show(Application $application)
 
     public function approveApplication(Application $application)
     {
-        $application->update(['status' => 'Approved']);
+        $application->update(['status' => 'Completed']);
         return redirect()->back()->with('success', 'Application approved. You can now finalize the unit change.');
     }
 

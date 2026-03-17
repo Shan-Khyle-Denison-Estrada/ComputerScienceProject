@@ -67,7 +67,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
 
     public function approveApplication(Application $application)
     {
-        $application->update(['status' => 'Approved']);
+        $application->update(['status' => 'Completed']);
         return redirect()->back()->with('success', 'Application approved. You can now finalize the ownership change.');
     }
 
@@ -99,7 +99,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
         return redirect()->back()->with('success', 'Application returned for compliance.');
     }
 
-// Finalize Ownership Transfer in Database
+    // Finalize Ownership Transfer in Database
     public function finalizeApplication(Request $request, Application $application)
     {
         // Check if operator already exists by TIN number to determine if password is required
