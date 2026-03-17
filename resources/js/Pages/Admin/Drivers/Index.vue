@@ -559,7 +559,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                         <div><InputLabel>Last Name <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.last_name" required /></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" required /></div>
+                        <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" maxlength="13" required /></div>
                         <div><InputLabel>Street Address <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.street" required /></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4" @click.stop>
@@ -653,7 +653,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                         <div><InputLabel>Last Name <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.last_name" required /></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" required /></div>
+                        <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" maxlength="13" required /></div>
                         <div><InputLabel>Street Address <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.street" required /></div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4" @click.stop>

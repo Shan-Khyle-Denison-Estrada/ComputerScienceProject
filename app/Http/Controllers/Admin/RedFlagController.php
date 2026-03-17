@@ -49,6 +49,13 @@ class RedFlagController extends Controller
     // Store a new Red Flag (from Franchise Show page)
     public function store(Request $request, Franchise $franchise)
     {
+        // 1. Intercept "Other" and map it to a valid Nature ID
+        if ($request->nature_id === 'Other') {
+            $otherNature = NatureOfRedFlag::firstOrCreate(['name' => 'Other']);
+            $request->merge(['nature_id' => $otherNature->id]);
+        }
+
+        // 2. Validate normally now that nature_id is guaranteed to be a valid ID
         $validated = $request->validate([
             'nature_id' => 'required|exists:nature_of_red_flags,id',
             'remarks' => 'nullable|string',
