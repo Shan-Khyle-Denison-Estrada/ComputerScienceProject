@@ -93,14 +93,15 @@ watch(assessmentQuery, (newVal) => {
     }
 });
 
-// --- SELECTION ACTIONS ---
 const selectAssessment = (assessment) => {
     addForm.assessment_id = assessment.id;
     assessmentQuery.value = assessment.reference_number 
         || assessment.application_reference_id 
         || `ASM-${assessment.id}`;
     
-    addForm.amount_paid = ''; 
+    // Auto-fill with the assessment's remaining balance or total amount
+    addForm.amount_paid = assessment.balance || assessment.total_amount || ''; 
+    
     selectedAssessmentDetails.value = assessment;
     showAssessmentDropdown.value = false;
 };
