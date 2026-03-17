@@ -140,6 +140,16 @@ const submit = () => {
             </div>
 
             <form @submit.prevent="submit">
+
+                <div v-if="Object.keys(form.errors).length > 0" class="mb-6 p-4 rounded-lg bg-red-50 border border-red-200">
+                    <div class="flex items-center gap-2 mb-2">
+                        <svg class="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        <span class="text-sm font-bold text-red-900">Please correct the following errors:</span>
+                    </div>
+                    <ul class="list-disc list-inside text-xs text-red-700">
+                        <li v-for="(error, field) in form.errors" :key="field">{{ error }}</li>
+                    </ul>
+                </div>
                 
                 <div class="mb-6 p-4 rounded-lg border" :class="unitExists ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'">
                     <InputLabel value="System Detection" class="text-sm font-bold mb-1" :class="unitExists ? 'text-green-900' : 'text-blue-900'" />
@@ -158,32 +168,37 @@ const submit = () => {
                 <div class="space-y-4 mb-6">
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <InputLabel value="Unit Make" class="text-xs mb-0" />
-                            <select v-model="form.make_id" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm py-1.5" required>
+                            <InputLabel value="Unit Make" class="text-xs mb-0" :class="{'text-red-600': form.errors.make_id}" />
+                            <select v-model="form.make_id" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm py-1.5" :class="{'border-red-500 focus:ring-red-500': form.errors.make_id}" required>
                                 <option value="" disabled>Select Make</option>
                                 <option v-for="make in unitMakes" :key="make.id" :value="make.id">
                                     {{ make.name }}
                                 </option>
                             </select>
+                            <div v-if="form.errors.make_id" class="text-red-500 text-[10px] mt-1">{{ form.errors.make_id }}</div>
                         </div>
                         <div>
-                            <InputLabel value="Model Year" class="text-xs mb-0" />
-                            <TextInput v-model="form.model_year" type="number" class="block w-full text-sm py-1.5" required />
+                            <InputLabel value="Model Year" class="text-xs mb-0" :class="{'text-red-600': form.errors.model_year}" />
+                            <TextInput v-model="form.model_year" type="number" class="block w-full text-sm py-1.5" :class="{'border-red-500': form.errors.model_year}" required />
+                            <div v-if="form.errors.model_year" class="text-red-500 text-[10px] mt-1">{{ form.errors.model_year }}</div>
                         </div>
                     </div>
 
                     <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <InputLabel value="Plate Number" class="text-xs mb-0" />
-                            <TextInput v-model="form.plate_number" class="block w-full text-sm py-1.5 uppercase bg-gray-50 text-gray-500" readonly required />
+                            <InputLabel value="Plate Number" class="text-xs mb-0" :class="{'text-red-600': form.errors.plate_number}" />
+                            <TextInput v-model="form.plate_number" class="block w-full text-sm py-1.5 uppercase bg-gray-50 text-gray-500" :class="{'border-red-500': form.errors.plate_number}" readonly required />
+                            <div v-if="form.errors.plate_number" class="text-red-500 text-[10px] mt-1">{{ form.errors.plate_number }}</div>
                         </div>
                         <div>
-                            <InputLabel value="Motor Number" class="text-xs mb-0" />
-                            <TextInput v-model="form.motor_number" class="block w-full text-sm py-1.5 uppercase" required />
+                            <InputLabel value="Motor Number" class="text-xs mb-0" :class="{'text-red-600': form.errors.motor_number}" />
+                            <TextInput v-model="form.motor_number" class="block w-full text-sm py-1.5 uppercase" :class="{'border-red-500': form.errors.motor_number}" required />
+                            <div v-if="form.errors.motor_number" class="text-red-500 text-[10px] mt-1">{{ form.errors.motor_number }}</div>
                         </div>
                         <div>
-                            <InputLabel value="Chassis Number" class="text-xs mb-0" />
-                            <TextInput v-model="form.chassis_number" class="block w-full text-sm py-1.5 uppercase" required />
+                            <InputLabel value="Chassis Number" class="text-xs mb-0" :class="{'text-red-600': form.errors.chassis_number}" />
+                            <TextInput v-model="form.chassis_number" class="block w-full text-sm py-1.5 uppercase" :class="{'border-red-500': form.errors.chassis_number}" required />
+                            <div v-if="form.errors.chassis_number" class="text-red-500 text-[10px] mt-1">{{ form.errors.chassis_number }}</div>
                         </div>
                     </div>
                 </div>
@@ -192,19 +207,22 @@ const submit = () => {
                     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Unit Photos</h3>
                     <div class="grid grid-cols-4 gap-4">
                         <div v-for="side in ['front', 'back', 'left', 'right']" :key="side">
-                            <InputLabel :value="side" class="text-xs mb-1 capitalize" />
+                            <InputLabel :value="side" class="text-xs mb-1 capitalize" :class="{'text-red-600': form.errors[`${side}_photo`] || form.errors[`existing_${side}_photo`]}" />
                             <div class="relative group">
-                                <div class="w-full h-24 border-2 border-dashed border-gray-300 rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center transition-colors group-hover:border-blue-400">
+                                <div class="w-full h-24 border-2 border-dashed rounded-lg overflow-hidden bg-gray-50 flex items-center justify-center transition-colors group-hover:border-blue-400"
+                                     :class="(form.errors[`${side}_photo`] || form.errors[`existing_${side}_photo`]) ? 'border-red-400' : 'border-gray-300'">
                                     <img v-if="previews[side]" :src="previews[side]" class="w-full h-full object-cover" />
                                     <div v-else class="text-center p-2">
-                                        <svg class="mx-auto h-6 w-6 text-gray-400" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                                        <svg class="mx-auto h-6 w-6" :class="(form.errors[`${side}_photo`] || form.errors[`existing_${side}_photo`]) ? 'text-red-400' : 'text-gray-400'" stroke="currentColor" fill="none" viewBox="0 0 48 48">
                                             <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
                                         </svg>
-                                        <span class="mt-1 block text-[10px] text-gray-500">Upload</span>
+                                        <span class="mt-1 block text-[10px]" :class="(form.errors[`${side}_photo`] || form.errors[`existing_${side}_photo`]) ? 'text-red-500' : 'text-gray-500'">Upload</span>
                                     </div>
                                     <input type="file" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept="image/*" @change="(e) => handleFileChange(e, side)" />
                                 </div>
                             </div>
+                            <div v-if="form.errors[`${side}_photo`]" class="text-red-500 text-[10px] mt-1">{{ form.errors[`${side}_photo`] }}</div>
+                            <div v-else-if="form.errors[`existing_${side}_photo`]" class="text-red-500 text-[10px] mt-1">{{ form.errors[`existing_${side}_photo`] }}</div>
                         </div>
                     </div>
                 </div>
@@ -213,19 +231,21 @@ const submit = () => {
                     <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">Change Details</h3>
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <InputLabel value="Effectivity Date" class="text-xs mb-0" />
-                            <TextInput type="date" v-model="form.change_date" class="block w-full text-sm py-1.5" required />
+                            <InputLabel value="Effectivity Date" class="text-xs mb-0" :class="{'text-red-600': form.errors.change_date}" />
+                            <TextInput type="date" v-model="form.change_date" class="block w-full text-sm py-1.5" :class="{'border-red-500': form.errors.change_date}" required />
+                            <div v-if="form.errors.change_date" class="text-red-500 text-[10px] mt-1">{{ form.errors.change_date }}</div>
                         </div>
                         <div>
-                             <InputLabel value="Remarks" class="text-xs mb-0" />
-                             <TextInput v-model="form.remarks" class="block w-full text-sm py-1.5" placeholder="Reason for change..." />
+                             <InputLabel value="Remarks" class="text-xs mb-0" :class="{'text-red-600': form.errors.remarks}" />
+                             <TextInput v-model="form.remarks" class="block w-full text-sm py-1.5" placeholder="Reason for change..." :class="{'border-red-500': form.errors.remarks}" />
+                             <div v-if="form.errors.remarks" class="text-red-500 text-[10px] mt-1">{{ form.errors.remarks }}</div>
                         </div>
                     </div>
                 </div>
 
                 <div class="flex justify-end gap-3">
                     <SecondaryButton @click="emit('close')" class="text-xs h-9" :disabled="form.processing">Cancel</SecondaryButton>
-                    <PrimaryButton :disabled="form.processing" class="text-xs h-9 px-6">
+                    <PrimaryButton :disabled="form.processing" class="text-xs h-9 px-6" :class="{'opacity-75': form.processing}">
                         {{ form.processing ? 'Finalizing...' : 'Save & Finalize' }}
                     </PrimaryButton>
                 </div>
