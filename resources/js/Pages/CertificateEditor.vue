@@ -15,7 +15,7 @@ import { TableCell } from '@tiptap/extension-table-cell';
 import { Dropcursor } from '@tiptap/extension-dropcursor';
 import TextAlign from '@tiptap/extension-text-align';
 import HorizontalRule from '@tiptap/extension-horizontal-rule';
-import Underline from '@tiptap/extension-underline'; // <-- NEW: Underline
+import Underline from '@tiptap/extension-underline';
 import { Plugin } from '@tiptap/pm/state';
 
 // Typography Extensions
@@ -62,15 +62,12 @@ const marginGuideStyle = computed(() => ({
     bottom: `${(form.margins.bottom || 0) * 96}px`, left: `${(form.margins.left || 0) * 96}px`,
 }));
 
-// --- STRICT PARAGRAPH OVERRIDE ---
 const CustomParagraph = Paragraph.extend({
     renderHTML({ HTMLAttributes }) {
-        // Enforce margin: 0 permanently into the generated HTML
         return ['p', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { style: 'margin: 0;' }), 0];
     }
 });
 
-// --- TYPOGRAPHY ENGINES ---
 const FontSize = Extension.create({
     name: 'fontSize',
     addOptions() { return { types: ['textStyle'] } },
@@ -122,10 +119,8 @@ const LineHeight = Extension.create({
     }
 });
 
-// --- EDITABLE SIGNATORY LINE (HR) ---
 const CustomHR = HorizontalRule.extend({
-    selectable: true,
-    draggable: true,
+    selectable: true, draggable: true,
     addAttributes() {
         return {
             width: { default: '100%', parseHTML: el => el.style.width || '100%' },
@@ -148,7 +143,6 @@ const CustomHR = HorizontalRule.extend({
     }
 });
 
-// --- TEXT VARIABLES ---
 const textVariablesList = [
     { id: 'franchise_number', label: 'Franchise Number' },
     { id: 'zone_color', label: 'Zone Color' },
@@ -177,8 +171,6 @@ const TextVariable = Node.create({
         }
     },
     parseHTML() { return [{ tag: 'span[data-text-variable]' }] },
-    
-    // WYSIWYG OUTPUT FIX: This generates pure HTML for the database, skipping all editor UI classes
     renderHTML({ HTMLAttributes }) {
         const wrap = HTMLAttributes.wrap || 'inline';
         const x = HTMLAttributes.x || 0;
@@ -186,7 +178,6 @@ const TextVariable = Node.create({
         const w = HTMLAttributes.width || 'auto';
         const align = HTMLAttributes.textAlign || 'left';
         
-        // Build the precise CSS structure
         let style = `display: inline-block; width: ${w}; text-align: ${align}; vertical-align: top; box-sizing: border-box; `;
         
         if (wrap === 'square-left') style += ' float: left; margin: 0.5rem 1.5rem 0.5rem 0;';
@@ -196,21 +187,30 @@ const TextVariable = Node.create({
         else if (wrap === 'in-front') style += ` position: absolute; z-index: 10; left: ${x}px; top: ${y}px; white-space: nowrap;`;
         else style += ' margin: 0;'; 
 
-        // Notice: NO 'class' attribute. Pure rendering only.
+        // FIX: We MUST include the data-* attributes here so TipTap can remember them when the page reloads!
         return ['span', { 
             'data-text-variable': HTMLAttributes.variable, 
+            'data-label': HTMLAttributes.label,
+            'data-wrap': wrap,
+            'data-x': x,
+            'data-y': y,
+            'data-width': w,
+            'data-text-align': align,
             style 
         }, `[${HTMLAttributes.label}]`];
     },
     addNodeView() { return VueNodeViewRenderer(DraggableTextVariable) }
 });
 
-// --- ADVANCED CUSTOM TIPTAP IMAGE ENGINE ---
+// --- ENHANCED CUSTOM TIPTAP IMAGE ENGINE ---
 const CustomImage = Node.create({
     name: 'customImage', inline: true, group: 'inline', draggable: true, 
     addAttributes() {
         return {
-            src: { default: null }, width: { default: '200px' }, wrap: { default: 'inline' },
+            src: { default: null }, 
+            width: { default: '200px' }, 
+            height: { default: 'auto' }, // Support explicit heights
+            wrap: { default: 'inline' },
             x: { default: 0 }, y: { default: 0 }, 'data-variable': { default: null }
         }
     },
@@ -219,9 +219,11 @@ const CustomImage = Node.create({
             { 
                 tag: 'span[data-type="customImage"]',
                 getAttrs: node => ({
-                    src: node.getAttribute('data-src'), width: node.getAttribute('data-width') || '200px',
+                    src: node.getAttribute('data-src'), 
+                    width: node.getAttribute('data-width') || '200px',
+                    height: node.getAttribute('data-height') || 'auto',
                     wrap: node.getAttribute('data-wrap') || 'inline',
-                    x: parseFloat(node.getAttribute('data-x') || 0), y: parseFloat(node.getAttribute('data-y') || 0),
+                    x: parseFloat(node.getAttribute('data-x')) || 0, y: parseFloat(node.getAttribute('data-y')) || 0,
                     'data-variable': node.getAttribute('data-variable')
                 })
             },
@@ -231,21 +233,31 @@ const CustomImage = Node.create({
     renderHTML({ HTMLAttributes }) {
         const wrap = HTMLAttributes.wrap || 'inline';
         const width = HTMLAttributes.width || '200px';
+        const height = HTMLAttributes.height || 'auto';
         const x = HTMLAttributes.x || 0;
         const y = HTMLAttributes.y || 0;
 
-        let style = `width: ${width};`;
-        let imgStyle = 'width: 100%; height: auto; display: block;';
+        let style = `display: inline-block; width: ${width}; height: ${height}; vertical-align: top; box-sizing: border-box; `;
+        let imgStyle = 'width: 100%; height: 100%; object-fit: contain; display: block;';
         
         if (wrap === 'square-left') style += ' float: left; margin: 0.5rem 1.5rem 0.5rem 0;';
         else if (wrap === 'square-right') style += ' float: right; margin: 0.5rem 0 0.5rem 1.5rem;';
-        else if (wrap === 'top-bottom') style += ' display: block; width: max-content; clear: both; margin: 1rem auto;';
-        else if (wrap === 'behind') { style += ` position: absolute; z-index: 0; left: ${x}px; top: ${y}px; max-width: none;`; imgStyle += ' max-width: none;'; }
-        else if (wrap === 'in-front') { style += ` position: absolute; z-index: 10; left: ${x}px; top: ${y}px; max-width: none;`; imgStyle += ' max-width: none;'; }
-        else style += ' margin: 0; display: inline-block;'; 
+        else if (wrap === 'top-bottom') style += ' display: block; clear: both; margin: 1rem auto;';
+        else if (wrap === 'behind') { style += ` position: absolute; z-index: 0; left: ${x}px; top: ${y}px; white-space: nowrap;`; imgStyle += ' max-width: none;'; }
+        else if (wrap === 'in-front') { style += ` position: absolute; z-index: 10; left: ${x}px; top: ${y}px; white-space: nowrap;`; imgStyle += ' max-width: none;'; }
+        else style += ' margin: 0;'; 
 
+        // FIX: Ensure image parameters are saved on reload
         return ['span', { 
-            'data-type': 'customImage', 'data-src': HTMLAttributes.src, 'data-variable': HTMLAttributes['data-variable'] || '', style 
+            'data-type': 'customImage', 
+            'data-src': HTMLAttributes.src, 
+            'data-width': width, 
+            'data-height': height, 
+            'data-wrap': wrap, 
+            'data-x': x, 
+            'data-y': y, 
+            'data-variable': HTMLAttributes['data-variable'] || '', 
+            style 
         }, ['img', { src: HTMLAttributes.src, style: imgStyle }]];
     },
     addNodeView() { return VueNodeViewRenderer(ResizableImage) }
@@ -267,7 +279,6 @@ const dropPlugin = new Plugin({
     },
 });
 
-// --- UNIVERSAL LAYOUT TRACKER ---
 const isLayoutElementSelected = ref(false);
 const selectedElementType = ref('');
 const currentLayoutWrap = ref('inline');
@@ -314,7 +325,6 @@ const editor = useEditor({
 
 onBeforeUnmount(() => { if (editor.value) editor.value.destroy(); });
 
-// Actions
 const addTable = () => editor.value.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run();
 const addImageByUrl = () => {
     const url = window.prompt('Enter the URL of the image:');
@@ -426,6 +436,20 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
                                         <button type="button" @click="setLayoutWrap('in-front')" :class="{'bg-blue-100 border-blue-400 font-bold': currentLayoutWrap === 'in-front'}" class="px-2 py-1.5 text-[10px] border rounded hover:bg-gray-100 text-left">In Front of Text</button>
                                     </div>
                                     
+                                    <template v-if="selectedElementType === 'customImage'">
+                                        <label class="block text-[10px] font-bold text-gray-600 mb-1 uppercase">Image Dimensions</label>
+                                        <div class="grid grid-cols-2 gap-1 mb-1">
+                                            <div>
+                                                <span class="text-[9px] text-gray-500">Width</span>
+                                                <input type="text" @change="e => editor.chain().focus().updateAttributes('customImage', { width: e.target.value }).run()" :value="editor.getAttributes('customImage').width" class="w-full border-gray-300 text-xs py-1 px-2 rounded" placeholder="e.g. 200px">
+                                            </div>
+                                            <div>
+                                                <span class="text-[9px] text-gray-500">Height</span>
+                                                <input type="text" @change="e => editor.chain().focus().updateAttributes('customImage', { height: e.target.value }).run()" :value="editor.getAttributes('customImage').height" class="w-full border-gray-300 text-xs py-1 px-2 rounded" placeholder="e.g. auto">
+                                            </div>
+                                        </div>
+                                    </template>
+
                                     <template v-if="selectedElementType === 'textVariable'">
                                         <label class="block text-[10px] font-bold text-gray-600 mb-1 uppercase">Text Container Alignment</label>
                                         <div class="flex gap-1 mb-1">
@@ -433,7 +457,6 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
                                             <button @click="editor.chain().focus().updateAttributes('textVariable', { textAlign: 'center' }).run()" :class="{'bg-blue-100 border-blue-400': editor.getAttributes('textVariable').textAlign === 'center'}" class="px-2 py-1 text-xs border rounded w-full">Center</button>
                                             <button @click="editor.chain().focus().updateAttributes('textVariable', { textAlign: 'right' }).run()" :class="{'bg-blue-100 border-blue-400': editor.getAttributes('textVariable').textAlign === 'right'}" class="px-2 py-1 text-xs border rounded w-full">Right</button>
                                         </div>
-                                        <p class="text-[9px] text-gray-500 italic mt-1 leading-tight">Drag the blue dot on the text variable to widen it, then align the text inside it perfectly.</p>
                                     </template>
                                 </div>
                                 <hr class="border-gray-200">
@@ -477,20 +500,19 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
 
                                     <select @change="e => editor.chain().focus().setLineHeight(e.target.value).run()" :value="editor?.getAttributes('paragraph').lineHeight || editor?.getAttributes('heading').lineHeight || ''" class="w-20 border-gray-300 rounded text-xs py-1.5 px-1 focus:ring-blue-500">
                                         <option value="">Spacing</option>
-                                        <option value="0.5">0.5</option>
-                                        <option value="0.75">0.75</option>
+                                        <option value="0.5">0.5 (Extreme)</option>
+                                        <option value="0.75">0.75 (Tight)</option>
                                         <option value="0.9">0.9</option>
-                                        <option value="1">1.0</option>
+                                        <option value="1">1.0 (Normal)</option>
                                         <option value="1.15">1.15</option>
                                         <option value="1.5">1.5</option>
-                                        <option value="2">2.0</option>
+                                        <option value="2">2.0 (Double)</option>
                                     </select>
                                 </div>
 
                                 <div class="flex flex-wrap gap-1 mb-2">
                                     <button type="button" @click="editor.chain().focus().toggleBold().run()" :class="{ 'bg-gray-300 border-gray-400': editor?.isActive('bold') }" class="w-8 h-8 border border-gray-200 rounded hover:bg-gray-200 font-bold">B</button>
                                     <button type="button" @click="editor.chain().focus().toggleItalic().run()" :class="{ 'bg-gray-300 border-gray-400': editor?.isActive('italic') }" class="w-8 h-8 border border-gray-200 rounded hover:bg-gray-200 italic">I</button>
-                                    
                                     <button type="button" @click="editor.chain().focus().toggleUnderline().run()" :class="{ 'bg-gray-300 border-gray-400': editor?.isActive('underline') }" class="w-8 h-8 border border-gray-200 rounded hover:bg-gray-200 underline">U</button>
                                     
                                     <button type="button" @click="editor.chain().focus().toggleHeading({ level: 1 }).run()" :class="{ 'bg-gray-300 border-gray-400': editor?.isActive('heading', { level: 1 }) }" class="px-2 h-8 border border-gray-200 rounded hover:bg-gray-200 font-bold text-sm">H1</button>
@@ -587,12 +609,30 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
 </template>
 
 <style>
-/* Scrollbar Styles */
+/* Scrollbar Styles (Editor Only) */
 .custom-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
 .custom-scrollbar::-webkit-scrollbar-track { background: #f1f1f1; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
 
+.print-container {
+    width: 100%;
+    background-color: white;
+    display: flex;
+    justify-content: center;
+}
+
+.certificate-content {
+    font-family: inherit;
+    line-height: 1.5;
+    color: black;
+}
+
+.certificate-content, .certificate-content * {
+    box-sizing: border-box;
+}
+
+/* === EXACT CLONE OF TIPTAP EDITOR CSS === */
 .editor-paper .ProseMirror { outline: none; min-height: 100%; position: relative; }
 .editor-paper .ProseMirror::after { content: ""; display: table; clear: both; }
 
@@ -601,23 +641,77 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
 }
 .editor-paper .ProseMirror h1 { font-weight: bold; margin: 0; padding: 0; line-height: inherit;}
 .editor-paper .ProseMirror h2 { font-weight: bold; margin: 0; padding: 0; line-height: inherit;}
-.editor-paper .ProseMirror ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
-.editor-paper .ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
 
-/* FIX: Removes default paragraph margin so it behaves identically to the print view */
-.editor-paper .ProseMirror p { margin: 0; padding: 0; line-height: inherit; text-align: inherit;} 
+/* --- NUCLEAR LIST OVERRIDE (Fixes missing numbers/bullets) --- */
+.editor-paper .ProseMirror ul {
+    display: block !important;
+    list-style-type: disc !important;
+    list-style-position: outside !important;
+    padding-left: 2.5rem !important; /* Forces the physical space for markers */
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+.editor-paper .ProseMirror ol {
+    display: block !important;
+    list-style-type: decimal !important;
+    list-style-position: outside !important;
+    padding-left: 2.5rem !important; /* Forces the physical space for numbers */
+    margin-top: 0.5rem !important;
+    margin-bottom: 0.5rem !important;
+}
+.editor-paper .ProseMirror li {
+    display: list-item !important;
+    margin-bottom: 0.25rem !important;
+}
+/* TipTap wraps list items in paragraphs, we must ensure they don't break the marker */
+.editor-paper .ProseMirror li > p {
+    display: block !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* Ensure print paragraphs are strictly stripped of default margins to match editor tightness */
+.editor-paper .ProseMirror > p { margin: 0; padding: 0; line-height: inherit; text-align: inherit;} 
 
 /* Signatory Line Visual State */
 .editor-paper .ProseMirror hr.ProseMirror-selectednode { outline: 2px solid #3b82f6; outline-offset: 2px; }
 
-/* Table Styles */
+/* --- NUCLEAR TABLE OVERRIDE --- */
 .editor-paper .ProseMirror table {
-    border-collapse: collapse; table-layout: fixed; width: 100% !important; max-width: 100% !important; margin: 1em auto; overflow: hidden;
+    display: table !important; 
+    border-collapse: collapse !important; 
+    table-layout: fixed !important; 
+    width: 100% !important; 
+    max-width: 100% !important; 
+    margin: 1em auto !important; 
+    overflow: hidden !important;
+}
+.editor-paper .ProseMirror table colgroup { display: table-column-group !important; }
+.editor-paper .ProseMirror table col { display: table-column !important; }
+.editor-paper .ProseMirror table thead { display: table-header-group !important; }
+.editor-paper .ProseMirror table tbody { display: table-row-group !important; }
+.editor-paper .ProseMirror table tr { 
+    display: table-row !important; 
+    width: auto !important; 
+    flex-direction: row !important; /* Defeats Tailwind flex resets */
 }
 .editor-paper .ProseMirror table td, .editor-paper .ProseMirror table th {
-    min-width: 1em; border: 1px solid #000; padding: 6px 8px; vertical-align: top; box-sizing: border-box; position: relative; word-wrap: break-word; overflow-wrap: break-word;
+    display: table-cell !important; 
+    min-width: 1em !important; 
+    border: 1px solid #000 !important; 
+    padding: 6px 8px !important; 
+    vertical-align: top !important; 
+    box-sizing: border-box !important; 
+    position: relative !important; 
+    word-wrap: break-word !important; 
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
 }
-.editor-paper .ProseMirror table th { font-weight: bold; text-align: left; background-color: #f8f9fa; }
+.editor-paper .ProseMirror table th { 
+    font-weight: bold !important; 
+    text-align: left !important; 
+    background-color: transparent !important; 
+}
 .editor-paper .ProseMirror table .selectedCell:after {
     z-index: 2; position: absolute; content: ""; left: 0; right: 0; top: 0; bottom: 0; background: rgba(200, 200, 255, 0.4); pointer-events: none;
 }
@@ -633,11 +727,24 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
 .editor-paper .ProseMirror span.absolute img { max-width: none !important; }
 .editor-paper .ProseMirror img.ProseMirror-selectednode { outline: 3px solid #3b82f6; }
 
-/* Dynamic Variables Visual Helpers */
+/* Dynamic Variables Visual Helpers (Editor Only) */
 .editor-paper .ProseMirror img[data-variable="lgu-logo"],
 .editor-paper .ProseMirror img[data-variable="qr-code"],
 .editor-paper .ProseMirror img[data-variable="tab-signature"],
 .editor-paper .ProseMirror img[data-variable="sp-signature"] {
     border: 2px dashed #3b82f6; padding: 4px; border-radius: 8px; background-color: #eff6ff;
+}
+
+/* Print Specific Overrides */
+@media print {
+    @page { margin: 0; size: auto; }
+    
+    .print-container { padding: 0; background-color: transparent; align-items: flex-start !important; }
+    .certificate-content { box-shadow: none !important; border: none !important; page-break-after: avoid; page-break-inside: avoid; }
+    
+    * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+    }
 }
 </style>

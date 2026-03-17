@@ -87,6 +87,17 @@ const parsedContent = computed(() => {
         }
     });
 
+    // 4. CRITICAL FIX: Force List Styles via inline CSS to bypass Tailwind print stripping
+    doc.querySelectorAll('ol').forEach(ol => {
+        ol.style.cssText = 'display: block !important; list-style-type: decimal !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
+    });
+    doc.querySelectorAll('ul').forEach(ul => {
+        ul.style.cssText = 'display: block !important; list-style-type: disc !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
+    });
+    doc.querySelectorAll('li').forEach(li => {
+        li.style.cssText = 'display: list-item !important; margin-bottom: 0.25rem !important;';
+    });
+
     return doc.body.innerHTML;
 });
 
@@ -157,14 +168,42 @@ const paperStyle = computed(() => {
 /* Strictly match editor tightness */
 .editor-paper .ProseMirror p { margin: 0; padding: 0; line-height: inherit; text-align: inherit;} 
 
-/* Stable Table Styles */
+/* === NUCLEAR TABLE OVERRIDE (Forces Multi-Column Rendering) === */
 .editor-paper .ProseMirror table {
-    border-collapse: collapse; table-layout: fixed; width: 100% !important; max-width: 100% !important; margin: 1em auto; overflow: hidden;
+    display: table !important; 
+    border-collapse: collapse !important; 
+    table-layout: fixed !important; 
+    width: 100% !important; 
+    max-width: 100% !important; 
+    margin: 1em auto !important; 
+    overflow: hidden !important;
+}
+.editor-paper .ProseMirror table colgroup { display: table-column-group !important; }
+.editor-paper .ProseMirror table col { display: table-column !important; }
+.editor-paper .ProseMirror table thead { display: table-header-group !important; }
+.editor-paper .ProseMirror table tbody { display: table-row-group !important; }
+.editor-paper .ProseMirror table tr { 
+    display: table-row !important; 
+    width: auto !important; 
+    flex-direction: row !important; /* Defeats Tailwind flex resets */
 }
 .editor-paper .ProseMirror table td, .editor-paper .ProseMirror table th {
-    min-width: 1em; border: 1px solid #000; padding: 6px 8px; vertical-align: top; box-sizing: border-box; position: relative; word-wrap: break-word; overflow-wrap: break-word;
+    display: table-cell !important; 
+    min-width: 1em !important; 
+    border: 1px solid #000 !important; 
+    padding: 6px 8px !important; 
+    vertical-align: top !important; 
+    box-sizing: border-box !important; 
+    position: relative !important; 
+    word-wrap: break-word !important; 
+    overflow-wrap: break-word !important;
+    white-space: normal !important;
 }
-.editor-paper .ProseMirror table th { font-weight: bold; text-align: left; background-color: transparent; }
+.editor-paper .ProseMirror table th { 
+    font-weight: bold !important; 
+    text-align: left !important; 
+    background-color: transparent !important; 
+}
 
 /* Image Stabilization */
 .editor-paper .ProseMirror img { max-width: 100%; display: inline-block; }
