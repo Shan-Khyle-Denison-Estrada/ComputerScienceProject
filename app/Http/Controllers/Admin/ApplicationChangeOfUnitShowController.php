@@ -151,6 +151,7 @@ class ApplicationChangeOfUnitShowController extends Controller
             'plate_number' => 'required|string',
             'motor_number' => 'required|string',
             'chassis_number' => 'required|string',
+            'cr_number' => 'required|string',
             'change_date' => 'required|date',
             'remarks' => 'nullable|string',
             'front_photo' => 'nullable|image|mimes:jpeg,png,jpg|max:5120',

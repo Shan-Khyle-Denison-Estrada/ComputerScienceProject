@@ -64,24 +64,40 @@ watch(() => props.show, (isOpen) => {
         form.motor_number = props.application.raw_proposed_unit.motor_number;
         form.chassis_number = props.application.raw_proposed_unit.chassis_number;
         
-        // Determine which unit to pull the photos from:
-        // Prioritize the existing unit from the database if detected, otherwise fallback to the proposed unit
-        const sourceUnit = (props.unitExists && props.existingUnit) 
-            ? props.existingUnit 
-            : props.application.raw_proposed_unit;
+// Ensure we prioritize the NEW photos from the proposed unit (since this is a Change of Unit),
+        // and only fallback to the existing unit if the proposed ones are missing.
+        const proposed = props.application.raw_proposed_unit || {};
+        const existing = (props.unitExists && props.existingUnit) ? props.existingUnit : {};
 
-        // Note: Using || handles edge cases depending on your DB column naming (unit_front_photo vs front_photo)
-        form.existing_front_photo = sourceUnit.unit_front_photo || sourceUnit.front_photo;
-        form.existing_back_photo = sourceUnit.unit_back_photo || sourceUnit.back_photo;
-        form.existing_left_photo = sourceUnit.unit_left_photo || sourceUnit.left_photo;
-        form.existing_right_photo = sourceUnit.unit_right_photo || sourceUnit.right_photo;
+        const rawFront = proposed.front_photo || existing.unit_front_photo;
+        const rawBack = proposed.back_photo || existing.unit_back_photo;
+        const rawLeft = proposed.left_photo || existing.unit_left_photo;
+        const rawRight = proposed.right_photo || existing.unit_right_photo;
 
-        // Render the image previews on the frontend dynamically based on the source 
+        // Helper to safely strip '/storage/' prefix for the clean Database payload
+        const getDbPath = (path) => {
+            if (!path) return '';
+            return path.replace(/^(\/?storage\/)/, '');
+        };
+
+        // Helper to safely format the preview URL without doubling '/storage/'
+        const getPreviewUrl = (path) => {
+            if (!path) return null;
+            if (path.includes('/storage/')) return path; // Already correctly formatted
+            return `/storage/${path}`;
+        };
+
+        form.existing_front_photo = getDbPath(rawFront);
+        form.existing_back_photo = getDbPath(rawBack);
+        form.existing_left_photo = getDbPath(rawLeft);
+        form.existing_right_photo = getDbPath(rawRight);
+
+        // Render the image previews on the frontend dynamically using the bulletproof URLs
         previews.value = {
-            front: form.existing_front_photo ? `/storage/${form.existing_front_photo}` : null,
-            back: form.existing_back_photo ? `/storage/${form.existing_back_photo}` : null,
-            left: form.existing_left_photo ? `/storage/${form.existing_left_photo}` : null,
-            right: form.existing_right_photo ? `/storage/${form.existing_right_photo}` : null,
+            front: getPreviewUrl(rawFront),
+            back: getPreviewUrl(rawBack),
+            left: getPreviewUrl(rawLeft),
+            right: getPreviewUrl(rawRight),
         };
         
         form.change_date = new Date().toISOString().split('T')[0];
