@@ -40,7 +40,7 @@ class ApplicationController extends Controller
 
     public function store(Request $request)
     {
-        $relevantGroups = ['Franchise Owner Account', 'General', 'New Franchise'];
+        $relevantGroups = ['Franchise Owner Account'];
         $requiredDocs = EvaluationRequirement::where('is_active', true)
             ->whereIn('group', $relevantGroups)
             ->get();
