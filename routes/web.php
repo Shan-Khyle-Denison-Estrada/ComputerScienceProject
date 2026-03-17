@@ -394,6 +394,16 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,encoder'])->group
 
     Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
     Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
+
+    Route::get('admin/drivers/create', [DriverController::class, 'create'])->name('admin.drivers.create');
+    Route::post('admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
+    Route::get('admin/drivers/{driver}/edit', [DriverController::class, 'edit'])->name('admin.drivers.edit');
+    Route::put('admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update');
+    Route::delete('admin/drivers/{driver}', [DriverController::class, 'destroy'])->name('admin.drivers.destroy');
+    Route::post('/admin/franchises/{franchise}/red-flags', [RedFlagController::class, 'store'])->name('admin.franchises.red-flags.store');
+    Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
+    Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
+    Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
@@ -431,16 +441,8 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,releaser,encoder'
 
 // --- ENCODER ONLY ROUTES ---
 // Only encoders can create, store, edit, update, and delete drivers
-Route::middleware(['auth', 'prevent-back-history', 'role:encoder'])->group(function () {
-    Route::get('admin/drivers/create', [DriverController::class, 'create'])->name('admin.drivers.create');
-    Route::post('admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
-    Route::get('admin/drivers/{driver}/edit', [DriverController::class, 'edit'])->name('admin.drivers.edit');
-    Route::put('admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update');
-    Route::delete('admin/drivers/{driver}', [DriverController::class, 'destroy'])->name('admin.drivers.destroy');
-    Route::post('/admin/franchises/{franchise}/red-flags', [RedFlagController::class, 'store'])->name('admin.franchises.red-flags.store');
-    Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
-    Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
-    Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
-});
+// Route::middleware(['auth', 'prevent-back-history', 'role:encoder'])->group(function () {
+
+// });
 
 require __DIR__.'/auth.php';

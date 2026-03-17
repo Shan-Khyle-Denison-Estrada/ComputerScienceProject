@@ -54,6 +54,7 @@ class DriverController extends Controller
             'middle_name' => 'nullable|string',
             'contact_number' => 'nullable|string',
             'street' => 'nullable|string',
+            'province' => 'required|string',
             'barangay' => 'nullable|string',
             'city' => 'nullable|string',
             'user_id' => 'nullable|exists:users,id',
@@ -89,6 +90,7 @@ class DriverController extends Controller
             'middle_name' => 'nullable|string',
             'contact_number' => 'nullable|string',
             'street' => 'nullable|string',
+            'province' => 'nullable|string',
             'barangay' => 'nullable|string',
             'city' => 'nullable|string',
             // Ensure these validations are present for security

@@ -16,6 +16,7 @@ class Driver extends Model
         'last_name',
         'contact_number',
         'street',
+        'province',
         'barangay',
         'city',
         'license_number',

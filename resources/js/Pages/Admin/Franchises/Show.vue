@@ -198,13 +198,13 @@ const getDriverName = (driver) => {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                    <SecondaryButton v-if="userRole === 'encoder'" @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
+                    <SecondaryButton @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
                         </svg>
                         Add Red Flag
                     </SecondaryButton>
-                    <SecondaryButton v-if="userRole === 'encoder'" @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
+                    <SecondaryButton @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         Make Complaint
                     </SecondaryButton>
@@ -443,7 +443,7 @@ const getDriverName = (driver) => {
                         <div v-if="activeTab === 'drivers'" class="p-6">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="font-bold text-gray-700">Current Assignments</h3>
-                                <button v-if="userRole === 'encoder'" @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
+                                <button @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
                                     + Assign Driver
                                 </button>
                             </div>

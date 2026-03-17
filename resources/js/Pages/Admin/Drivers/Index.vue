@@ -7,7 +7,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
@@ -16,6 +16,82 @@ const props = defineProps({
     barangays: Array,
     filters: Object
 });
+
+// --- API State for Addresses ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
+const activeDropdown = ref(null);
+
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load locations:", error);
+    }
+});
+
+const targetForm = computed(() => showEditModal.value ? editForm : addForm);
+
+const filteredProvinces = computed(() => {
+    if (!targetForm.value.province) return provincesList.value;
+    return provincesList.value.filter(p => p.name.toLowerCase().includes(targetForm.value.province.toLowerCase()));
+});
+
+const filteredCities = computed(() => {
+    if (!targetForm.value.city) return citiesList.value;
+    return citiesList.value.filter(c => c.name.toLowerCase().includes(targetForm.value.city.toLowerCase()));
+});
+
+const filteredBarangaysAPI = computed(() => {
+    if (!targetForm.value.barangay) return barangaysList.value;
+    return barangaysList.value.filter(b => b.name.toLowerCase().includes(targetForm.value.barangay.toLowerCase()));
+});
+
+const selectProvince = async (prov) => {
+    targetForm.value.province = prov.name;
+    targetForm.value.clearErrors?.('province');
+    activeDropdown.value = null;
+    
+    targetForm.value.city = '';
+    targetForm.value.barangay = '';
+    citiesList.value = [];
+    barangaysList.value = [];
+
+    try {
+        const res = await fetch(prov.isNCR 
+            ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities`
+            : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`);
+        citiesList.value = await res.json();
+    } catch (error) {
+        console.error("Failed to load cities:", error);
+    }
+};
+
+const selectCity = async (city) => {
+    targetForm.value.city = city.name;
+    targetForm.value.clearErrors?.('city');
+    activeDropdown.value = null;
+    
+    targetForm.value.barangay = '';
+    barangaysList.value = [];
+
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+        barangaysList.value = await res.json();
+    } catch (error) {
+        console.error("Failed to load barangays:", error);
+    }
+};
+
+const selectBarangayAPI = (brgy) => {
+    targetForm.value.barangay = brgy.name;
+    targetForm.value.clearErrors?.('barangay');
+    activeDropdown.value = null;
+};
 
 // --- STATE ---
 const showAddModal = ref(false);
@@ -84,8 +160,9 @@ const addForm = useForm({
     last_name: '',
     contact_number: '',
     street: '',
+    province: '',
     barangay: '',
-    city: 'Zamboanga City',
+    city: '',
     license_number: '',
     license_expiration_date: '',
     user_id: '', 
@@ -102,6 +179,7 @@ const editForm = useForm({
     last_name: '',
     contact_number: '',
     street: '',
+    province: '',
     barangay: '',
     city: '',
     license_number: '',
@@ -116,6 +194,27 @@ const editForm = useForm({
 
 const filterForm = ref({
     status: props.filters.status || '',
+});
+
+// --- FORMATTERS & WATCHERS ---
+const formatContactNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/\D/g, '');
+    if (parts.length > 11) parts = parts.substring(0, 11);
+    let formatted = '';
+    if (parts.length > 0) formatted += parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) formatted += '-';
+    return formatted;
+};
+
+watch(() => addForm.contact_number, (newVal) => {
+    addForm.contact_number = formatContactNumber(newVal);
+});
+
+watch(() => editForm.contact_number, (newVal) => {
+    editForm.contact_number = formatContactNumber(newVal);
 });
 
 // --- HELPERS ---
@@ -171,15 +270,35 @@ const closeAddModal = () => {
 };
 const submitAdd = () => addForm.post(route('admin.drivers.store'), { onSuccess: () => closeAddModal() });
 
-const openEditModal = (driver) => {
+const openEditModal = async (driver) => {
     editForm.id = driver.id;
     editForm.first_name = driver.first_name;
     editForm.middle_name = driver.middle_name;
     editForm.last_name = driver.last_name;
     editForm.contact_number = driver.contact_number;
     editForm.street = driver.street;
+    editForm.province = driver.province || '';
     editForm.barangay = driver.barangay;
     editForm.city = driver.city;
+    
+    // Pre-load cities and barangays for the dropdowns
+    if (driver.province) {
+        const prov = provincesList.value.find(p => p.name === driver.province);
+        if (prov) {
+            try {
+                const res = await fetch(prov.isNCR ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities` : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`);
+                citiesList.value = await res.json();
+                
+                if (driver.city) {
+                    const city = citiesList.value.find(c => c.name === driver.city);
+                    if (city) {
+                        const res2 = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+                        barangaysList.value = await res2.json();
+                    }
+                }
+            } catch (e) { console.error(e); }
+        }
+    }
     editForm.license_number = driver.license_number;
     editForm.license_expiration_date = driver.license_expiration_date;
     editForm.user_id = driver.user_id || '';
@@ -251,7 +370,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                     <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
                     <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
-                <PrimaryButton v-if="$page.props.auth.user.role === 'encoder'" @click="openAddModal" class="flex items-center gap-2">
+                <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     Add Driver
                 </PrimaryButton>
@@ -416,7 +535,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                     <h2 class="text-xl font-bold text-gray-900">Register New Driver</h2>
                     <p class="text-sm text-gray-500">Enter driver details and license information.</p>
                 </div>
-                <form @submit.prevent="submitAdd" class="space-y-5">
+                <form @submit.prevent="submitAdd" class="space-y-5" @click="activeDropdown = null">
                     <div class="flex flex-col items-center gap-4">
                         <div class="relative group cursor-pointer h-24 w-24 rounded-full border-4 border-gray-100 bg-gray-50 overflow-hidden hover:border-blue-100 transition" @click="() => addPhotoInput.click()">
                             <img v-if="addPhotos.user" :src="addPhotos.user" class="h-full w-full object-cover" />
@@ -443,15 +562,42 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                         <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" required /></div>
                         <div><InputLabel>Street Address <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.street" required /></div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" @click.stop>
                         <div class="relative">
-                            <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.barangay" placeholder="Select or type barangay" @focus="showAddBarangayDropdown = true" @blur="handleAddBarangayBlur" required />
-                            <div v-if="showAddBarangayDropdown && filteredAddBarangays.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div v-for="brgy in filteredAddBarangays" :key="brgy.id" @click="selectAddBarangay(brgy.name)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700">{{ brgy.name }}</div>
+                            <InputLabel>Province <span class="text-red-500">*</span></InputLabel>
+                            <TextInput v-model="addForm.province" @focus="activeDropdown = 'province'" class="mt-1 block w-full" placeholder="Search Province..." autocomplete="off" required />
+                            <div v-if="activeDropdown === 'province'" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <ul class="py-1">
+                                    <li v-for="prov in filteredProvinces" :key="prov.code" @click="selectProvince(prov)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm">
+                                        {{ prov.name }}
+                                    </li>
+                                </ul>
                             </div>
                         </div>
-                        <div><InputLabel>City <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" required /></div>
+
+                        <div class="relative">
+                            <InputLabel>City <span class="text-red-500">*</span></InputLabel>
+                            <TextInput v-model="addForm.city" @focus="activeDropdown = 'city'" :disabled="!addForm.province" class="mt-1 block w-full disabled:bg-gray-100" placeholder="Search City..." autocomplete="off" required />
+                            <div v-if="activeDropdown === 'city' && addForm.province" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <ul class="py-1">
+                                    <li v-for="city in filteredCities" :key="city.code" @click="selectCity(city)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm">
+                                        {{ city.name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
+                            <TextInput v-model="addForm.barangay" @focus="activeDropdown = 'barangay'" :disabled="!addForm.city" class="mt-1 block w-full disabled:bg-gray-100" placeholder="Search Barangay..." autocomplete="off" required />
+                            <div v-if="activeDropdown === 'barangay' && addForm.city" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <ul class="py-1">
+                                    <li v-for="brgy in filteredBarangaysAPI" :key="brgy.code" @click="selectBarangayAPI(brgy)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm">
+                                        {{ brgy.name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
                         <h3 class="text-sm font-bold text-gray-700 mb-3 border-b pb-2">License Information</h3>
@@ -493,7 +639,7 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                     <h2 class="text-xl font-bold text-gray-900">Edit Driver</h2>
                     <p class="text-sm text-gray-500">Update driver details.</p>
                 </div>
-                <form @submit.prevent="submitEdit" class="space-y-5">
+                <form @submit.prevent="submitEdit" class="space-y-5" @click="activeDropdown = null">
                     <div class="flex flex-col items-center gap-4">
                         <div class="relative group cursor-pointer h-24 w-24 rounded-full border-4 border-gray-100 bg-gray-50 overflow-hidden hover:border-blue-100 transition" @click="() => editPhotoInput.click()">
                             <img v-if="editPhotos.user" :src="editPhotos.user" class="h-full w-full object-cover" />
@@ -510,15 +656,42 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                         <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" required /></div>
                         <div><InputLabel>Street Address <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.street" required /></div>
                     </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4" @click.stop>
                         <div class="relative">
-                            <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.barangay" placeholder="Select or type barangay" @focus="showEditBarangayDropdown = true" @blur="handleEditBarangayBlur" required />
-                            <div v-if="showEditBarangayDropdown && filteredEditBarangays.length > 0" class="absolute z-10 w-full bg-white mt-1 border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto">
-                                <div v-for="brgy in filteredEditBarangays" :key="brgy.id" @click="selectEditBarangay(brgy.name)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700">{{ brgy.name }}</div>
+                            <InputLabel>Province <span class="text-red-500">*</span></InputLabel>
+                            <TextInput v-model="editForm.province" @focus="activeDropdown = 'province'" class="mt-1 block w-full" placeholder="Search Province..." autocomplete="off" required />
+                            <div v-if="activeDropdown === 'province'" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <ul class="py-1">
+                                    <li v-for="prov in filteredProvinces" :key="prov.code" @click="selectProvince(prov)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm">
+                                        {{ prov.name }}
+                                    </li>
+                                </ul>
                             </div>
                         </div>
-                        <div><InputLabel>City <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="editForm.city" required /></div>
+
+                        <div class="relative">
+                            <InputLabel>City <span class="text-red-500">*</span></InputLabel>
+                            <TextInput v-model="editForm.city" @focus="activeDropdown = 'city'" :disabled="!editForm.province" class="mt-1 block w-full disabled:bg-gray-100" placeholder="Search City..." autocomplete="off" required />
+                            <div v-if="activeDropdown === 'city' && editForm.province" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <ul class="py-1">
+                                    <li v-for="city in filteredCities" :key="city.code" @click="selectCity(city)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm">
+                                        {{ city.name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <div class="relative">
+                            <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
+                            <TextInput v-model="editForm.barangay" @focus="activeDropdown = 'barangay'" :disabled="!editForm.city" class="mt-1 block w-full disabled:bg-gray-100" placeholder="Search Barangay..." autocomplete="off" required />
+                            <div v-if="activeDropdown === 'barangay' && editForm.city" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-2xl max-h-48 overflow-y-auto z-50">
+                                <ul class="py-1">
+                                    <li v-for="brgy in filteredBarangaysAPI" :key="brgy.code" @click="selectBarangayAPI(brgy)" class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm">
+                                        {{ brgy.name }}
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
                     </div>
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-200 mt-4">
                         <h3 class="text-sm font-bold text-gray-700 mb-3 border-b pb-2">License Information</h3>
