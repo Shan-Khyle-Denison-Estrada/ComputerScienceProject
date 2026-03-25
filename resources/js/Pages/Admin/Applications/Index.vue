@@ -230,8 +230,8 @@ const getApplicationRoute = (app) => {
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
-                            <th class="px-6 py-4">Applicant</th>
                             <th class="px-6 py-4">Application Details</th>
+                            <th class="px-6 py-4">Applicant</th>
                             <th class="px-6 py-4">Date Submitted</th>
                             <th class="px-6 py-4">Status</th>
                             <th class="px-6 py-4 text-right">Actions</th>
@@ -239,6 +239,10 @@ const getApplicationRoute = (app) => {
                     </thead>
                     <tbody class="divide-y divide-gray-100">
                         <tr v-for="app in applications.data" :key="app.id" class="hover:bg-gray-50 transition-colors group">
+                            <td class="px-6 py-4 text-gray-600">
+                                <div class="text-sm font-medium text-blue-600">{{ app.type }}</div>
+                                <div class="text-xs text-gray-400 font-mono mt-0.5">{{ app.reference_no }}</div>
+                            </td>
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
                                     <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold border border-gray-300 overflow-hidden">
@@ -250,10 +254,6 @@ const getApplicationRoute = (app) => {
                                         <div class="text-gray-500 text-xs">{{ app.applicant.email }}</div>
                                     </div>
                                 </div>
-                            </td>
-                            <td class="px-6 py-4 text-gray-600">
-                                <div class="text-sm font-medium text-blue-600">{{ app.type }}</div>
-                                <div class="text-xs text-gray-400 font-mono mt-0.5">{{ app.reference_no }}</div>
                             </td>
                             <td class="px-6 py-4"><span class="text-gray-600">{{ app.date_submitted }}</span></td>
                             <td class="px-6 py-4">
