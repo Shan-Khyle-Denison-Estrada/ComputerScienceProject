@@ -22,7 +22,7 @@ class UnitController extends Controller
                       ->orWhere('chassis_number', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(4)
+            ->paginate(6)
             ->withQueryString();
 
         $unitMakes = UnitMake::orderBy('name')->get();
@@ -41,15 +41,13 @@ class UnitController extends Controller
             'plate_number' => 'required|string|unique:units,plate_number',
             'motor_number' => 'required|string|unique:units,motor_number',
             'chassis_number' => 'required|string|unique:units,chassis_number',
-            'model_year' => 'required|digits:4|integer|min:1900|max:'.(date('Y')+1),
-            'cr_number' => 'nullable|string',
+            'model_year' => 'required|digits:4|integer',
             'unit_front_photo' => 'nullable|image|max:2048',
             'unit_back_photo' => 'nullable|image|max:2048',
             'unit_left_photo' => 'nullable|image|max:2048',
             'unit_right_photo' => 'nullable|image|max:2048',
         ]);
 
-        // Handle File Uploads
         $photos = ['unit_front_photo', 'unit_back_photo', 'unit_left_photo', 'unit_right_photo'];
         foreach ($photos as $photo) {
             if ($request->hasFile($photo)) {
@@ -70,7 +68,6 @@ class UnitController extends Controller
             'motor_number' => 'required|string|unique:units,motor_number,' . $unit->id,
             'chassis_number' => 'required|string|unique:units,chassis_number,' . $unit->id,
             'model_year' => 'required|digits:4|integer',
-            'cr_number' => 'nullable|string',
             'unit_front_photo' => 'nullable|image|max:2048',
             'unit_back_photo' => 'nullable|image|max:2048',
             'unit_left_photo' => 'nullable|image|max:2048',
@@ -87,7 +84,7 @@ class UnitController extends Controller
                 }
                 $validated[$photo] = $request->file($photo)->store('units', 'public');
             } else {
-                unset($validated[$photo]); // Don't overwrite if no new file
+                unset($validated[$photo]); // don't overwrite if null
             }
         }
 
