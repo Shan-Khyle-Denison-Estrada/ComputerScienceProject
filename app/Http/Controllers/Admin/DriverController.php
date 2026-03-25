@@ -62,8 +62,8 @@ class DriverController extends Controller
             'user_id' => 'nullable|exists:users,id',
             'status' => 'required|string',
             'user_photo' => 'nullable|image|max:2048',
-            'license_front_photo' => 'nullable|image|max:2048',
-            'license_back_photo' => 'nullable|image|max:2048',
+            'license_front_photo' => 'required|image|max:2048', // Changed to required
+            'license_back_photo' => 'required|image|max:2048',  // Changed to required
         ]);
 
         if ($request->hasFile('user_photo')) {
@@ -95,7 +95,7 @@ class DriverController extends Controller
             'province' => 'nullable|string',
             'barangay' => 'nullable|string',
             'city' => 'nullable|string',
-            // Ensure these validations are present for security
+            // Ensure these validations are present for security (Kept nullable for updates)
             'user_photo' => 'nullable|image|max:2048',
             'license_front_photo' => 'nullable|image|max:2048',
             'license_back_photo' => 'nullable|image|max:2048',
@@ -107,13 +107,13 @@ class DriverController extends Controller
             $driver->user_photo = $request->file('user_photo')->store('driver_photos', 'public');
         }
 
-        // 2. Handle License Front Photo (This was missing)
+        // 2. Handle License Front Photo 
         if ($request->hasFile('license_front_photo')) {
             if ($driver->license_front_photo) Storage::disk('public')->delete($driver->license_front_photo);
             $driver->license_front_photo = $request->file('license_front_photo')->store('license_photos', 'public');
         }
 
-        // 3. Handle License Back Photo (This was missing)
+        // 3. Handle License Back Photo 
         if ($request->hasFile('license_back_photo')) {
             if ($driver->license_back_photo) Storage::disk('public')->delete($driver->license_back_photo);
             $driver->license_back_photo = $request->file('license_back_photo')->store('license_photos', 'public');
