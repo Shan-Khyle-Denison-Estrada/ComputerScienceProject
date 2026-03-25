@@ -311,46 +311,45 @@ const openEditModal = async (driver) => {
     editForm.first_name = driver.first_name;
     editForm.middle_name = driver.middle_name;
     editForm.last_name = driver.last_name;
-    editForm.contact_number = driver.contact_number;
+    editForm.license_number = driver.license_number;
+    editForm.license_expiration_date = driver.license_expiration_date;
+    editForm.contact_number = driver.contact_number; // Ensure you keep your formatContactNumber wrapper here if you used it
     editForm.street = driver.street;
-    editForm.province = driver.province || '';
-    editForm.barangay = driver.barangay;
+    editForm.province = driver.province;
     editForm.city = driver.city;
+    editForm.barangay = driver.barangay;
+    editForm.status = driver.status;
     
-    // Pre-load cities and barangays for the dropdowns
-    if (driver.province) {
+    editPhotos.user = driver.user_photo ? `/storage/${driver.user_photo}` : null;
+    editPhotos.front = driver.license_front_photo ? `/storage/${driver.license_front_photo}` : null;
+    editPhotos.back = driver.license_back_photo ? `/storage/${driver.license_back_photo}` : null;
+
+    // OPEN MODAL IMMEDIATELY BEFORE AWAITING API
+    showEditModal.value = true;
+
+    // Pre-fetch locations in the background
+    if (driver.province && provincesList.value.length) {
         const prov = provincesList.value.find(p => p.name === driver.province);
         if (prov) {
             try {
-                const res = await fetch(prov.isNCR ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities` : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`);
+                let res = await fetch(prov.isNCR 
+                    ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities`
+                    : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`
+                );
                 citiesList.value = await res.json();
-                
+
                 if (driver.city) {
                     const city = citiesList.value.find(c => c.name === driver.city);
                     if (city) {
-                        const res2 = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
-                        barangaysList.value = await res2.json();
+                        const brgyRes = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+                        barangaysList.value = await brgyRes.json();
                     }
                 }
-            } catch (e) { console.error(e); }
+            } catch (e) { console.error("Error pre-fetching location APIs", e); }
         }
     }
-    editForm.license_number = driver.license_number;
-    editForm.license_expiration_date = driver.license_expiration_date;
-    editForm.user_id = driver.user_id || '';
-    editForm.status = driver.status;
-    // Reset file inputs in form object
-    editForm.license_front_photo = null;
-    editForm.license_back_photo = null;
-    editForm.user_photo = null;
-
-    // Load Previews
-    editPhotos.value.user = driver.user_photo ? `/storage/${driver.user_photo}` : null;
-    editPhotos.value.front = driver.license_front_photo ? `/storage/${driver.license_front_photo}` : null;
-    editPhotos.value.back = driver.license_back_photo ? `/storage/${driver.license_back_photo}` : null;
-
-    showEditModal.value = true;
 };
+
 const closeEditModal = () => {
     showEditModal.value = false;
     editForm.reset();
@@ -443,13 +442,12 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                                     </div>
                                 </div>
                             </td>
-                            <td class="px-6 py-4">
-                                <div class="text-gray-900 max-w-xs truncate" :title="`${driver.street || ''} ${driver.barangay || ''} ${driver.city || ''}`">
-                                    {{ driver.street ? driver.street + ',' : '' }} 
-                                    {{ driver.barangay || 'No Barangay' }}, 
-                                    {{ driver.city }}
-                                </div>
-                            </td>
+<td class="px-6 py-4 text-gray-600">
+    <div class="text-sm font-medium">{{ driver.contact_number || 'N/A' }}</div>
+    <div class="text-xs text-gray-400 break-words max-w-xs leading-relaxed mt-0.5">
+        {{ driver.street }}, {{ driver.barangay }}, {{ driver.city }}, {{ driver.province }}
+    </div>
+</td>
                             <td class="px-6 py-4">
                                 <div class="font-mono text-gray-900 font-medium">{{ driver.license_number }}</div>
                                 <div class="text-xs text-gray-500 mt-0.5">Expires: {{ driver.license_expiration_date }}</div>
@@ -641,44 +639,44 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                             <div><InputLabel>License Number <span class="text-red-500">*</span></InputLabel><TextInput type="text" class="mt-1 block w-full" v-model="addForm.license_number" required /></div>
                             <div><InputLabel>Expiration Date <span class="text-red-500">*</span></InputLabel><TextInput type="date" class="mt-1 block w-full" v-model="addForm.license_expiration_date" required /></div>
                         </div>
-<div class="flex flex-col gap-4"> 
-    <InputLabel class="mb-1">License Photos (Front & Back) <span class="text-red-500">*</span></InputLabel> 
-    <div class="flex flex-col sm:flex-row gap-6 justify-center items-start"> 
-        
-        <div class="flex flex-col items-center group w-full sm:w-auto"> 
-            <div 
-                class="w-64 h-40 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-blue-400 hover:shadow-md transition overflow-hidden relative" 
-                :class="{ 'border-red-400 bg-red-50': addForm.errors.license_front_photo }"
-                @click="() => addFrontInput.click()"
-            > 
-                <img v-if="addPhotos.front" :src="addPhotos.front" class="h-full w-full object-cover" /> 
-                <div v-else class="flex flex-col items-center" :class="addForm.errors.license_front_photo ? 'text-red-400' : 'text-gray-400'">
-                    <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                    <span class="text-xs font-semibold uppercase tracking-wider">Front Side</span>
-                </div>
-                <input type="file" ref="addFrontInput" class="hidden" accept="image/*" @change="(e) => handleFileChange(e, 'license_front_photo', 'front', false)" /> 
-            </div>
-            <InputError class="mt-2 text-center" :message="addForm.errors.license_front_photo" />
-        </div>
+                        <div class="flex flex-col gap-4"> 
+                            <InputLabel class="mb-1">License Photos (Front & Back) <span class="text-red-500">*</span></InputLabel> 
+                            <div class="flex flex-col sm:flex-row gap-6 justify-center items-start"> 
+                                
+                                <div class="flex flex-col items-center group w-full sm:w-auto"> 
+                                    <div 
+                                        class="w-64 h-40 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-blue-400 hover:shadow-md transition overflow-hidden relative" 
+                                        :class="{ 'border-red-400 bg-red-50': addForm.errors.license_front_photo }"
+                                        @click="() => addFrontInput.click()"
+                                    > 
+                                        <img v-if="addPhotos.front" :src="addPhotos.front" class="h-full w-full object-cover" /> 
+                                        <div v-else class="flex flex-col items-center" :class="addForm.errors.license_front_photo ? 'text-red-400' : 'text-gray-400'">
+                                            <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                            <span class="text-xs font-semibold uppercase tracking-wider">Front Side</span>
+                                        </div>
+                                        <input type="file" ref="addFrontInput" class="hidden" accept="image/*" @change="(e) => handleFileChange(e, 'license_front_photo', 'front', false)" /> 
+                                    </div>
+                                    <InputError class="mt-2 text-center" :message="addForm.errors.license_front_photo" />
+                                </div>
 
-        <div class="flex flex-col items-center group w-full sm:w-auto"> 
-            <div 
-                class="w-64 h-40 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-blue-400 hover:shadow-md transition overflow-hidden relative" 
-                :class="{ 'border-red-400 bg-red-50': addForm.errors.license_back_photo }"
-                @click="() => addBackInput.click()"
-            > 
-                <img v-if="addPhotos.back" :src="addPhotos.back" class="h-full w-full object-cover" /> 
-                <div v-else class="flex flex-col items-center" :class="addForm.errors.license_back_photo ? 'text-red-400' : 'text-gray-400'">
-                    <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
-                    <span class="text-xs font-semibold uppercase tracking-wider">Back Side</span>
-                </div>
-                <input type="file" ref="addBackInput" class="hidden" accept="image/*" @change="(e) => handleFileChange(e, 'license_back_photo', 'back', false)" /> 
-            </div>
-            <InputError class="mt-2 text-center" :message="addForm.errors.license_back_photo" />
-        </div>
+                                <div class="flex flex-col items-center group w-full sm:w-auto"> 
+                                    <div 
+                                        class="w-64 h-40 bg-white border-2 border-dashed border-gray-300 rounded-xl flex items-center justify-center cursor-pointer hover:border-blue-400 hover:shadow-md transition overflow-hidden relative" 
+                                        :class="{ 'border-red-400 bg-red-50': addForm.errors.license_back_photo }"
+                                        @click="() => addBackInput.click()"
+                                    > 
+                                        <img v-if="addPhotos.back" :src="addPhotos.back" class="h-full w-full object-cover" /> 
+                                        <div v-else class="flex flex-col items-center" :class="addForm.errors.license_back_photo ? 'text-red-400' : 'text-gray-400'">
+                                            <svg class="h-8 w-8 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" /></svg>
+                                            <span class="text-xs font-semibold uppercase tracking-wider">Back Side</span>
+                                        </div>
+                                        <input type="file" ref="addBackInput" class="hidden" accept="image/*" @change="(e) => handleFileChange(e, 'license_back_photo', 'back', false)" /> 
+                                    </div>
+                                    <InputError class="mt-2 text-center" :message="addForm.errors.license_back_photo" />
+                                </div>
 
-    </div>
-</div>
+                            </div>
+                        </div>
                     </div>
                     <div class="mt-6 flex justify-end gap-3 border-t pt-4">
                         <SecondaryButton @click="closeAddModal">Cancel</SecondaryButton>
