@@ -5,49 +5,149 @@ import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
-import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
+import Pagination from '@/Components/Pagination.vue'; 
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 // --- PROPS ---
 const props = defineProps({
     users: Object, 
-    filters: Object,
-    barangays: Array 
+    filters: Object
 });
 
 // --- STATE MANAGEMENT ---
 const showAddModal = ref(false);
 const showEditModal = ref(false);
-const showFilterModal = ref(false); // New
+const showFilterModal = ref(false); 
+const showFranchisesModal = ref(false); // New modal for listing franchises
+const selectedUser = ref(null); // Keep track of the owner we clicked
+
 const search = ref(props.filters.search || '');
 
 // --- FILTER STATE ---
 const filterForm = ref({
-    status: props.filters.status || '', // New
+    status: props.filters.status || '', 
 });
 
 // --- PHOTO STATE ---
 const addPhotoPreview = ref(null);
 const editPhotoPreview = ref(null);
 
-// --- BARANGAY SEARCH STATE ---
-const barangayQuery = ref('');
-const showBarangayDropdown = ref(false);
+// --- API STATE FOR ADDRESSES ---
+const provincesList = ref([]);
+const citiesList = ref([]);
+const barangaysList = ref([]);
 
-const filteredBarangays = computed(() => {
-    if (!barangayQuery.value) return props.barangays;
-    return props.barangays.filter(b => 
-        b.name.toLowerCase().includes(barangayQuery.value.toLowerCase())
-    );
+const activeDropdown = ref(null);
+
+onMounted(async () => {
+    try {
+        const res = await fetch('https://psgc.gitlab.io/api/provinces');
+        let provinces = await res.json();
+        
+        provinces.push({ code: '130000000', name: 'Metro Manila', isNCR: true });
+        provincesList.value = provinces.sort((a, b) => a.name.localeCompare(b.name));
+    } catch (error) {
+        console.error("Failed to load locations:", error);
+    }
 });
 
-const selectBarangay = (name) => {
-    if (showAddModal.value) addForm.barangay = name;
-    if (showEditModal.value) editForm.barangay = name;
+// Contextually determine which form is active to filter lists against
+const activeForm = computed(() => {
+    if (showAddModal.value) return addForm;
+    if (showEditModal.value) return editForm;
+    return null;
+});
+
+const filteredProvinces = computed(() => {
+    if (!activeForm.value || !activeForm.value.province) return provincesList.value;
+    return provincesList.value.filter(p => p.name.toLowerCase().includes(activeForm.value.province.toLowerCase()));
+});
+
+const filteredCities = computed(() => {
+    if (!activeForm.value || !activeForm.value.city) return citiesList.value;
+    return citiesList.value.filter(c => c.name.toLowerCase().includes(activeForm.value.city.toLowerCase()));
+});
+
+const filteredBarangays = computed(() => {
+    if (!activeForm.value || !activeForm.value.barangay) return barangaysList.value;
+    return barangaysList.value.filter(b => b.name.toLowerCase().includes(activeForm.value.barangay.toLowerCase()));
+});
+
+const selectProvince = async (prov, formRef) => {
+    formRef.province = prov.name;
+    formRef.clearErrors('province');
+    activeDropdown.value = null;
     
-    barangayQuery.value = name;
-    showBarangayDropdown.value = false;
+    // Reset dependents
+    formRef.city = '';
+    formRef.barangay = '';
+    citiesList.value = [];
+    barangaysList.value = [];
+
+    try {
+        if (prov.isNCR) {
+            const res = await fetch(`https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities`);
+            citiesList.value = await res.json();
+        } else {
+            const res = await fetch(`https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`);
+            citiesList.value = await res.json();
+        }
+    } catch (error) {
+        console.error("Failed to load cities:", error);
+    }
+};
+
+const selectCity = async (city, formRef) => {
+    formRef.city = city.name;
+    formRef.clearErrors('city');
+    activeDropdown.value = null;
+    
+    formRef.barangay = '';
+    barangaysList.value = [];
+
+    try {
+        const res = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+        barangaysList.value = await res.json();
+    } catch (error) {
+        console.error("Failed to load barangays:", error);
+    }
+};
+
+const selectBarangay = (brgy, formRef) => {
+    formRef.barangay = brgy.name;
+    formRef.clearErrors('barangay');
+    activeDropdown.value = null;
+};
+
+// --- NUMBER FORMATTERS ---
+const formatContactNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/\D/g, ''); 
+    if (parts.length > 11) parts = parts.substring(0, 11); 
+
+    let formatted = '';
+    if (parts.length > 0) formatted += parts.substring(0, 4);
+    if (parts.length >= 5) formatted += '-' + parts.substring(4, 7);
+    if (parts.length >= 8) formatted += '-' + parts.substring(7, 11);
+    if (val.endsWith('-') && (parts.length === 4 || parts.length === 7)) formatted += '-';
+
+    return formatted;
+};
+
+const formatTinNumber = (val) => {
+    if (!val) return '';
+    let parts = val.replace(/\D/g, ''); 
+    if (parts.length > 14) parts = parts.substring(0, 14); 
+
+    let formatted = '';
+    if (parts.length > 0) formatted += parts.substring(0, 3);
+    if (parts.length >= 4) formatted += '-' + parts.substring(3, 6);
+    if (parts.length >= 7) formatted += '-' + parts.substring(6, 9);
+    if (parts.length >= 10) formatted += '-' + parts.substring(9, 14);
+    if (val.endsWith('-') && (parts.length === 3 || parts.length === 6 || parts.length === 9)) formatted += '-';
+
+    return formatted;
 };
 
 // --- PHOTO HANDLERS ---
@@ -75,8 +175,9 @@ const addForm = useForm({
     email: '',
     contact_number: '',
     street_address: '',
-    barangay: '',
+    province: '',
     city: '',
+    barangay: '',
     tin_number: '',
     password: '',
     password_confirmation: '',
@@ -91,8 +192,9 @@ const editForm = useForm({
     email: '',
     contact_number: '',
     street_address: '',
-    barangay: '',
+    province: '',
     city: '',
+    barangay: '',
     tin_number: '',
     status: '', 
     password: '',
@@ -104,60 +206,91 @@ const editForm = useForm({
 // --- ACTIONS ---
 const openAddModal = () => {
     showAddModal.value = true;
-    barangayQuery.value = '';
+    citiesList.value = [];
+    barangaysList.value = [];
     addPhotoPreview.value = null;
 };
 
 const closeAddModal = () => {
     showAddModal.value = false;
+    activeDropdown.value = null;
     addForm.reset();
     addPhotoPreview.value = null;
 };
 
 const submitAdd = () => {
-    if (!addForm.barangay && barangayQuery.value) {
-        addForm.barangay = barangayQuery.value;
-    }
     addForm.post(route('admin.franchise-owners.store'), {
         onSuccess: () => closeAddModal(),
         forceFormData: true 
     });
 };
 
-const openEditModal = (user) => {
+const openEditModal = async (user) => {
     editForm.id = user.id;
     editForm.first_name = user.first_name;
     editForm.middle_name = user.middle_name;
     editForm.last_name = user.last_name;
     editForm.email = user.email;
-    editForm.contact_number = user.contact_number;
+    editForm.contact_number = formatContactNumber(user.contact_number);
     editForm.street_address = user.street_address;
-    editForm.barangay = user.barangay;
+    editForm.province = user.province;
     editForm.city = user.city;
+    editForm.barangay = user.barangay;
     editForm.status = user.status; 
-    editForm.tin_number = user.operator ? user.operator.tin_number : '';
+    editForm.tin_number = user.operator && user.operator.tin_number ? formatTinNumber(user.operator.tin_number) : '';
     
     // Set preview to existing photo if available
     editPhotoPreview.value = user.user_photo ? `/storage/${user.user_photo}` : null;
-    barangayQuery.value = user.barangay; 
 
     showEditModal.value = true;
+
+    // Pre-fetch locations to prepopulate dropdowns for current values
+    if (user.province && provincesList.value.length) {
+        const prov = provincesList.value.find(p => p.name === user.province);
+        if (prov) {
+            try {
+                let res = await fetch(prov.isNCR 
+                    ? `https://psgc.gitlab.io/api/regions/${prov.code}/cities-municipalities`
+                    : `https://psgc.gitlab.io/api/provinces/${prov.code}/cities-municipalities`
+                );
+                citiesList.value = await res.json();
+
+                if (user.city) {
+                    const city = citiesList.value.find(c => c.name === user.city);
+                    if (city) {
+                        const brgyRes = await fetch(`https://psgc.gitlab.io/api/cities-municipalities/${city.code}/barangays`);
+                        barangaysList.value = await brgyRes.json();
+                    }
+                }
+            } catch (e) { console.error("Error pre-fetching location APIs", e); }
+        }
+    }
 };
 
 const closeEditModal = () => {
     showEditModal.value = false;
+    activeDropdown.value = null;
     editForm.reset();
     editPhotoPreview.value = null;
 };
 
 const submitEdit = () => {
-    if (!editForm.barangay && barangayQuery.value) {
-        editForm.barangay = barangayQuery.value;
-    }
     editForm.post(route('admin.franchise-owners.update', editForm.id), { 
         onSuccess: () => closeEditModal(),
         forceFormData: true
     });
+};
+
+const openFranchisesModal = (user) => {
+    selectedUser.value = user;
+    showFranchisesModal.value = true;
+};
+
+const closeFranchisesModal = () => {
+    showFranchisesModal.value = false;
+    setTimeout(() => {
+        selectedUser.value = null;
+    }, 300);
 };
 
 // --- SEARCH & FILTER ACTIONS ---
@@ -192,6 +325,8 @@ const resetFilters = () => {
 
     <AuthenticatedLayout>
         
+        <div v-if="activeDropdown" @click="activeDropdown = null" class="fixed inset-0 z-10"></div>
+
         <div class="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
                 <h1 class="text-2xl font-bold text-gray-800">Franchise Owners</h1>
@@ -224,17 +359,10 @@ const resetFilters = () => {
                     </svg>
                     <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
                 </button>
-
-                <!-- <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                    Add Owner
-                </PrimaryButton> -->
             </div>
         </div>
 
-        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden relative z-0">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
@@ -247,7 +375,12 @@ const resetFilters = () => {
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
-                        <tr v-for="user in users.data" :key="user.id" class="hover:bg-gray-50 transition-colors group">
+                        <tr 
+                            v-for="user in users.data" 
+                            :key="user.id" 
+                            @click="openFranchisesModal(user)"
+                            class="hover:bg-blue-50 cursor-pointer transition-colors group"
+                        >
                             <td class="px-6 py-4">
                                 <div class="flex items-center">
                                     <div class="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 font-bold border border-gray-300 overflow-hidden">
@@ -262,11 +395,11 @@ const resetFilters = () => {
                             </td>
                             <td class="px-6 py-4 text-gray-600">
                                 <div class="text-sm font-medium">{{ user.contact_number || 'N/A' }}</div>
-                                <div class="text-xs text-gray-400">{{ user.barangay }}, {{ user.city }}</div>
+                                <div class="text-xs text-gray-400">{{ user.street_address }}, {{ user.barangay }}, {{ user.city }}, {{ user.province }}</div>
                             </td>
                             <td class="px-6 py-4">
                                 <span v-if="user.operator && user.operator.tin_number" class="font-mono bg-gray-100 px-2 py-1 rounded text-gray-700 text-xs border">
-                                    {{ user.operator.tin_number }}
+                                    {{ formatTinNumber(user.operator.tin_number) }}
                                 </span>
                                 <span v-else class="text-gray-400 text-xs italic">N/A</span>
                             </td>
@@ -278,10 +411,10 @@ const resetFilters = () => {
                                     {{ user.status }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-right">
+                            <td class="px-6 py-4 text-right relative">
                                 <button 
-                                    @click="openEditModal(user)" 
-                                    class="text-gray-400 hover:text-blue-600 font-medium transition-colors"
+                                    @click.stop="openEditModal(user)" 
+                                    class="text-gray-400 hover:text-blue-600 font-medium transition-colors p-2 rounded hover:bg-white border border-transparent hover:border-gray-200"
                                 >
                                     Edit
                                 </button>
@@ -304,6 +437,55 @@ const resetFilters = () => {
                 <Pagination :links="users.links" />
             </div>
         </div>
+
+        <Modal :show="showFranchisesModal" @close="closeFranchisesModal" maxWidth="2xl">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6 border-b pb-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-gray-900">{{ selectedUser?.first_name }} {{ selectedUser?.last_name }}'s Franchises</h2>
+                        <p class="text-sm text-gray-500">Select a franchise card to view its full details.</p>
+                    </div>
+                    <button @click="closeFranchisesModal" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div v-if="selectedUser?.franchises?.length" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <Link 
+                        v-for="franchise in selectedUser.franchises" 
+                        :key="franchise.id" 
+                        :href="route('admin.franchises.show', franchise.id)"
+                        class="block border border-gray-200 rounded-xl p-5 hover:border-blue-500 hover:shadow-md transition-all group bg-white"
+                    >
+                        <div class="flex justify-between items-start mb-2">
+                            <div>
+                                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1">Franchise Number</span>
+                                <h3 class="text-xl font-extrabold text-blue-700 group-hover:text-blue-800">{{ franchise.franchise_number }}</h3>
+                            </div>
+                            <span 
+                                class="px-2.5 py-1 text-[10px] font-semibold rounded-full uppercase tracking-wider border"
+                                :class="{
+                                    'bg-green-50 text-green-700 border-green-200': franchise.status === 'active',
+                                    'bg-yellow-50 text-yellow-700 border-yellow-200': franchise.status === 'pending',
+                                    'bg-red-50 text-red-700 border-red-200': franchise.status === 'expired' || franchise.status === 'dropped',
+                                    'bg-gray-50 text-gray-700 border-gray-200': !['active', 'pending', 'expired', 'dropped'].includes(franchise.status)
+                                }"
+                            >
+                                {{ franchise.status || 'Unknown' }}
+                            </span>
+                        </div>
+                    </Link>
+                </div>
+
+                <div v-else class="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
+                    <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                    </svg>
+                    <h3 class="text-sm font-medium text-gray-900">No Franchises Assigned</h3>
+                    <p class="text-sm text-gray-500 mt-1">This operator does not currently own any active franchises.</p>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="showAddModal" @close="closeAddModal">
             <div class="p-6">
@@ -354,11 +536,23 @@ const resetFilters = () => {
                         </div>
                         <div>
                             <InputLabel>Contact Number<span class="text-red-600"> *</span></InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="addForm.contact_number" />
+                            <TextInput 
+                                v-model="addForm.contact_number" 
+                                @input="addForm.contact_number = formatContactNumber($event.target.value); addForm.clearErrors('contact_number')" 
+                                placeholder="09XX-XXX-XXXX" 
+                                maxlength="13" 
+                                class="mt-1 block w-full" 
+                            />
                         </div>
                         <div class="md:col-span-2">
                              <InputLabel>TIN Number <span class="text-red-600"> *</span></InputLabel>
-                             <TextInput type="text" class="mt-1 block w-full font-mono" v-model="addForm.tin_number" placeholder="000-000-000-000" />
+                             <TextInput 
+                                v-model="addForm.tin_number" 
+                                @input="addForm.tin_number = formatTinNumber($event.target.value); addForm.clearErrors('tin_number')" 
+                                placeholder="XXX-XXX-XXX-00000" 
+                                maxlength="17" 
+                                class="mt-1 block w-full font-mono" 
+                            />
                         </div>
                     </div>
 
@@ -371,33 +565,74 @@ const resetFilters = () => {
                             </div>
                             
                             <div class="relative">
-                                <InputLabel>Barangay<span class="text-red-600"> *</span></InputLabel>
-                                <TextInput 
-                                    type="text" 
-                                    class="mt-1 block w-full" 
-                                    v-model="barangayQuery" 
-                                    @focus="showBarangayDropdown = true"
-                                    @input="showBarangayDropdown = true"
-                                    placeholder="Select Barangay..." 
-                                    autocomplete="off"
-                                    required
-                                />
-                                <div v-if="showBarangayDropdown && filteredBarangays.length > 0" class="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                                    <div 
-                                        v-for="barangay in filteredBarangays" 
-                                        :key="barangay.id"
-                                        @click="selectBarangay(barangay.name)"
-                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
-                                    >
-                                        {{ barangay.name }}
+                                <InputLabel>Province<span class="text-red-600"> *</span></InputLabel>
+                                <div class="relative z-30">
+                                    <TextInput 
+                                        v-model="addForm.province" 
+                                        @focus="activeDropdown = 'province'"
+                                        @input="addForm.clearErrors('province')"
+                                        class="mt-1 block w-full"
+                                        placeholder="Search Province..."
+                                        autocomplete="off"
+                                        required
+                                    />
+                                    <div v-if="activeDropdown === 'province'" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                        <ul class="py-1">
+                                            <li v-for="prov in filteredProvinces" :key="prov.code" @click="selectProvince(prov, addForm)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50">
+                                                {{ prov.name }}
+                                            </li>
+                                            <li v-if="!filteredProvinces.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                        </ul>
                                     </div>
                                 </div>
-                                <div v-if="showBarangayDropdown" @click="showBarangayDropdown = false" class="fixed inset-0 z-0 bg-transparent cursor-default"></div>
                             </div>
 
-                            <div class="md:col-span-2">
-                                <InputLabel>City<span class="text-red-600"> *</span></InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.city" required />
+                            <div class="relative">
+                                <InputLabel>City/Municipality<span class="text-red-600"> *</span></InputLabel>
+                                <div class="relative z-20">
+                                    <TextInput 
+                                        v-model="addForm.city" 
+                                        @focus="activeDropdown = 'city'"
+                                        @input="addForm.clearErrors('city')"
+                                        :disabled="!citiesList.length"
+                                        class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="Search City..."
+                                        autocomplete="off"
+                                        required
+                                    />
+                                    <div v-if="activeDropdown === 'city' && citiesList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                        <ul class="py-1">
+                                            <li v-for="city in filteredCities" :key="city.code" @click="selectCity(city, addForm)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50">
+                                                {{ city.name }}
+                                            </li>
+                                            <li v-if="!filteredCities.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <InputLabel>Barangay<span class="text-red-600"> *</span></InputLabel>
+                                <div class="relative z-10">
+                                    <TextInput 
+                                        v-model="addForm.barangay" 
+                                        @focus="activeDropdown = 'barangay'"
+                                        @input="addForm.clearErrors('barangay')"
+                                        :disabled="!barangaysList.length"
+                                        class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="Search Barangay..."
+                                        autocomplete="off"
+                                        required
+                                    />
+                                    <div v-if="activeDropdown === 'barangay' && barangaysList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                        <ul class="py-1">
+                                            <li v-for="brgy in filteredBarangays" :key="brgy.code" @click="selectBarangay(brgy, addForm)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50">
+                                                {{ brgy.name }}
+                                            </li>
+                                            <li v-if="!filteredBarangays.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -473,11 +708,23 @@ const resetFilters = () => {
                         </div>
                         <div>
                             <InputLabel>Contact Number</InputLabel>
-                            <TextInput type="text" class="mt-1 block w-full" v-model="editForm.contact_number" />
+                            <TextInput 
+                                v-model="editForm.contact_number" 
+                                @input="editForm.contact_number = formatContactNumber($event.target.value); editForm.clearErrors('contact_number')" 
+                                placeholder="09XX-XXX-XXXX" 
+                                maxlength="13" 
+                                class="mt-1 block w-full" 
+                            />
                         </div>
                         <div class="md:col-span-2">
                              <InputLabel>TIN Number</InputLabel>
-                             <TextInput type="text" class="mt-1 block w-full font-mono" v-model="editForm.tin_number" />
+                             <TextInput 
+                                v-model="editForm.tin_number" 
+                                @input="editForm.tin_number = formatTinNumber($event.target.value); editForm.clearErrors('tin_number')" 
+                                placeholder="XXX-XXX-XXX-00000" 
+                                maxlength="17" 
+                                class="mt-1 block w-full font-mono" 
+                            />
                         </div>
                     </div>
 
@@ -490,33 +737,74 @@ const resetFilters = () => {
                             </div>
                             
                             <div class="relative">
-                                <InputLabel>Barangay</InputLabel>
-                                <TextInput 
-                                    type="text" 
-                                    class="mt-1 block w-full" 
-                                    v-model="barangayQuery" 
-                                    @focus="showBarangayDropdown = true"
-                                    @input="showBarangayDropdown = true"
-                                    placeholder="Select Barangay..." 
-                                    autocomplete="off"
-                                    required
-                                />
-                                <div v-if="showBarangayDropdown && filteredBarangays.length > 0" class="absolute z-10 w-full bg-white border border-gray-300 mt-1 rounded-md shadow-lg max-h-40 overflow-y-auto">
-                                    <div 
-                                        v-for="barangay in filteredBarangays" 
-                                        :key="barangay.id"
-                                        @click="selectBarangay(barangay.name)"
-                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700"
-                                    >
-                                        {{ barangay.name }}
+                                <InputLabel>Province</InputLabel>
+                                <div class="relative z-30">
+                                    <TextInput 
+                                        v-model="editForm.province" 
+                                        @focus="activeDropdown = 'province'"
+                                        @input="editForm.clearErrors('province')"
+                                        class="mt-1 block w-full"
+                                        placeholder="Search Province..."
+                                        autocomplete="off"
+                                        required
+                                    />
+                                    <div v-if="activeDropdown === 'province'" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                        <ul class="py-1">
+                                            <li v-for="prov in filteredProvinces" :key="prov.code" @click="selectProvince(prov, editForm)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50">
+                                                {{ prov.name }}
+                                            </li>
+                                            <li v-if="!filteredProvinces.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                        </ul>
                                     </div>
                                 </div>
-                                <div v-if="showBarangayDropdown" @click="showBarangayDropdown = false" class="fixed inset-0 z-0 bg-transparent cursor-default"></div>
                             </div>
 
-                            <div class="md:col-span-2">
-                                <InputLabel>City</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.city" required />
+                            <div class="relative">
+                                <InputLabel>City/Municipality</InputLabel>
+                                <div class="relative z-20">
+                                    <TextInput 
+                                        v-model="editForm.city" 
+                                        @focus="activeDropdown = 'city'"
+                                        @input="editForm.clearErrors('city')"
+                                        :disabled="!citiesList.length"
+                                        class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="Search City..."
+                                        autocomplete="off"
+                                        required
+                                    />
+                                    <div v-if="activeDropdown === 'city' && citiesList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                        <ul class="py-1">
+                                            <li v-for="city in filteredCities" :key="city.code" @click="selectCity(city, editForm)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50">
+                                                {{ city.name }}
+                                            </li>
+                                            <li v-if="!filteredCities.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="relative">
+                                <InputLabel>Barangay</InputLabel>
+                                <div class="relative z-10">
+                                    <TextInput 
+                                        v-model="editForm.barangay" 
+                                        @focus="activeDropdown = 'barangay'"
+                                        @input="editForm.clearErrors('barangay')"
+                                        :disabled="!barangaysList.length"
+                                        class="mt-1 block w-full disabled:bg-gray-100 disabled:text-gray-500"
+                                        placeholder="Search Barangay..."
+                                        autocomplete="off"
+                                        required
+                                    />
+                                    <div v-if="activeDropdown === 'barangay' && barangaysList.length" class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-40 overflow-y-auto z-50">
+                                        <ul class="py-1">
+                                            <li v-for="brgy in filteredBarangays" :key="brgy.code" @click="selectBarangay(brgy, editForm)" class="px-4 py-2 text-sm text-gray-700 cursor-pointer hover:bg-blue-50">
+                                                {{ brgy.name }}
+                                            </li>
+                                            <li v-if="!filteredBarangays.length" class="px-4 py-3 text-sm text-gray-500 italic text-center">No results found</li>
+                                        </ul>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>

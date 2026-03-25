@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Models\Operator;
-use App\Models\Barangay; 
+use App\Models\Franchise;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
@@ -39,16 +39,23 @@ class FranchiseOwnerController extends Controller
             ->paginate(6)
             ->withQueryString();
 
-        $barangays = Barangay::select('id', 'name')->orderBy('name')->get();
+        // Eager load the current franchises for each user/operator in the paginated set
+        $users->getCollection()->transform(function ($user) {
+            $user->franchises = [];
+            if ($user->operator) {
+                $user->franchises = Franchise::whereHas('currentOwnership', function ($query) use ($user) {
+                    $query->where('new_operator_id', $user->operator->id);
+                })->with('zone')->get(); // We pull the zone to display it nicely on the cards
+            }
+            return $user;
+        });
 
         return Inertia::render('Admin/FranchiseOwners/Index', [
             'users' => $users,
             'filters' => $request->only(['search', 'status']), // Pass status back to view
-            'barangays' => $barangays, 
         ]);
     }
 
-    // ... store and update methods remain the same ...
     public function store(Request $request)
     {
         $request->validate([
@@ -58,8 +65,9 @@ class FranchiseOwnerController extends Controller
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'contact_number' => 'nullable|string|max:20',
             'street_address' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
             'user_photo' => 'nullable|image|max:2048', 
         ]);
@@ -79,8 +87,9 @@ class FranchiseOwnerController extends Controller
                 'role' => 'franchise_owner', 
                 'contact_number' => $request->contact_number,
                 'street_address' => $request->street_address,
-                'barangay' => $request->barangay,
+                'province' => $request->province,
                 'city' => $request->city,
+                'barangay' => $request->barangay,
                 'user_photo' => $photoPath,
                 'status' => 'active',
             ]);
@@ -101,8 +110,9 @@ class FranchiseOwnerController extends Controller
             'last_name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email,' . $user->id,
             'street_address' => 'required|string|max:255',
-            'barangay' => 'required|string|max:255',
+            'province' => 'required|string|max:255',
             'city' => 'required|string|max:255',
+            'barangay' => 'required|string|max:255',
             'tin_number' => 'nullable|string|max:50',
             'user_photo' => 'nullable|image|max:2048',
             'status' => 'required|in:active,inactive',
