@@ -75,6 +75,7 @@ const application = computed(() => {
         
         franchise_details: {
             id: franchise.id,
+            franchise_number: franchise.franchise_number,
             zone: franchise.zone?.description || app.zone?.description || 'N/A',
             date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
             status: franchise.status || 'N/A',
@@ -89,7 +90,7 @@ const application = computed(() => {
             contact: currentUser.contact_number || 'N/A',
             email: currentUser.email || 'N/A',
             tin_number: currentOperator.tin_number || 'N/A', 
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}, ${currentUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
         // Mapped Proposed New Owner Details for the View Display
@@ -100,7 +101,7 @@ const application = computed(() => {
             contact: app.contact_number || 'N/A',
             email: app.email || 'N/A',
             tin_number: app.tin_number || 'N/A',
-            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}, ${app.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
 
         // NEW: Raw values specifically for auto-filling the Finalization Modal form
@@ -114,6 +115,7 @@ const application = computed(() => {
             street_address: app.street_address || '',
             barangay: app.barangay || '',
             city: app.city || 'Zamboanga City',
+            province: app.province
         },
 
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
@@ -299,7 +301,7 @@ const saveRequirementStatus = (status) => {
 
                     <div class="hidden md:flex items-center gap-2 mb-1">
                         <span class="text-xs text-gray-500">Target Franchise:</span>
-                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-gray-200 text-gray-700 font-mono tracking-wide">#{{ application.franchise_details.id }}</span>
+                        <span class="px-2 py-0.5 text-xs font-bold rounded bg-gray-200 text-gray-700 font-mono tracking-wide">#{{ application.franchise_details.franchise_number }}</span>
                         <span class="px-2 py-0.5 text-[10px] font-bold rounded uppercase tracking-wide bg-blue-100 text-blue-800">{{ application.status }}</span>
                     </div>
                 </div>
@@ -358,7 +360,7 @@ const saveRequirementStatus = (status) => {
                             </div>
                             <div>
                                 <h4 class="font-bold text-gray-900 text-sm">Franchise Status Context</h4>
-                                <p class="text-sm text-gray-600 mt-1">This application targets Franchise <span class="font-bold text-gray-800">#{{ application.franchise_details.id }}</span> in <span class="font-bold text-gray-800">{{ application.franchise_details.zone }}</span>. It is currently <span class="font-bold uppercase text-[10px] bg-gray-100 px-2 py-0.5 rounded">{{ application.franchise_details.status }}</span>.</p>
+                                <p class="text-sm text-gray-600 mt-1">This application targets Franchise <span class="font-bold text-gray-800">#{{ application.franchise_details.franchise_number }}</span> in <span class="font-bold text-gray-800">{{ application.franchise_details.zone }}</span>. It is currently <span class="font-bold uppercase text-[10px] bg-gray-100 px-2 py-0.5 rounded">{{ application.franchise_details.status }}</span>.</p>
                             </div>
                         </div>
 

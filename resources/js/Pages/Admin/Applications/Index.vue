@@ -58,10 +58,11 @@ const getViewUrl = (app) => {
         case 'Renewal': 
             return route('admin.applications.renewal.show', app.id);
         case 'Change of Owner': 
+        case 'Change of Owner (Deceased)': // <-- Add this case
             return route('admin.applications.change-of-owner.show', app.id);
         case 'Change of Unit': 
             return route('admin.applications.change-of-unit.show', app.id);
-        case 'New Franchise': // <-- Added New Franchise
+        case 'New Franchise':
             return route('admin.applications.show-new-franchise', app.id);
         case 'Franchise Owner Account': 
         default: 
@@ -175,11 +176,11 @@ const deleteRequirement = (id) => {
 const getApplicationRoute = (app) => {
     if (app.type === 'Change of Unit') {
         return route('admin.applications.show-change-of-unit', app.id);
-    } else if (app.type === 'Change of Owner') {
+    } else if (app.type === 'Change of Owner' || app.type === 'Change of Owner (Deceased)') { // <-- Update this condition
         return route('admin.applications.show-change-of-owner', app.id);
     } else if (app.type === 'Renewal') {
         return route('admin.applications.show-renewal', app.id); 
-    } else if (app.type === 'New Franchise') { // <-- Added New Franchise
+    } else if (app.type === 'New Franchise') {
         return route('admin.applications.show-new-franchise', app.id); 
     }
     // Fallback (Handles 'Franchise Owner Account')

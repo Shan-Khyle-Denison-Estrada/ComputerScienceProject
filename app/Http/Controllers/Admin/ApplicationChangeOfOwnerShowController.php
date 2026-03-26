@@ -18,7 +18,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
 {
     public function show(Application $application)
     {
-        abort_if($application->application_type !== 'Change of Owner', 404);
+        abort_if(!in_array($application->application_type, ['Change of Owner', 'Change of Owner (Deceased)']), 404);
 
         $user = auth()->user();
         $isEncoder = strtolower($user->role->value) === 'encoder';
@@ -108,9 +108,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
         $request->validate([
             'change_date' => 'required|date',
             'remarks' => 'nullable|string',
-            'password' => $operatorExists ? 'nullable|min:8|confirmed' : 'required|min:8|confirmed',
-        ], [
-            'password.required' => 'A password must be set because this operator does not have an account yet.'
+            // 'password' => $operatorExists ? 'nullable|min:8|confirmed' : 'required|min:8|confirmed',
         ]);
 
         DB::transaction(function () use ($request, $application) {

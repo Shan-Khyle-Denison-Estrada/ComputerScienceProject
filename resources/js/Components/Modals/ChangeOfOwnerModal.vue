@@ -171,6 +171,25 @@ const submit = () => {
         <div class="p-6">
             <h2 class="text-lg font-medium text-gray-900 mb-4">Finalize Change of Owner</h2>
             
+            <div v-if="Object.keys(form.errors).length > 0 || $page.props.flash?.error" class="mb-6 bg-red-50 p-4 rounded-md border border-red-200">
+                <div class="flex items-center gap-2 text-red-800 font-bold text-sm mb-1">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Action Failed
+                </div>
+                
+                <p v-if="$page.props.flash?.error" class="text-xs text-red-700 mt-1">
+                    {{ $page.props.flash.error }}
+                </p>
+
+                <ul v-if="Object.keys(form.errors).length > 0" class="list-disc list-inside text-xs text-red-700 mt-2">
+                    <li v-for="(error, key) in form.errors" :key="key">
+                        {{ error }}
+                    </li>
+                </ul>
+            </div>
+
             <form @submit.prevent="submit">
                 
                 <div class="mb-6 p-4 rounded-lg border" :class="operatorExists ? 'bg-green-50 border-green-200' : 'bg-blue-50 border-blue-200'">
@@ -183,7 +202,7 @@ const submit = () => {
                         </span>
                     </div>
                     <p class="text-xs mt-2" :class="operatorExists ? 'text-green-700' : 'text-blue-700'">
-                        {{ operatorExists ? 'The TIN matches an existing operator. Passwords are hidden, and this franchise will automatically link to their existing account.' : 'No existing operator found for this TIN. A new account will be created. Please assign a temporary password below.' }}
+                        {{ operatorExists ? 'The TIN matches an existing operator. Passwords are hidden, and this franchise will automatically link to their existing account.' : 'No existing operator found for this TIN. A new account will be created.' }}
                     </p>
                 </div>
 
@@ -226,6 +245,7 @@ const submit = () => {
                                 <option value="" disabled>Select Province</option>
                                 <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
                             </select>
+                            <div v-if="form.errors.province" class="text-red-500 text-xs mt-1">{{ form.errors.province }}</div>
                         </div>
                         <div>
                             <InputLabel value="City" class="text-xs mb-0" />
@@ -233,6 +253,7 @@ const submit = () => {
                                 <option value="" disabled>Select City</option>
                                 <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
                             </select>
+                            <div v-if="form.errors.city" class="text-red-500 text-xs mt-1">{{ form.errors.city }}</div>
                         </div>
                     </div>
                     <div class="grid grid-cols-2 gap-4">
@@ -242,10 +263,12 @@ const submit = () => {
                                 <option value="" disabled>Select Barangay</option>
                                 <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
                             </select>
+                            <div v-if="form.errors.barangay" class="text-red-500 text-xs mt-1">{{ form.errors.barangay }}</div>
                         </div>
                         <div>
                             <InputLabel value="Street Address" class="text-xs mb-0" />
                             <TextInput v-model="form.street_address" class="block w-full text-sm py-1.5" />
+                            <div v-if="form.errors.street_address" class="text-red-500 text-xs mt-1">{{ form.errors.street_address }}</div>
                         </div>
                     </div>
 
@@ -272,6 +295,7 @@ const submit = () => {
                         <div>
                              <InputLabel value="Remarks" class="text-xs mb-0" />
                              <TextInput v-model="form.remarks" class="block w-full text-sm py-1.5" placeholder="Reason for change..." />
+                             <div v-if="form.errors.remarks" class="text-red-500 text-xs mt-1">{{ form.errors.remarks }}</div>
                         </div>
                     </div>
                 </div>

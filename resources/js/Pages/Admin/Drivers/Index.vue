@@ -442,12 +442,12 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                                     </div>
                                 </div>
                             </td>
-<td class="px-6 py-4 text-gray-600">
-    <div class="text-sm font-medium">{{ driver.contact_number || 'N/A' }}</div>
-    <div class="text-xs text-gray-400 break-words max-w-xs leading-relaxed mt-0.5">
-        {{ driver.street }}, {{ driver.barangay }}, {{ driver.city }}, {{ driver.province }}
-    </div>
-</td>
+                            <td class="px-6 py-4 text-gray-600">
+                                <div class="text-sm font-medium">{{ driver.contact_number || 'N/A' }}</div>
+                                <div class="text-xs text-gray-400 break-words max-w-xs leading-relaxed mt-0.5">
+                                    {{ driver.street }}, {{ driver.barangay }}, {{ driver.city }}, {{ driver.province }}
+                                </div>
+                            </td>
                             <td class="px-6 py-4">
                                 <div class="font-mono text-gray-900 font-medium">{{ driver.license_number }}</div>
                                 <div class="text-xs text-gray-500 mt-0.5">Expires: {{ driver.license_expiration_date }}</div>
