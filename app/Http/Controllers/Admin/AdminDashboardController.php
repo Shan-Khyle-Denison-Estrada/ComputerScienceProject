@@ -9,6 +9,8 @@ use App\Models\Driver;
 use App\Models\Operator;
 use App\Models\SystemSetting;
 use App\Models\Complaint;
+use App\Models\RedFlag;
+use App\Models\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -90,6 +92,15 @@ class AdminDashboardController extends Controller
             ? (($totalRevenue - $prevRevenue) / $prevRevenue) * 100
             : ($totalRevenue > 0 ? 100 : 0);
 
+        // Fetch Pending Counts (Scoped to Fiscal Year)
+        $pendingComplaints = Complaint::whereBetween('created_at', [$fyStart, $fyEnd])
+            ->where('status', 'pending')
+            ->count();
+            
+        $pendingRedFlags = RedFlag::whereBetween('created_at', [$fyStart, $fyEnd])
+            ->where('status', 'pending')
+            ->count();
+
         // 5. Dynamic Chart Data based on Timeline Selection
         $dbFormat = match($chartPeriod) {
             'daily' => "DATE_FORMAT(created_at, '%b %d, %Y')",
@@ -130,19 +141,39 @@ class AdminDashboardController extends Controller
             'data' => $revenueData->pluck('sums'),
         ];
 
-        // 6. Recent Payments Table (Scoped to Fiscal Year & Strictly Limited to 5)
+        // 6. Recent Payments Table (Scoped to Fiscal Year & Strictly Limited to 4)
         $recentPayments = Payment::with(['assessment.application.franchise.currentActiveUnit.newUnit']) 
             ->whereBetween('created_at', [$fyStart, $fyEnd])
             ->latest()
-            ->limit(4) // Keeping the limit to 4 as in your original file
+            ->limit(11) 
             ->get()
             ->map(function ($payment) {
                 return [
                     'id' => $payment->id,
                     'amount' => $payment->amount_paid,
                     'date' => $payment->created_at->format('M d, Y'),
-                    'plate_number' => $payment->assessment->application->franchise->currentActiveUnit->newUnit->plate_number ?? 'No Unit', 
+                    'plate_number' => $payment->assessment->application->franchise->currentActiveUnit->newUnit->plate_number ?? 'No Unit',
+                    'franchise_number' => $payment->assessment->application->franchise->franchise_number 
+                      ?? $payment->assessment->franchise->franchise_number 
+                      ?? 'No Franchise Number',
                     'payee' => $payment->payee_first_name . ' ' . $payment->payee_last_name,
+                ];
+            });
+
+        // 7. Pending Applications (Scoped to Fiscal Year)
+        $pendingApplications = Application::whereBetween('created_at', [$fyStart, $fyEnd])
+            ->where('status', 'Pending')
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->map(function ($app) {
+                return [
+                    'id' => $app->id,
+                    'reference_number' => $app->reference_number,
+                    'type' => $app->application_type,
+                    'applicant' => trim($app->first_name . ' ' . $app->last_name),
+                    'status' => $app->status,
+                    'date' => $app->created_at->format('M d, Y'),
                 ];
             });
 
@@ -153,9 +184,12 @@ class AdminDashboardController extends Controller
                 'total_operators' => $totalOperators,
                 'total_revenue' => $totalRevenue,
                 'revenue_growth' => round($revenueGrowth, 1),
+                'pending_complaints' => $pendingComplaints,
+                'pending_red_flags' => $pendingRedFlags,
             ],
             'chart' => $revenueChart, 
             'recent_payments' => $recentPayments,
+            'pending_applications' => $pendingApplications,
             'available_fiscal_years' => array_values($availableFiscalYears),
             'filters' => [
                 'fiscal_year' => $selectedFiscalYear,
