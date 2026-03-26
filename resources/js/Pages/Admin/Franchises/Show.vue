@@ -788,6 +788,18 @@ const getDriverName = (driver) => {
                 <div class="p-6">
                     <div class="grid grid-cols-1 gap-4 mb-8">
                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 uppercase font-bold">Plate Number</span>
+                            <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.plate_number }}</span>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 uppercase font-bold">Model Year</span>
+                            <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.model_year }}</span>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                            <span class="text-xs text-gray-500 uppercase font-bold">Make</span>
+                            <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.make.name }}</span>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
                             <span class="text-xs text-gray-500 uppercase font-bold">Chassis Number</span>
                             <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.chassis_number }}</span>
                         </div>
@@ -795,10 +807,10 @@ const getDriverName = (driver) => {
                             <span class="text-xs text-gray-500 uppercase font-bold">Motor Number</span>
                             <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.motor_number }}</span>
                         </div>
-                         <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
+                         <!-- <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 flex justify-between items-center">
                             <span class="text-xs text-gray-500 uppercase font-bold">CR Number</span>
                             <span class="font-mono font-medium text-gray-900 break-all">{{ currentUnit.cr_number || 'N/A' }}</span>
-                        </div>
+                        </div> -->
                     </div>
 
                     <div>

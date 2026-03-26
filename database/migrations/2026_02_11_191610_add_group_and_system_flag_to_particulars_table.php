@@ -26,7 +26,7 @@ return new class extends Migration
             [
                 'name' => 'Surcharge',
                 'code' => 'surcharge',
-                'description' => '25% of Renewal Fees',
+                // 'description' => '25% of Renewal Fees',
                 'amount' => 0, // Calculated dynamically
                 'group' => 'penalty',
                 'is_system' => true,
@@ -36,7 +36,7 @@ return new class extends Migration
             [
                 'name' => 'Interest',
                 'code' => 'interest',
-                'description' => '2% per month on Renewal Fees',
+                // 'description' => '2% per month on Renewal Fees',
                 'amount' => 0, // Calculated dynamically
                 'group' => 'penalty',
                 'is_system' => true,
