@@ -191,18 +191,26 @@ class DashboardController extends Controller
                         // Overlap condition: Start A < End B AND End A > Start B
                         if ($newStart < $otherEnd && $newEnd > $otherStart) {
                             
+                            // Format the NEW requested times
+                            $formattedNewStart = date('g:i A', $newStart);
+                            $formattedNewEnd   = date('g:i A', $newEnd);
+
+                            // Format the EXISTING scheduled times from the database
+                            $formattedOtherStart = date('g:i A', $otherStart);
+                            $formattedOtherEnd   = date('g:i A', $otherEnd);
+                            
                             // Check WHICH rule was violated to give a specific error message
                             if ($other->franchise_id == $franchiseId) {
                                 $driverName = $other->driver ? $other->driver->first_name . ' ' . $other->driver->last_name : 'another driver';
                                 return back()->withErrors([
-                                    'schedule' => "Schedule overlap detected on {$newDay['day']} between {$newDay['start']}-{$newDay['end']} with {$driverName} in this franchise."
+                                    'schedule' => "Schedule overlap detected on {$newDay['day']}. Your requested time ({$formattedNewStart} - {$formattedNewEnd}) conflicts with {$driverName}'s schedule ({$formattedOtherStart} - {$formattedOtherEnd}) in this franchise."
                                 ]);
                             } else {
                                 // Extract the franchise number with a fallback
                                 $franchiseNumber = $other->franchise ? $other->franchise->franchise_number : 'an unknown franchise';
                                 
                                 return back()->withErrors([
-                                    'schedule' => "Schedule overlap detected. This driver is already scheduled on {$newDay['day']} between {$newDay['start']}-{$newDay['end']} in Franchise #{$franchiseNumber}."
+                                    'schedule' => "Schedule overlap detected on {$newDay['day']}. This driver is already scheduled from {$formattedOtherStart} - {$formattedOtherEnd} in Franchise #{$franchiseNumber}."
                                 ]);
                             }
                         }
