@@ -46,6 +46,7 @@ class NewFranchiseController extends Controller
             'zones' => Zone::all(),
             'unitMakes' => UnitMake::orderBy('name')->get(),
             'requirements' => $requirements,
+            'settings' => $settings,
         ]);
     }
 

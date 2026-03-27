@@ -14,5 +14,7 @@ class SystemSetting extends Model
         'interest_rate' => 'decimal:2',
         'ordinances' => 'array',
         'faqs' => 'array',
+        'privacy_policy' => 'string',
+        'terms_of_service' => 'string',
     ];
 }

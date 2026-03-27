@@ -13,7 +13,8 @@ import axios from 'axios'; // <-- Import axios for background API calls
 const props = defineProps({
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
-    requirements: { type: Object, default: () => ({}) }
+    requirements: { type: Object, default: () => ({}) },
+    settings: { type: Object, default: () => ({}) }
 });
 
 // --- API State for Addresses ---
@@ -896,18 +897,28 @@ const formatTinNumber = (val) => {
             </div>
 
             <div class="mb-6 max-h-96 overflow-y-auto pr-2 text-gray-600 space-y-4 text-sm leading-relaxed">
-                <p>
-                    In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, we require your explicit consent to collect, process, and store your personal information for the purpose of evaluating and managing your franchise application.
-                </p>
-                <p>
-                    By proceeding, you acknowledge and agree to the following:
-                </p>
-                <ul class="list-disc list-inside space-y-2 ml-2">
-                    <li>The information and documents provided will be used exclusively by the relevant authorities to process, assess, and verify your application.</li>
-                    <li>Your data will be stored securely and retained only for as long as necessary to fulfill the purposes mentioned or as required by law.</li>
-                    <li><strong>Public Transparency:</strong> Certain non-sensitive details regarding your franchise application, such as franchise status, plate numbers, and assigned zones, may be made available to the public for transparency, verification, and regulatory compliance.</li>
-                </ul>
-                <p>
+                
+                <div 
+                    v-if="settings?.privacy_policy" 
+                    class="prose max-w-none text-sm text-gray-600 space-y-4"
+                    v-html="settings.privacy_policy"
+                ></div>
+
+                <div v-else class="space-y-4">
+                    <p>
+                        In compliance with the <strong>Data Privacy Act of 2012 (Republic Act No. 10173)</strong>, we require your explicit consent to collect, process, and store your personal information for the purpose of evaluating and managing your franchise application.
+                    </p>
+                    <p>
+                        By proceeding, you acknowledge and agree to the following:
+                    </p>
+                    <ul class="list-disc list-inside space-y-2 ml-2">
+                        <li>The information and documents provided will be used exclusively by the relevant authorities to process, assess, and verify your application.</li>
+                        <li>Your data will be stored securely and retained only for as long as necessary to fulfill the purposes mentioned or as required by law.</li>
+                        <li><strong>Public Transparency:</strong> Certain non-sensitive details regarding your franchise application, such as franchise status, plate numbers, and assigned zones, may be made available to the public for transparency, verification, and regulatory compliance.</li>
+                    </ul>
+                </div>
+
+                <p class="pt-4 border-t border-gray-100 mt-4 font-medium text-gray-800">
                     By clicking "I Agree", you declare that the information provided is true and correct, and you authorize the system to process your data as outlined above.
                 </p>
             </div>

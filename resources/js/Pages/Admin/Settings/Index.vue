@@ -5,6 +5,7 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Modal from '@/Components/Modal.vue';
+import RichTextEditor from '@/Components/RichTextEditor.vue';
 import { Head, useForm } from '@inertiajs/vue3';
 import { ref, watch, onMounted, computed } from 'vue';
 
@@ -30,7 +31,9 @@ const props = defineProps({
             mission: '',
             vision: '',
             ordinances: [], 
-            faqs: [] 
+            faqs: [],
+            privacy_policy: '',
+            terms_of_service: ''
         })
     }
 });
@@ -66,6 +69,8 @@ const form = useForm({
     vision: props.settings.vision,
     ordinances: props.settings.ordinances || [], 
     faqs: props.settings.faqs || [], 
+    privacy_policy: props.settings.privacy_policy || '',
+    terms_of_service: props.settings.terms_of_service || '',
     _method: 'PUT'
 });
 
@@ -338,6 +343,16 @@ const submitSettings = () => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" />
                             </svg>
                             Public Content
+                        </button>
+
+                        <button 
+                            @click="activeTab = 'legal'"
+                            :class="[activeTab === 'legal' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300', 'whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm flex items-center gap-2 transition-colors']"
+                        >
+                            <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            Legal & Policies
                         </button>
                     </nav>
                 </div>
@@ -740,6 +755,25 @@ const submitSettings = () => {
                                 </div>
                             </div>
 
+                        </div>
+                    </div>
+
+                    <div v-show="activeTab === 'legal'" class="w-full animate-fade-in">
+                        <h3 class="text-lg font-medium leading-6 text-gray-900 mb-4">Legal Documents</h3>
+                        <p class="text-sm text-gray-500 mb-6">Configure the content for public-facing legal pages displayed on the main website.</p>
+
+                        <div class="grid grid-cols-1 gap-8">
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
+                                <InputLabel class="text-lg" value="Privacy Policy" />
+                                <p class="text-xs text-gray-500 mb-4">This content will be shown on your <strong>/privacy-policy</strong> page. Explain how user data is gathered, used, and protected.</p>
+                                <RichTextEditor v-model="form.privacy_policy" />
+                            </div>
+
+                            <div class="bg-gray-50 p-6 rounded-lg border border-gray-100 flex flex-col">
+                                <InputLabel class="text-lg" value="Terms of Service" />
+                                <p class="text-xs text-gray-500 mb-4">This content will be shown on your <strong>/terms-of-service</strong> page. Outline the rules and guidelines users must agree to.</p>
+                                <RichTextEditor v-model="form.terms_of_service" />
+                            </div>
                         </div>
                     </div>
 

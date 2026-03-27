@@ -11,6 +11,7 @@ use App\Models\EvaluationRequirement;
 use App\Models\ProposedUnit;
 use App\Models\UnitMake;
 use App\Models\Zone;
+use App\Models\SystemSetting;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -35,6 +36,7 @@ class ApplicationController extends Controller
             'zones' => Zone::all(),
             'unitMakes' => UnitMake::orderBy('name')->get(),
             'requirements' => $requirements,
+            'settings' => SystemSetting::first() ?? SystemSetting::create([]),
         ]);
     }
 

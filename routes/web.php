@@ -98,6 +98,14 @@ Route::get('/ordinances', function () {
     return Inertia::render('Ordinances');
 })->name('ordinances');
 
+Route::get('/privacy-policy', function () {
+    return Inertia::render('PrivacyPolicy');
+})->name('privacy-policy');
+
+Route::get('/terms-of-service', function () {
+    return Inertia::render('TermsOfService');
+})->name('terms-of-service');
+
 // The Verification Page (Scanner)
 Route::get('/verify', [FranchiseController::class, 'verify'])->name('verify');
 Route::post('/verify/lookup', [FranchiseController::class, 'lookup'])->name('verify.lookup');

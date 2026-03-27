@@ -89,7 +89,7 @@ const user = computed(() => page.props.auth?.user); // <-- Added Auth check here
                 </p>
                 <div class="flex gap-4">
                     <Link href="/privacy-policy" class="text-sm text-slate-500 hover:text-white transition-colors">Privacy Policy</Link>
-                    <Link href="/terms" class="text-sm text-slate-500 hover:text-white transition-colors">Terms of Service</Link>
+                    <Link href="/terms-of-service" class="text-sm text-slate-500 hover:text-white transition-colors">Terms of Service</Link>
                 </div>
             </div>
         </div>

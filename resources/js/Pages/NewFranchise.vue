@@ -14,7 +14,8 @@ import axios from 'axios';
 const props = defineProps({
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
-    requirements: { type: Object, default: () => ({}) }
+    requirements: { type: Object, default: () => ({}) },
+    settings: { type: Object, default: () => ({}) }
 });
 
 // --- API State for Addresses ---
@@ -651,13 +652,22 @@ const formatTinNumber = (val) => {
                 </div>
                 
                 <div class="mt-2 h-64 overflow-y-auto p-4 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-600 leading-relaxed custom-scrollbar">
-                    <p class="mb-4">By checking the box below, you explicitly consent to the collection, processing, and storage of your personal data by the Tricycle Franchising Board.</p>
-                    <p class="mb-4 font-bold">1. Data Collection</p>
-                    <p class="mb-4">We collect personal information such as your name, address, contact details, and attached documents purely for the assessment and processing of your franchise application.</p>
-                    <p class="mb-4 font-bold">2. Data Usage</p>
-                    <p class="mb-4">Your data will be exclusively used to verify your identity, evaluate your eligibility, and communicate official updates regarding your application status.</p>
-                    <p class="mb-4 font-bold">3. Data Protection</p>
-                    <p>Your information is stored securely in accordance with the Data Privacy Act of 2012 (RA 10173). We will not share your data with third parties without your prior consent unless mandated by law.</p>
+                    
+                    <div v-if="settings?.privacy_policy || settings?.terms_of_service" class="prose max-w-none text-sm text-gray-600">
+                        <div v-if="settings?.privacy_policy" v-html="settings.privacy_policy" class="mb-6"></div>
+                        <hr v-if="settings?.privacy_policy && settings?.terms_of_service" class="my-6 border-gray-300">
+                        <div v-if="settings?.terms_of_service" v-html="settings.terms_of_service"></div>
+                    </div>
+
+                    <div v-else>
+                        <p class="mb-4">By checking the box below, you explicitly consent to the collection, processing, and storage of your personal data by the Tricycle Franchising Board.</p>
+                        <p class="mb-4 font-bold">1. Data Collection</p>
+                        <p class="mb-4">We collect personal information such as your name, address, contact details, and attached documents purely for the assessment and processing of your franchise application.</p>
+                        <p class="mb-4 font-bold">2. Data Usage</p>
+                        <p class="mb-4">Your data will be exclusively used to verify your identity, evaluate your eligibility, and communicate official updates regarding your application status.</p>
+                        <p class="mb-4 font-bold">3. Data Protection</p>
+                        <p>Your information is stored securely in accordance with the Data Privacy Act of 2012 (RA 10173). We will not share your data with third parties without your prior consent unless mandated by law.</p>
+                    </div>
                 </div>
 
                 <div class="mt-6 flex items-start">
@@ -665,7 +675,7 @@ const formatTinNumber = (val) => {
                         <input id="terms" type="checkbox" v-model="form.agreed_to_terms" class="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 focus:ring-2 cursor-pointer">
                     </div>
                     <label for="terms" class="ml-3 text-sm font-medium text-gray-900 cursor-pointer">
-                        I have read and agree to the Terms, Conditions, and Privacy Policy.
+                        I have read and agree to the Privacy Policy and Terms of Service.
                     </label>
                 </div>
 
