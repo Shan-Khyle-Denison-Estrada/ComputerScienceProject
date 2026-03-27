@@ -178,7 +178,7 @@ const getTabLabel = (tabKey) => {
     <Head title="Dashboard" />
 
     <AuthenticatedLayout>
-        <div class="flex flex-col lg:flex-row flex-1 h-full overflow-y-auto lg:overflow-hidden relative gap-4 p-2 md:p-4 bg-gray-50/50">
+        <div class="flex flex-col lg:flex-row flex-1 h-full overflow-y-auto lg:overflow-hidden relative gap-4">
             
             <aside class="w-full lg:w-80 rounded-2xl bg-white flex flex-col z-10 shrink-0 border border-gray-200 max-h-[35vh] lg:max-h-full lg:h-full shadow-sm">
                 <div class="p-4 md:p-5 border-b border-gray-100 shrink-0">

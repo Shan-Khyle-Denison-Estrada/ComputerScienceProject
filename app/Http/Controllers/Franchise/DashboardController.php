@@ -154,10 +154,20 @@ class DashboardController extends Controller
 
         $newSchedule = $request->schedule;
 
-        // Fetch other driver assignments for this franchise to check for overlaps
-        $otherAssignments = DriverAssignment::where('franchise_id', $franchiseId)
-            ->where('id', '!=', $assignmentId)
+        // 1. Fetch the current assignment first to get the driver_id
+        $assignment = DriverAssignment::where('franchise_id', $franchiseId)
+            ->where('id', $assignmentId)
+            ->firstOrFail();
+
+        // 2. Fetch assignments to check against: 
+        // Either in the same franchise (other drivers) OR for the same driver (other franchises)
+        $assignmentsToCheck = DriverAssignment::where('id', '!=', $assignmentId)
             ->whereNotNull('schedule')
+            ->where(function($query) use ($franchiseId, $assignment) {
+                $query->where('franchise_id', $franchiseId)
+                      ->orWhere('driver_id', $assignment->driver_id);
+            })
+            ->with(['driver', 'franchise']) // Eager-load the franchise relationship too
             ->get();
 
         foreach ($newSchedule as $newDay) {
@@ -169,7 +179,7 @@ class DashboardController extends Controller
             $newStart = strtotime($newDay['start']);
             $newEnd = strtotime($newDay['end']);
 
-            foreach ($otherAssignments as $other) {
+            foreach ($assignmentsToCheck as $other) {
                 $otherSchedule = $other->schedule;
                 if (!$otherSchedule) continue;
 
@@ -180,20 +190,28 @@ class DashboardController extends Controller
 
                         // Overlap condition: Start A < End B AND End A > Start B
                         if ($newStart < $otherEnd && $newEnd > $otherStart) {
-                            $driverName = $other->driver ? $other->driver->first_name . ' ' . $other->driver->last_name : 'another driver';
-                            return back()->withErrors([
-                                'schedule' => "Schedule overlap detected on {$newDay['day']} between {$newDay['start']}-{$newDay['end']} with {$driverName}."
-                            ]);
+                            
+                            // Check WHICH rule was violated to give a specific error message
+                            if ($other->franchise_id == $franchiseId) {
+                                $driverName = $other->driver ? $other->driver->first_name . ' ' . $other->driver->last_name : 'another driver';
+                                return back()->withErrors([
+                                    'schedule' => "Schedule overlap detected on {$newDay['day']} between {$newDay['start']}-{$newDay['end']} with {$driverName} in this franchise."
+                                ]);
+                            } else {
+                                // Extract the franchise number with a fallback
+                                $franchiseNumber = $other->franchise ? $other->franchise->franchise_number : 'an unknown franchise';
+                                
+                                return back()->withErrors([
+                                    'schedule' => "Schedule overlap detected. This driver is already scheduled on {$newDay['day']} between {$newDay['start']}-{$newDay['end']} in Franchise #{$franchiseNumber}."
+                                ]);
+                            }
                         }
                     }
                 }
             }
         }
 
-        $assignment = DriverAssignment::where('franchise_id', $franchiseId)
-            ->where('id', $assignmentId)
-            ->firstOrFail();
-
+        // 3. Update if all checks pass
         $assignment->update([
             'schedule' => $newSchedule
         ]);

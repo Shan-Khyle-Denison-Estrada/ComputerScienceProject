@@ -36,7 +36,7 @@ class FranchiseController extends Controller
                 'zone'
             ])
             ->when($search, function ($query, $search) {
-                $query->where('id', 'like', "%{$search}%");
+                $query->where('franchise_number', 'like', "%{$search}%");
             })
             ->latest()
             ->paginate(5)
