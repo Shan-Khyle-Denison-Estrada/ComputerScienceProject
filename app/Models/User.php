@@ -34,6 +34,31 @@ class User extends Authenticatable
         'remember_token',
     ];
 
+    // Automatically append active_roles so Vue/Inertia can see it immediately
+    protected $appends = ['active_roles'];
+
+    // Relationship to active temporary roles
+    public function temporaryRoles()
+    {
+        return $this->hasMany(TemporaryRole::class)->where('expires_at', '>', now());
+    }
+
+    // Accessor that merges the base role with temporary roles into a single array
+    public function getActiveRolesAttribute()
+    {
+        $baseRole = $this->role instanceof \BackedEnum ? $this->role->value : $this->role;
+        $roles = [$baseRole];
+        
+        if ($this->relationLoaded('temporaryRoles') || $this->exists) {
+            $tempRoles = $this->temporaryRoles()->pluck('role')
+                ->map(fn($r) => $r instanceof \BackedEnum ? $r->value : $r)
+                ->toArray();
+            $roles = array_merge($roles, $tempRoles);
+        }
+        
+        return array_unique($roles);
+    }
+
     protected function casts(): array
     {
         return [

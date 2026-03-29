@@ -39,7 +39,7 @@ class FranchiseController extends Controller
                 $query->where('franchise_number', 'like', "%{$search}%");
             })
             ->latest()
-            ->paginate(5)
+            ->paginate(6)
             ->withQueryString();
 
         return Inertia::render('Admin/Franchises/Index', [

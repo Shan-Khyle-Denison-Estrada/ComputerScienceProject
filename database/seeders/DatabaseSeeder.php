@@ -29,10 +29,11 @@ class DatabaseSeeder extends Seeder
                 'password' => Hash::make('password'), // You can change this later in the UI
                 'role' => UserRole::ADMIN,
                 'user_photo' => null,
-                'contact_number' => '09451830519',
-                'street_address' => 'Estrada Drive',
+                'contact_number' => '12345678901',
+                'street_address' => 'Admin Address',
+                'province' => 'Zamboanga del Sur',
                 'barangay' => 'San Roque',
-                'city' => 'Zamboanga City',
+                'city' => 'City of Zamboanga',
                 'status' => 'active',
             ]
         );

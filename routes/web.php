@@ -117,6 +117,8 @@ Route::post('/complaints/report', [ComplaintController::class, 'store'])->name('
 
 // --- ADMIN ROUTES ---
 Route::middleware(['auth', 'prevent-back-history', 'role:admin'])->group(function () {
+    Route::post('/users/{user}/temporary-roles', [\App\Http\Controllers\Admin\UserController::class, 'assignTemporaryRole'])->name('admin.users.temp-roles.store');
+    Route::delete('/users/{user}/temporary-roles/{role}', [\App\Http\Controllers\Admin\UserController::class, 'revokeTemporaryRole'])->name('admin.users.temp-roles.destroy');
 
     Route::post('/admin/applications', [AdminApplicationController::class, 'store'])
             ->name('admin.applications.store');

@@ -28,26 +28,34 @@ const isGroupActive = (children) => {
     return children.some(child => route().current(child.route));
 };
 
-// Define menu items based on role with Grouping
+// Helper to check if user has a specific role (base or temporary)
+const hasRole = (roleName) => {
+    if (!user.value) return false;
+    if (user.value.active_roles && Array.isArray(user.value.active_roles)) {
+        return user.value.active_roles.includes(roleName);
+    }
+    return user.value.role === roleName; 
+};
+
+// Extract only the temporary roles for UI display
+const temporaryRoles = computed(() => {
+    if (user.value?.active_roles && Array.isArray(user.value.active_roles)) {
+        return user.value.active_roles.filter(r => r !== user.value.role);
+    }
+    return [];
+});
+
+// Define menu items divided by role headers
 const menuItems = computed(() => {
-    if (user.value.role === 'admin') {
-        return [
+    let items = [];
+
+    if (hasRole('admin')) {
+        items.push({ type: 'header', name: 'Admin' });
+        items.push(
             // --- MAIN PAGES (Top Level) ---
-            { 
-                name: 'Dashboard', 
-                route: 'admin.dashboard', 
-                icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' 
-            },
-            { 
-                name: 'Franchises', 
-                route: 'admin.franchises.index', 
-                icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' 
-            },
-            { 
-                name: 'Applications', 
-                route: 'admin.applications.index', 
-                icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' 
-            },
+            { name: 'Dashboard', route: 'admin.dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+            { name: 'Franchises', route: 'admin.franchises.index', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' },
+            { name: 'Applications', route: 'admin.applications.index', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
 
             // --- GROUPS ---
             {
@@ -84,117 +92,79 @@ const menuItems = computed(() => {
                     { name: 'Settings', route: 'admin.settings.index' },
                 ]
             }
-        ];
+        );
     }
     
-    // Franchise Owner View
-    if (user.value.role === 'franchise_owner') {
-        return [
-            { 
-                name: 'Overview', 
-                route: 'franchise.dashboard', 
-                icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' 
-            },
-            { 
-                name: 'New Application', 
-                route: 'franchise.make-application', 
-                icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' 
-            },
-        ];
+    if (hasRole('franchise_owner')) {
+        items.push({ type: 'header', name: 'Franchise Owner' });
+        items.push(
+            { name: 'Overview', route: 'franchise.dashboard', icon: 'M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6' },
+            { name: 'New Application', route: 'franchise.make-application', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' }
+        );
     }
     
-// Collector View
-    if (user.value.role === 'collector') {
-        return [
-            {
-                name: 'Payments',
-                route: 'admin.payments.index',
-                icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z',
-            },
-        ];
+    if (hasRole('collector')) {
+        items.push({ type: 'header', name: 'Collector' });
+        items.push(
+            { name: 'Payments', route: 'admin.payments.index', icon: 'M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z' }
+        );
     }
 
-    if (user.value.role === 'releaser') {
-        return [
-            { 
-                name: 'Franchises', 
-                route: 'admin.franchises.index', 
-                icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' 
-            },
-        ];
+    if (hasRole('releaser')) {
+        items.push({ type: 'header', name: 'Releaser' });
+        items.push(
+            { name: 'Franchises', route: 'admin.franchises.index', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' }
+        );
     }
 
-    if (user.value.role === 'encoder') {
-        return [
-            { 
-                name: 'Franchises', 
-                route: 'admin.franchises.index', 
-                icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' 
-            },
-            { 
-                name: 'Applications', 
-                route: 'admin.applications.index', 
-                icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' 
-            },
-            {
-                name: 'Drivers',
-                route: 'admin.drivers.index',
-                icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-            },
-            {
-                name: 'Assessments',
-                route: 'admin.assessments.index',
-                icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'
-            }
-        ];
+    if (hasRole('encoder')) {
+        items.push({ type: 'header', name: 'Encoder' });
+        items.push(
+            { name: 'Franchises', route: 'admin.franchises.index', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z' },
+            { name: 'Applications', route: 'admin.applications.index', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
+            { name: 'Drivers', route: 'admin.drivers.index', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' },
+            { name: 'Assessments', route: 'admin.assessments.index', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' }
+        );
     }
 
-    if (user.value.role === 'evaluator') {
-        return [
-            { 
-                name: 'Applications', 
-                route: 'evaluator.applications.index', 
-                icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' 
-            },
-            {
-                name: 'Assessments',
-                route: 'admin.assessments.index',
-                icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01'
-            }
-        ];
+    if (hasRole('evaluator')) {
+        items.push({ type: 'header', name: 'Evaluator' });
+        items.push(
+            { name: 'Applications', route: 'evaluator.applications.index', icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' },
+            { name: 'Assessments', route: 'admin.assessments.index', icon: 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01' }
+        );
     }
 
     // Process-Specific Roles
     const applicationRolesMap = {
-        'city_anti_pollution_officer': 'capo.applications.index',
-        'inspector': 'inspector.applications.index',
-        'reviewer': 'reviewer.applications.index',
-        'sp_approver': 'sp_approver.applications.index',
-        'tab_approver': 'tab_approver.applications.index',
+        'city_anti_pollution_officer': { route: 'capo.applications.index', label: 'Anti Pollution Officer' },
+        'inspector': { route: 'inspector.applications.index', label: 'Inspector' },
+        'reviewer': { route: 'reviewer.applications.index', label: 'Reviewer' },
+        'sp_approver': { route: 'sp_approver.applications.index', label: 'SP Approver' },
+        'tab_approver': { route: 'tab_approver.applications.index', label: 'TAB Approver' },
     };
 
-    if (applicationRolesMap[user.value.role]) {
-        return [
-            { 
-                name: 'Applications', 
-                route: applicationRolesMap[user.value.role], 
+    Object.keys(applicationRolesMap).forEach(role => {
+        if (hasRole(role)) {
+            items.push({ type: 'header', name: applicationRolesMap[role].label });
+            items.push({ 
+                name: `Applications`, 
+                route: applicationRolesMap[role].route, 
                 icon: 'M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z' 
-            },
-        ];
-    }
+            });
+        }
+    });
 
-    return [];
+    return items;
 });
 
 // Initialize Expanded State based on current route
 onMounted(() => {
-    if (user.value.role === 'admin') {
-        menuItems.value.forEach(item => {
-            if (item.children && isGroupActive(item.children)) {
-                expandedGroups.value[item.name] = true;
-            }
-        });
-    }
+    menuItems.value.forEach(item => {
+        if (item.children && isGroupActive(item.children)) {
+            expandedGroups.value[item.name] = true;
+        }
+    });
 });
 </script>
 
@@ -212,7 +182,6 @@ onMounted(() => {
             :class="[
                 'transform lg:transform-none',
                 isSidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-                /* Updated Width to 72 (18rem) */
                 isSidebarOpen ? 'lg:w-72' : 'lg:w-0'
             ]"
         >
@@ -226,10 +195,14 @@ onMounted(() => {
 
                 <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
                     
-                    <template v-for="item in menuItems" :key="item.name">
+                    <template v-for="(item, index) in menuItems" :key="index">
                         
+                        <div v-if="item.type === 'header'" class="px-3 pt-4 pb-1 mt-2 text-xs font-extrabold text-gray-500 uppercase tracking-widest border-b border-gray-800">
+                            {{ item.name }}
+                        </div>
+
                         <Link 
-                            v-if="!item.children"
+                            v-else-if="!item.children"
                             :href="route(item.route)" 
                             class="group flex items-center px-2 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap"
                             :class="route().current(item.route) 
@@ -239,7 +212,7 @@ onMounted(() => {
                             <svg class="mr-3 h-5 w-5 text-gray-400 group-hover:text-white flex-shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" :d="item.icon" />
                             </svg>
-                            {{ item.name }}
+                            <span class="capitalize">{{ item.name }}</span>
                         </Link>
 
                         <div v-else class="space-y-1">
@@ -324,9 +297,20 @@ onMounted(() => {
                             <span class="text-sm font-bold text-gray-900 leading-tight">
                                 {{ user.first_name }} {{ user.last_name }}
                             </span>
-                            <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide mt-0.5">
-                                {{ user.role.replaceAll('_', ' ') }}
-                            </span>
+                            
+                            <div class="flex gap-1 mt-0.5">
+                                <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full uppercase tracking-wide border border-blue-100">
+                                    {{ user.role.replaceAll('_', ' ') }}
+                                </span>
+                                <span 
+                                    v-for="tRole in temporaryRoles" 
+                                    :key="tRole" 
+                                    class="text-xs font-semibold text-purple-600 bg-purple-50 px-2 py-0.5 rounded-full uppercase tracking-wide border border-purple-200"
+                                    title="Temporary Access Granted"
+                                >
+                                    + {{ tRole.replaceAll('_', ' ') }}
+                                </span>
+                            </div>
                         </div>
                         
                         <div class="h-10 w-10 rounded-full bg-gray-800 text-white flex items-center justify-center border-2 border-gray-100 shadow-sm overflow-hidden">

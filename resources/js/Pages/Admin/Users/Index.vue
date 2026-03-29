@@ -100,6 +100,54 @@ const filterForm = ref({
     status: props.filters.status || '',
 });
 
+// 4. TEMPORARY ROLES STATE & FUNCTIONS
+const showTempRolesModal = ref(false);
+const selectedUserForRoles = ref(null);
+const tempRoleForm = useForm({
+    role: '',
+    expires_at: ''
+});
+
+const openTempRolesModal = (user) => {
+    selectedUserForRoles.value = user;
+    showTempRolesModal.value = true;
+};
+
+const closeTempRolesModal = () => {
+    showTempRolesModal.value = false;
+    selectedUserForRoles.value = null;
+    tempRoleForm.reset();
+};
+
+const submitTempRole = () => {
+    tempRoleForm.post(route('admin.users.temp-roles.store', selectedUserForRoles.value.id), {
+        preserveScroll: true,
+        onSuccess: (page) => {
+            tempRoleForm.reset();
+            // Sync the selected user state with the fresh Inertia props
+            const updatedUser = page.props.users.data.find(u => u.id === selectedUserForRoles.value.id);
+            if (updatedUser) {
+                selectedUserForRoles.value = updatedUser;
+            }
+        }
+    });
+};
+
+const revokeTempRole = (roleName) => {
+    if(confirm(`Revoke the ${roleName} role?`)) {
+        router.delete(route('admin.users.temp-roles.destroy', { user: selectedUserForRoles.value.id, role: roleName }), {
+            preserveScroll: true,
+            onSuccess: (page) => {
+                // Sync the selected user state with the fresh Inertia props
+                const updatedUser = page.props.users.data.find(u => u.id === selectedUserForRoles.value.id);
+                if (updatedUser) {
+                    selectedUserForRoles.value = updatedUser;
+                }
+            }
+        });
+    }
+};
+
 // --- API FETCHING LOGIC ---
 onMounted(async () => {
     try {
@@ -375,9 +423,33 @@ const resetFilters = () => {
                                 {{ user.contact_number || '-' }}
                             </td>
                             <td class="px-6 py-4">
-                                <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 uppercase">
-                                    {{ user.role }}
-                                </span>
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span class="px-3 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 border border-blue-200 uppercase shadow-sm">
+                                        {{ user.role.replace(/_/g, ' ') }}
+                                    </span>
+                                    
+                                    <div v-if="user.temporary_roles && user.temporary_roles.length > 0" class="relative group cursor-help">
+                                        <span class="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200 uppercase shadow-sm transition-colors hover:bg-purple-200">
+                                            +{{ user.temporary_roles.length }} Temp
+                                        </span>
+                                        
+                                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 p-3 pointer-events-none">
+                                            <div class="text-xs font-extrabold text-gray-800 border-b pb-2 mb-2 uppercase tracking-wider">
+                                                Temporary Access
+                                            </div>
+                                            <ul class="space-y-2">
+                                                <li v-for="temp in user.temporary_roles" :key="temp.id" class="text-xs bg-purple-50 p-2 rounded border border-purple-100">
+                                                    <span class="block font-bold text-purple-800 uppercase">{{ temp.role.replace(/_/g, ' ') }}</span>
+                                                    <span class="block text-gray-500 mt-1">
+                                                        Exp: {{ new Date(temp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}
+                                                    </span>
+                                                </li>
+                                            </ul>
+                                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px border-[6px] border-transparent border-t-white"></div>
+                                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-[2px] border-[6px] border-transparent border-t-gray-200 -z-10"></div>
+                                        </div>
+                                    </div>
+                                </div>
                             </td>
                             <td class="px-6 py-4">
                                 <span 
@@ -393,6 +465,9 @@ const resetFilters = () => {
                                     class="text-gray-400 hover:text-blue-600 font-medium transition-colors"
                                 >
                                     Edit
+                                </button>
+                                <button @click="openTempRolesModal(user)" class="font-medium text-purple-600 hover:text-purple-900 ml-3">
+                                    Roles
                                 </button>
                             </td>
                         </tr>
@@ -708,6 +783,61 @@ const resetFilters = () => {
                 <div class="mt-6 flex justify-end gap-3 pt-2">
                     <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
                     <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
+                </div>
+            </div>
+        </Modal>
+
+        <Modal :show="showTempRolesModal" @close="closeTempRolesModal" maxWidth="md">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4 border-b pb-2">
+                    <h2 class="text-lg font-bold text-gray-900">
+                        Temp Roles: {{ selectedUserForRoles?.first_name }} {{ selectedUserForRoles?.last_name }}
+                    </h2>
+                    <button @click="closeTempRolesModal" class="text-gray-400 hover:text-gray-600">
+                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
+                </div>
+
+                <div class="mb-6">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Active Temporary Access</h3>
+                    <ul v-if="selectedUserForRoles?.temporary_roles?.length" class="space-y-2">
+                        <li v-for="temp in selectedUserForRoles.temporary_roles" :key="temp.id" class="flex justify-between items-center bg-purple-50 p-3 rounded-md border border-purple-100 shadow-sm">
+                            <div>
+                                <span class="font-bold text-sm uppercase text-purple-800">{{ temp.role }}</span>
+                                <div class="text-xs text-purple-600 mt-1">Expires: {{ new Date(temp.expires_at).toLocaleString() }}</div>
+                            </div>
+                            <button @click="revokeTempRole(temp.role)" class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition">Revoke</button>
+                        </li>
+                    </ul>
+                    <p v-else class="text-sm text-gray-500 italic bg-gray-50 p-3 rounded border">No active temporary roles.</p>
+                </div>
+
+                <div class="border-t pt-4">
+                    <h3 class="text-sm font-medium text-gray-700 mb-3">Assign Temporary Role</h3>
+                    <form @submit.prevent="submitTempRole" class="space-y-4">
+                        <div>
+                            <InputLabel>Role to Grant</InputLabel>
+                            <select v-model="tempRoleForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+                                <option value="" disabled>-- Select a Role --</option>
+                                <option value="evaluator">Evaluator</option>
+                                <option value="inspector">Inspector</option>
+                                <option value="collector">Collector</option>
+                                <option value="reviewer">Reviewer</option>
+                                <option value="sp_approver">SP Approver</option>
+                                <option value="tab_approver">TAB Approver</option>
+                                <option value="releaser">Releaser</option>
+                                <option value="encoder">Encoder</option>
+                            </select>
+                        </div>
+                        <div>
+                            <InputLabel>Expiration Date & Time</InputLabel>
+                            <TextInput type="datetime-local" class="mt-1 block w-full" v-model="tempRoleForm.expires_at" required />
+                        </div>
+                        <div class="flex justify-end gap-2 pt-4">
+                            <SecondaryButton @click="closeTempRolesModal" type="button">Cancel</SecondaryButton>
+                            <PrimaryButton :disabled="tempRoleForm.processing">Grant Access</PrimaryButton>
+                        </div>
+                    </form>
                 </div>
             </div>
         </Modal>

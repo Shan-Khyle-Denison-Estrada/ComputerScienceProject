@@ -21,18 +21,17 @@ class RoleMiddleware
             return redirect('/')->with('error', 'Unauthorized access.');
         }
 
-        // 2. Safely extract the string value from the BackedEnum (or fallback if it's already a string)
-        $userRole = $request->user()->role instanceof \BackedEnum 
-            ? $request->user()->role->value 
-            : $request->user()->role;
+        // 2. Extract ALL active roles for the user (base role + temporary roles)
+        $userActiveRoles = $request->user()->active_roles;
 
-        // 3. Make comparisons case-insensitive to avoid accidental capitalization mismatches
-        $userRoleLower = strtolower($userRole);
+        // 3. Make comparisons case-insensitive
+        $userRolesLower = array_map('strtolower', $userActiveRoles);
         $allowedRolesLower = array_map('strtolower', $roles);
 
-        // 4. Check if the user's role exists in the array of allowed roles
-        if (!in_array($userRoleLower, $allowedRolesLower)) {
-            // Redirect unauthorized users to their appropriate dashboard or home
+        // 4. Check if ANY of the user's active roles intersect with the allowed roles
+        $hasAccess = count(array_intersect($userRolesLower, $allowedRolesLower)) > 0;
+
+        if (!$hasAccess) {
             return redirect('/')->with('error', 'Unauthorized access.');
         }
 

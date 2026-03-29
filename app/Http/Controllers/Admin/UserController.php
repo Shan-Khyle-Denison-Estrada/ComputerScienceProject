@@ -16,10 +16,11 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        $query = User::query();
+        // Eager load temporaryRoles so they are sent to the Vue frontend
+        $query = User::with('temporaryRoles');
 
         // Optional: Hide Franchise Owners from this specific staff management list
-        // $query->where('role', '!=', UserRole::FRANCHISE_OWNER->value); 
+        $query->where('role', '!=', UserRole::FRANCHISE_OWNER->value); 
 
         // Handle Search
         if ($request->filled('search')) {
@@ -177,5 +178,29 @@ class UserController extends Controller
         $user->update($data);
 
         return back()->with('success', 'User updated successfully.');
+    }
+
+    public function assignTemporaryRole(Request $request, User $user)
+    {
+        $request->validate([
+            'role' => ['required', 'string'],
+            'expires_at' => ['required', 'date', 'after:now']
+        ]);
+
+        \App\Models\TemporaryRole::updateOrCreate(
+            ['user_id' => $user->id, 'role' => $request->role],
+            ['granted_by' => auth()->id(), 'expires_at' => $request->expires_at]
+        );
+
+        return back()->with('success', 'Temporary role assigned successfully.');
+    }
+
+    public function revokeTemporaryRole(User $user, $role)
+    {
+        \App\Models\TemporaryRole::where('user_id', $user->id)
+                                 ->where('role', $role)
+                                 ->delete();
+                                 
+        return back()->with('success', 'Temporary role revoked successfully.');
     }
 }
