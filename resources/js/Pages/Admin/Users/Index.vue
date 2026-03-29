@@ -823,7 +823,7 @@ const resetFilters = () => {
                                 <option value="inspector">Inspector</option>
                                 <option value="collector">Collector</option>
                                 <option value="reviewer">Reviewer</option>
-                                <option value="sp_approver">SP Approver</option>
+                                <!-- <option value="sp_approver">SP Approver</option> -->
                                 <option value="tab_approver">TAB Approver</option>
                                 <option value="releaser">Releaser</option>
                                 <option value="encoder">Encoder</option>
