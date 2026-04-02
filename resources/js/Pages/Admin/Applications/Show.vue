@@ -258,7 +258,7 @@ const formatCurrency = (value) => {
             <div class="flex-none mb-3 flex items-center justify-between">
                 <div class="flex items-center gap-3">
                     <div>
-                        <h1 class="text-xl font-bold text-gray-800 leading-tight">Application Details</h1>
+                        <h1 class="text-xl font-bold text-gray-800 leading-tight">New Operator Account Application</h1>
                         <p class="text-xs text-gray-500">{{ application.reference_no }}</p>
                     </div>
                 </div>
