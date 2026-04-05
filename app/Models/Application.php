@@ -12,6 +12,8 @@ class Application extends Model
     protected $fillable = [
         'reference_number', 'user_id', 'franchise_id', 'zone_id',
         'application_type', 'status', 'remarks',
+        'driver_license_number', 'driver_license_expiration_date', // NEW FIELDS
+        'driver_user_photo', 'driver_license_front_photo', 'driver_license_back_photo', // NEW FIELDS
         'evaluator_status', 'inspector_status', 'capo_status', 'reviewer_status', 'sp_status', 'tab_status', // <-- Added TAB Status
         'first_name', 'middle_name', 'last_name', 'contact_number', 'email', 'tin_number',
         'street_address', 'barangay', 'city', 'province', 'submitted_at', 'reviewed_at'

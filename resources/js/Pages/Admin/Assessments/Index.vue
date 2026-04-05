@@ -183,6 +183,7 @@ const getGroupBadgeClass = (group) => {
         case 'change_of_unit': return 'bg-purple-100 text-purple-800';
         case 'change_of_owner': return 'bg-orange-100 text-orange-800';
         case 'new_franchise': return 'bg-teal-100 text-teal-800';
+        case 'new_driver': return 'bg-green-100 text-green-800';
         case 'penalty': return 'bg-red-100 text-red-800';
         default: return 'bg-gray-100 text-gray-800';
     }
@@ -519,6 +520,7 @@ onUnmounted(() => {
                                     <option value="change_of_unit">Change of Unit</option>
                                     <option value="change_of_owner">Change of Owner</option>
                                     <option value="new_franchise">New Franchise</option>
+                                    <option value="new_driver">New Driver</option>
                                     <option value="penalty" disabled>Penalty (System)</option>
                                 </select>
                             </div>

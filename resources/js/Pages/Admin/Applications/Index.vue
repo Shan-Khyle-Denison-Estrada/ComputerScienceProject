@@ -31,7 +31,8 @@ const applicationTypes = [
     'Renewal',
     'Change of Owner',
     'Change of Owner (Deceased)',
-    'Change of Unit'
+    'Change of Unit',
+    'New Driver'
 ];
 
 // --- STATE MANAGEMENT ---
@@ -62,6 +63,8 @@ const getViewUrl = (app) => {
             return route('admin.applications.change-of-owner.show', app.id);
         case 'Change of Unit': 
             return route('admin.applications.change-of-unit.show', app.id);
+        case 'New Driver': 
+            return route('admin.applications.new-driver.show', app.id);
         case 'New Franchise':
             return route('admin.applications.show-new-franchise', app.id);
         case 'Franchise Owner Account': 

@@ -522,6 +522,116 @@ class ApplicationController extends Controller
         }
     }
 
+    public function storeNewDriver(Request $request)
+    {
+        $request->validate([
+            'selected_franchise_id' => 'required|exists:franchises,id',
+            'new_driver_first_name' => 'required|string|max:255',
+            'new_driver_last_name' => 'required|string|max:255',
+            'new_driver_contact' => 'required|string|max:20',
+            // CRITICAL UNIQUE LOGIC! Fails if already a driver OR in an active application!
+            'new_driver_license_number' => [
+                'required', 'string',
+                'unique:drivers,license_number',
+                \Illuminate\Validation\Rule::unique('applications', 'driver_license_number')->where(function ($query) {
+                    return $query->whereNotIn('status', ['Rejected', 'Cancelled', 'Completed']);
+                }),
+            ],
+            'new_driver_license_expiration_date' => 'required|date',
+            'new_driver_province' => 'required|string',
+            'new_driver_city' => 'required|string',
+            'new_driver_barangay' => 'required|string',
+            'new_driver_street' => 'required|string',
+            'driver_user_photo' => 'required|image|max:2048',
+            'driver_license_front' => 'required|image|max:2048',
+            'driver_license_back' => 'required|image|max:2048',
+            'documents' => 'required|array',
+            'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
+            ->where('application_type', 'New Driver')
+            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+            ->exists();
+
+        if ($existingApp) {
+            throw ValidationException::withMessages([
+                'selected_franchise_id' => 'An active New Driver application already exists for this franchise!',
+            ]);
+        }
+
+        $user = Auth::user();
+        $franchise = Franchise::findOrFail($request->selected_franchise_id);
+
+        DB::beginTransaction();
+        try {
+            // Generating reference code manually as emergency!
+            $refNumber = 'APP-' . date('Y') . '-' . strtoupper(Str::random(6));
+
+            $application = Application::create([
+                'reference_number' => $refNumber,
+                'user_id' => $user->id,
+                'franchise_id' => $franchise->id,
+                'zone_id' => $franchise->zone_id,
+                'application_type' => 'New Driver',
+                'status' => 'Pending',
+                'first_name' => $request->new_driver_first_name,
+                'middle_name' => $request->new_driver_middle_name,
+                'last_name' => $request->new_driver_last_name,
+                'contact_number' => $request->new_driver_contact,
+                'street_address' => $request->new_driver_street,
+                'barangay' => $request->new_driver_barangay,
+                'city' => $request->new_driver_city,
+                'province' => $request->new_driver_province,
+                'driver_license_number' => $request->new_driver_license_number,
+                'driver_license_expiration_date' => $request->new_driver_license_expiration_date,
+                'driver_user_photo' => $request->file('driver_user_photo')->store('applications/drivers/photos', 'public'),
+                'driver_license_front_photo' => $request->file('driver_license_front')->store('applications/drivers/licenses', 'public'),
+                'driver_license_back_photo' => $request->file('driver_license_back')->store('applications/drivers/licenses', 'public'),
+                'submitted_at' => now(),
+                'remarks' => 'New Driver application submitted. Waiting for initial review.'
+            ]);
+
+            foreach ($request->file('documents') as $requirementId => $file) {
+                $filePath = $file->store("applications/documents/{$application->id}", 'public');
+                ApplicationEvaluation::create([
+                    'application_id' => $application->id,
+                    'requirement_id' => $requirementId,
+                    'file_path' => $filePath,
+                ]);
+            }
+
+            // --- ADDED: Auto-generate assessment for New Driver ---
+            $particulars = Particular::where('group', 'new_driver')->get(); // Make sure 'new_driver' is the exact string you use in your DB for this group
+            if ($particulars->isNotEmpty()) {
+                $totalAmountDue = $particulars->sum('amount');
+                $assessment = Assessment::create([
+                    'application_id'    => $application->id,
+                    'franchise_id'      => $franchise->id,
+                    'assessment_date'   => now(),
+                    'total_amount_due'  => $totalAmountDue,
+                    'assessment_status' => 'Pending',
+                    'remarks'           => 'Auto-generated assessment for New Driver Application: ' . $application->reference_number,
+                ]);
+                foreach ($particulars as $particular) {
+                    $assessment->particulars()->attach($particular->id, [
+                        'quantity' => 1,
+                        'subtotal' => $particular->amount
+                    ]);
+                }
+            }
+            // ------------------------------------------------------
+
+            DB::commit();
+            return redirect()->back()->with('success', 'New Driver application submitted successfully!');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Failed to submit New Driver application: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
+        }
+    }
+
     public function storeRenewal(Request $request)
     {
         $request->validate([

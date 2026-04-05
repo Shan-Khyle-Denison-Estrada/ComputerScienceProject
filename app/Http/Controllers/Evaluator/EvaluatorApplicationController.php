@@ -213,6 +213,10 @@ class EvaluatorApplicationController extends Controller
             $updateData['status'] = 'Approved';
         }
 
+        if ($application->application_type === 'New Driver') {
+            $updateData['status'] = 'Approved';
+        }
+
         $application->update($updateData);
         
         return redirect()->route('evaluator.applications.index')
@@ -294,6 +298,23 @@ class EvaluatorApplicationController extends Controller
             'inspectionItems' => $inspectionItems,
             'unitInspections' => $unitInspections,
             'currentUnitId' => $currentUnitId
+        ]);
+    }
+
+    public function showNewDriver(Application $application)
+    {
+        abort_if($application->application_type !== 'New Driver', 404);
+
+        // Load the evaluations, franchise, and zone definitions
+        $application->load([
+            'user', 
+            'evaluations.requirement',
+            'franchise.zone', // Loads the related franchise and its zone
+            'zone' // Fallback in case zone is directly on the application
+        ]);
+
+        return Inertia::render('Evaluator/Applications/ShowNewDriver', [
+            'application' => $application
         ]);
     }
 }

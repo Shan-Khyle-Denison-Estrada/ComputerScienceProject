@@ -45,7 +45,9 @@ const applicationTypes = [
     { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
     { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
     // Add the Renewal option here
-    { id: 'renewal', name: 'Renewal', description: 'Renew existing franchise.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' } 
+    { id: 'renewal', name: 'Renewal', description: 'Renew existing franchise.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
+    // ADD NEW DRIVER OPTION
+    { id: 'new_driver', name: 'New Driver', description: 'Propose a new driver.', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
 ];
 // --- FORMS ---
 const form = useForm({
@@ -73,6 +75,12 @@ const form = useForm({
     existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
     unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
     
+    // New Driver Fields
+    new_driver_first_name: '', new_driver_middle_name: '', new_driver_last_name: '',
+    new_driver_contact: '', new_driver_license_number: '', new_driver_license_expiration_date: '',
+    new_driver_province: '', new_driver_city: '', new_driver_barangay: '', new_driver_street: '',
+    driver_user_photo: null, driver_license_front: null, driver_license_back: null,
+
     // Document uploads
     documents: {} 
 });
@@ -144,9 +152,17 @@ const handleProvinceChange = async (event) => {
     const code = event.target.value;
     selectedProvinceCode.value = code;
     const p = provincesList.value.find(x => x.code === code);
-    form.new_owner_province = p ? p.name : '';
     
-    form.new_owner_city = ''; form.new_owner_barangay = '';
+    if (selectedType.value === 'new_driver') {
+        form.new_driver_province = p ? p.name : '';
+        form.new_driver_city = ''; 
+        form.new_driver_barangay = '';
+    } else {
+        form.new_owner_province = p ? p.name : '';
+        form.new_owner_city = ''; 
+        form.new_owner_barangay = '';
+    }
+    
     selectedCityCode.value = '';
     citiesList.value = []; barangaysList.value = [];
     
@@ -157,9 +173,16 @@ const handleCityChange = async (event) => {
     const code = event.target.value;
     selectedCityCode.value = code;
     const c = citiesList.value.find(x => x.code === code);
-    form.new_owner_city = c ? c.name : '';
+    
+    if (selectedType.value === 'new_driver') {
+        form.new_driver_city = c ? c.name : '';
+        form.new_driver_barangay = '';
+    } else {
+        form.new_owner_city = c ? c.name : '';
+        form.new_owner_barangay = '';
+    }
 
-    form.new_owner_barangay = ''; barangaysList.value = [];
+    barangaysList.value = [];
     
     await fetchBarangays(code);
 };
@@ -183,6 +206,7 @@ const currentEvaluationRequirements = computed(() => {
 
 const isUnitRequired = computed(() => ['change_unit'].includes(selectedType.value));
 const isOwnerRequired = computed(() => ['change_owner'].includes(selectedType.value));
+const isNewDriverRequired = computed(() => ['new_driver'].includes(selectedType.value));
 const isFranchiseSelectRequired = computed(() => true); 
 
 const areAllDocsUploaded = computed(() => {
@@ -203,6 +227,10 @@ const duplicateApplicationError = computed(() => {
     } else if (selectedType.value === 'change_owner') {
         if (selectedFranchise.conflicting_change_owner) {
             return `An active Change of Owner application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
+        }
+    } else if (selectedType.value === 'new_driver') {
+        if (selectedFranchise.conflicting_new_driver) {
+            return `An active New Driver application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
         }
     } else if (selectedType.value === 'renewal') {
         // Handle explicit active renewal collision
@@ -232,6 +260,8 @@ const validateFranchiseSelection = () => {
             conflictingApplication.value = selectedFranchise?.conflicting_change_unit || null;
         } else if (selectedType.value === 'change_owner') {
             conflictingApplication.value = selectedFranchise?.conflicting_change_owner || null;
+        } else if (selectedType.value === 'new_driver') {
+            conflictingApplication.value = selectedFranchise?.conflicting_new_driver || null;
         } else {
             conflictingApplication.value = null;
         }
@@ -265,6 +295,16 @@ const isStep2Valid = computed(() => {
             if (!form.make_id || !form.model_year || !form.plate_number || !form.motor_number || !form.chassis_number || !form.cr_number) return false;
             // Photos are ONLY strictly required to be uploaded if the user is registering a brand NEW unit
             if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) return false;
+        }
+    }
+
+    if (isNewDriverRequired.value) {
+        if (!form.new_driver_first_name || !form.new_driver_last_name || 
+            !form.new_driver_contact || !form.new_driver_license_number || 
+            !form.new_driver_license_expiration_date || !form.new_driver_province || 
+            !form.new_driver_city || !form.new_driver_barangay || !form.new_driver_street ||
+            !form.driver_user_photo || !form.driver_license_front || !form.driver_license_back) {
+            return false;
         }
     }
 
@@ -342,7 +382,15 @@ const submit = () => {
                 closeModal();
             },
         });
-    }
+    } else if (selectedType.value === 'new_driver') {
+        form.post(route('franchise.applications.store-new-driver'), {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('submit'); 
+                closeModal();
+            },
+        });
+    } 
 };
 </script>
 
@@ -506,6 +554,46 @@ const submit = () => {
                                             <input type="file" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept="image/*" @change="(e) => handleUnitPhoto(e, side)" />
                                         </div>
                                     </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div v-if="isNewDriverRequired" class="space-y-6">
+                            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-4 flex items-start space-x-3">
+                                <svg class="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                                <div><h4 class="text-sm font-semibold text-blue-900">New Driver Application</h4><p class="text-xs text-blue-700 mt-1">Provide the details of the proposed new driver. The license number MUST be unique!</p></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div><InputLabel value="First Name" /><TextInput v-model="form.new_driver_first_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel value="Middle Name" /><TextInput v-model="form.new_driver_middle_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel value="Last Name" /><TextInput v-model="form.new_driver_last_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                
+                                <div><InputLabel value="Contact Number" /><TextInput v-model="form.new_driver_contact" @input="form.new_driver_contact = formatContactNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
+                                <div><InputLabel value="License Number" /><TextInput v-model="form.new_driver_license_number" class="w-full text-sm py-1.5 mt-1 uppercase" /><p v-if="form.errors.new_driver_license_number" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_license_number }}</p></div>
+                                <div><InputLabel value="Expiration Date" /><TextInput type="date" v-model="form.new_driver_license_expiration_date" class="w-full text-sm py-1.5 mt-1" /></div>
+
+                                <div><InputLabel value="Province" /><select v-model="selectedProvinceCode" @change="handleProvinceChange" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select Province</option><option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option></select></div>
+                                <div><InputLabel value="City/Municipality" /><select v-model="selectedCityCode" @change="handleCityChange" :disabled="!selectedProvinceCode" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select City</option><option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option></select></div>
+                                <div><InputLabel value="Barangay" /><select v-model="form.new_driver_barangay" :disabled="!selectedCityCode" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select Barangay</option><option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option></select></div>
+                                <div class="sm:col-span-3"><InputLabel value="Street Address" /><TextInput v-model="form.new_driver_street" class="w-full text-sm py-1.5 mt-1" /></div>
+                            </div>
+
+                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-4">
+                                <div>
+                                    <InputLabel value="Driver Photo (2x2)" />
+                                    <input type="file" @change="e => form.driver_user_photo = e.target.files[0]" class="mt-1 block w-full text-xs" accept="image/*" />
+                                    <p v-if="form.errors.driver_user_photo" class="text-red-500 text-xs mt-1">{{ form.errors.driver_user_photo }}</p>
+                                </div>
+                                <div>
+                                    <InputLabel value="License Front" />
+                                    <input type="file" @change="e => form.driver_license_front = e.target.files[0]" class="mt-1 block w-full text-xs" accept="image/*" />
+                                    <p v-if="form.errors.driver_license_front" class="text-red-500 text-xs mt-1">{{ form.errors.driver_license_front }}</p>
+                                </div>
+                                <div>
+                                    <InputLabel value="License Back" />
+                                    <input type="file" @change="e => form.driver_license_back = e.target.files[0]" class="mt-1 block w-full text-xs" accept="image/*" />
+                                    <p v-if="form.errors.driver_license_back" class="text-red-500 text-xs mt-1">{{ form.errors.driver_license_back }}</p>
                                 </div>
                             </div>
                         </div>

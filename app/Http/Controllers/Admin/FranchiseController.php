@@ -272,4 +272,71 @@ class FranchiseController extends Controller
         $complaint->update(['status' => 'Resolved']);
         return redirect()->back()->with('success', 'Complaint marked as resolved.');
     }
+
+
+    public function storeAndAssignDriver(Request $request, Franchise $franchise)
+    {
+        // 1. Validate the incoming data
+        $validated = $request->validate([
+            'application_id' => 'nullable|exists:applications,id',
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'license_number' => 'required|string|unique:drivers,license_number',
+            'license_expiration_date' => 'required|date',
+            'middle_name' => 'nullable|string',
+            'contact_number' => 'nullable|string',
+            'street' => 'nullable|string',
+            'province' => 'required|string',
+            'barangay' => 'nullable|string',
+            'city' => 'nullable|string',
+            'status' => 'required|string',
+            
+            // Allow string paths from the frontend (copied from the application)
+            'existing_user_photo' => 'nullable|string',
+            'existing_license_front_photo' => 'nullable|string',
+            'existing_license_back_photo' => 'nullable|string',
+        ]);
+
+        try {
+            // 2. Execute within a transaction. If any DB operation fails, everything rolls back.
+            DB::transaction(function () use ($validated, $franchise) {
+                
+                // Re-assign the paths directly to the driver columns
+                $validated['user_photo'] = $validated['existing_user_photo'] ?? null;
+                $validated['license_front_photo'] = $validated['existing_license_front_photo'] ?? null;
+                $validated['license_back_photo'] = $validated['existing_license_back_photo'] ?? null;
+
+                // Remove the 'existing_' and 'application_id' keys so they don't break Driver::create()
+                $applicationId = $validated['application_id'] ?? null;
+                unset(
+                    $validated['existing_user_photo'], 
+                    $validated['existing_license_front_photo'], 
+                    $validated['existing_license_back_photo'],
+                    $validated['application_id']
+                );
+
+                // Create the new driver
+                $driver = Driver::create($validated);
+
+                // Create the assignment linking to the franchise
+                DriverAssignment::create([
+                    'franchise_id' => $franchise->id,
+                    'driver_id'    => $driver->id,
+                ]);
+                
+                // Optionally auto-update the Application status to Finalized/Completed
+                if ($applicationId) {
+                    \App\Models\Application::where('id', $applicationId)->update(['status' => 'Completed']); 
+                }
+            });
+
+            return redirect()->back()->with('success', 'Driver successfully finalized and assigned to the franchise!');
+
+        } catch (\Exception $e) {
+            // 3. Catch any unexpected errors, log them if necessary, and return a clean error to the user
+            return redirect()->back()->withErrors([
+                'global_error' => 'An error occurred while saving the driver: ' . $e->getMessage()
+            ]);
+        }
+    }
 }

@@ -22,6 +22,7 @@ use App\Http\Controllers\Franchise\ApplicationController as FranchiseApplication
 use App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController;
 use App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController;
 use App\Http\Controllers\Admin\ApplicationRenewalShowController;
+use App\Http\Controllers\Admin\ApplicationNewDriverShowController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Evaluator\EvaluatorApplicationController;
 use App\Http\Controllers\Inspector\InspectorApplicationController;
@@ -251,6 +252,8 @@ Route::middleware(['auth', 'prevent-back-history', 'role:franchise_owner'])->gro
     Route::post('/franchise/applications/{application}/cancel', [FranchiseApplicationController::class, 'cancelApplication'])->name('franchise.applications.cancel');
 
     Route::post('/franchise/applications/{application}/resubmit-inspection', [FranchiseApplicationController::class, 'resubmitForInspection'])->name('franchise.applications.resubmit-inspection');
+
+    Route::post('/franchise/applications/new-driver', [FranchiseApplicationController::class, 'storeNewDriver'])->name('franchise.applications.store-new-driver');
 });
 
 // --- PROFILE MANAGEMENT ---
@@ -309,6 +312,8 @@ Route::middleware(['auth', 'prevent-back-history', 'role:evaluator'])->group(fun
         ->name('evaluator.applications.resolve-complaint');
     Route::post('/evaluator/applications/{application}/red-flags/{red_flag}/resolve', [EvaluatorApplicationController::class, 'resolveRedFlag'])
         ->name('evaluator.applications.resolve-red-flag');
+    Route::get('/evaluator/applications/new-driver/{application}', [\App\Http\Controllers\Evaluator\EvaluatorApplicationController::class, 'showNewDriver'])
+    ->name('evaluator.applications.show-new-driver');
 });
 
 // --- INSPECTOR ROUTES ---
@@ -414,6 +419,8 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,encoder'])->group
     Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
     Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
     Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
+    Route::post('/franchises/{franchise}/store-and-assign-driver', [FranchiseController::class, 'storeAndAssignDriver'])
+    ->name('franchises.store_and_assign_driver');
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
@@ -429,6 +436,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:collector'])->group(fun
 Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder'])->group(function () {
     Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
     Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
+    Route::get('/admin/applications/new-driver/{application}', [ApplicationNewDriverShowController::class, 'show'])->name('admin.applications.new-driver.show');
 });
 
 // --- PARTICULARS ROUTES (Admin Only) ---

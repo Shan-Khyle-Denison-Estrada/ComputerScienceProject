@@ -15,7 +15,7 @@ class ParticularController extends Controller
             'name' => 'required|string|max:255',
             'amount' => 'required|numeric|min:0',
             'description' => 'nullable|string|max:255',
-            'group' => ['nullable', 'string', Rule::in(['renewal', 'change_of_unit', 'change_of_owner', 'new_franchise', 'penalty'])],
+            'group' => ['nullable', 'string', Rule::in(['renewal', 'change_of_unit', 'change_of_owner', 'new_franchise', 'new_driver', 'penalty'])],
         ]);
 
         // New user created particulars are never system/locked
