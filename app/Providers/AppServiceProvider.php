@@ -10,6 +10,8 @@ use Illuminate\Support\Facades\Vite;
 use Illuminate\Support\ServiceProvider;
 use App\Models\Application;
 use App\Observers\ApplicationObserver;
+use App\Models\Payment;
+use App\Observers\PaymentObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -27,6 +29,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Application::observe(ApplicationObserver::class);
+        Payment::observe(PaymentObserver::class);
         // 2. Force HTTPS if we are deployed to production 
         // This ensures Cloudflare and AWS communicate securely without breaking assets or camera permissions
         if ($this->app->environment('production')) {

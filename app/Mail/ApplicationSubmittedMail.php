@@ -58,7 +58,7 @@ class ApplicationSubmittedMail extends Mailable
                                 <td style='padding: 40px 30px; text-align: center;'>
                                     <p style='color: #374151; font-size: 16px; margin-top: 0; margin-bottom: 24px; line-height: 1.5;'>
                                         Hi <strong>{$this->applicantName}</strong>,<br><br>
-                                        Thank you for submitting your franchise owner account application. Your application reference number is:
+                                        Thank you for submitting your application. Your application reference number is:
                                     </p>
                                     
                                     <table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom: 24px;'>

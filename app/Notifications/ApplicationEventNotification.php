@@ -54,6 +54,32 @@ class ApplicationEventNotification extends Notification
             }
         }
 
+        // --- NEW FRANCHISE MESSAGES ---
+        if ($type === 'New Franchise') {
+            if ($this->eventType === 'created') {
+                $title = "New Franchise Application";
+                $message = "{$applicantName} has submitted a new franchise application.";
+            } elseif ($this->eventType === 'completed_initial') { // <-- ADD THIS BLOCK
+                $title = "Franchise Application Completed";
+                $message = "{$applicantName} has completed and submitted their initial franchise application.";
+            } elseif ($this->eventType === 'inspector_approved') {
+                $title = "CAPO Approval Needed";
+                $message = "Inspector has approved {$applicantName}'s application. CAPO review is now required.";
+            } elseif ($this->eventType === 'ready_for_review') {
+                $title = "Application Ready for Review";
+                $message = "{$applicantName}'s application is fully evaluated, inspected, and CAPO-approved. Review needed.";
+            } elseif ($this->eventType === 'reviewer_approved') {
+                $title = "SP Approval Needed";
+                $message = "Reviewer has approved {$applicantName}'s application. SP Approver action required.";
+            } elseif ($this->eventType === 'sp_approved') {
+                $title = "TAB Approval Needed";
+                $message = "SP Approver has approved {$applicantName}'s application. TAB Approver action required.";
+            } elseif ($this->eventType === 'tab_approved') {
+                $title = "Application Ready for Finalization";
+                $message = "TAB Approver has approved {$applicantName}'s application. It is ready to be finalized.";
+            }
+        }
+
         return [
             'application_id' => $this->application->id,
             'reference_number' => $this->application->reference_number,
@@ -91,6 +117,7 @@ class ApplicationEventNotification extends Notification
                 'Change of Unit'      => route('admin.applications.change-of-unit.show', $this->application->id),
                 'Change of Ownership' => route('admin.applications.change-of-owner.show', $this->application->id),
                 'Renewal'             => route('admin.applications.renewal.show', $this->application->id),
+                'New Franchise' => route('admin.applications.show', $this->application->id),
                 default               => route('admin.applications.show', $this->application->id),
             };
         }

@@ -101,7 +101,7 @@ const currentThemeColor = computed(() => settings.value?.theme_color || '#2563eb
 
                     <Link v-if="settings?.allow_new_applications" :href="route('new-franchise.create')" class="w-full sm:w-auto px-6 sm:px-8 py-3 sm:py-4 rounded-xl font-bold text-base sm:text-lg text-white bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/10 text-center transition-all flex items-center justify-center gap-2">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                        New Application
+                        New Franchise Application
                     </Link>
 
                 </div>

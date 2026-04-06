@@ -421,7 +421,7 @@ const isImageUrl = (url) => {
                 <div class="p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div v-if="application.status === 'Pending'" class="space-y-2">
                         <PrimaryButton @click="showApproveModal = true" class="w-full justify-center bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 py-3 text-base">Finalize Application</PrimaryButton>
-                        <SecondaryButton @click="showRejectModal = true" class="w-full justify-center border-red-500 text-red-700 hover:bg-red-50 py-3 text-base">Reject / Halt Issuance</SecondaryButton>
+                        <SecondaryButton @click="showRejectModal = true" class="w-full justify-center border-red-500 text-red-700 hover:bg-red-50 py-3 text-base">Reject</SecondaryButton>
                     </div>
                     <div v-else class="text-center p-3 bg-gray-100 rounded-lg text-sm text-gray-600 font-medium">
                         Application is already {{ application.status }}
@@ -472,8 +472,8 @@ const isImageUrl = (url) => {
             
             <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md overflow-hidden z-10">
                 <div class="p-6">
-                    <h2 class="text-lg font-bold text-red-600 mb-2">Halt Issuance</h2>
-                    <p class="text-sm text-gray-500 mb-4">Provide the reason for halting the final issuance of this franchise.</p>
+                    <h2 class="text-lg font-bold text-red-600 mb-2">Reject Application</h2>
+                    <p class="text-sm text-gray-500 mb-4">Provide the reason for rejecting this franchise application.</p>
                     <div class="mb-5">
                         <InputLabel value="Reason for Rejection" class="text-xs mb-1" />
                         <textarea v-model="rejectForm.remarks" class="w-full border-gray-300 focus:border-red-500 focus:ring-red-500 rounded-md shadow-sm text-sm" rows="3" placeholder="Explain the terminal issue found..."></textarea>
