@@ -41,6 +41,7 @@ use App\Models\Franchise;
 use App\Models\SystemSetting;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+use Illuminate\Http\Request;
 
 // Add this outside of your auth middleware (so the applicant can access it via email)
 Route::get('/application/{application}/complete', [ApplicationCompletionController::class, 'edit'])
@@ -256,7 +257,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:franchise_owner'])->gro
     Route::post('/franchise/applications/new-driver', [FranchiseApplicationController::class, 'storeNewDriver'])->name('franchise.applications.store-new-driver');
 });
 
-// --- PROFILE MANAGEMENT ---
+// --- PROFILE MANAGEMENT & USER ACTIONS ---
 Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
@@ -265,6 +266,14 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     // ADD THESE TWO NEW ROUTES:
     Route::get('/force-password-change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'create'])->name('password.force-change');
     Route::post('/force-password-change', [\App\Http\Controllers\Auth\ForcePasswordChangeController::class, 'store'])->name('password.force-change.store');
+
+    // NOTIFICATIONS ROUTE
+    Route::post('/notifications/{id}/read', function (Request $request, $id) {
+        $notification = $request->user()->notifications()->findOrFail($id);
+        $notification->markAsRead();
+        
+        return back(); // Inertia will handle the state update automatically
+    })->name('notifications.read');
 });
 
 // --- CITY ANTI-POLLUTION OFFICER (CAPO) ROUTES ---
@@ -421,6 +430,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,encoder'])->group
     Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
     Route::post('/franchises/{franchise}/store-and-assign-driver', [FranchiseController::class, 'storeAndAssignDriver'])
     ->name('franchises.store_and_assign_driver');
+    Route::get('/admin/applications/new-driver/{application}', [ApplicationNewDriverShowController::class, 'show'])->name('admin.applications.new-driver.show');
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
@@ -436,7 +446,6 @@ Route::middleware(['auth', 'prevent-back-history', 'role:collector'])->group(fun
 Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder'])->group(function () {
     Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
     Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
-    Route::get('/admin/applications/new-driver/{application}', [ApplicationNewDriverShowController::class, 'show'])->name('admin.applications.new-driver.show');
 });
 
 // --- PARTICULARS ROUTES (Admin Only) ---

@@ -34,6 +34,7 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(), // This shares the whole user model, including new columns
+                'notifications' => $request->user() ? $request->user()->unreadNotifications : [],
             ],
             // This shares the settings globally to $page.props.settings in Vue
             'settings' => SystemSetting::first() ?? new SystemSetting(),
