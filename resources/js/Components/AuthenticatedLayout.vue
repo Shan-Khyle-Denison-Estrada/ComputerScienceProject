@@ -106,6 +106,7 @@ const menuItems = computed(() => {
                 children: [
                     { name: 'Zones', route: 'admin.zones.index' },
                     { name: 'Manage Users', route: 'admin.users.index' },
+                    { name: 'Application Logs', route: 'admin.application-logs.index' },
                     { name: 'Settings', route: 'admin.settings.index' },
                 ]
             }

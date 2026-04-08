@@ -172,6 +172,8 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin'])->group(functio
 
     // 14. Complaint Route
     Route::get('/admin/complaints', [ComplaintController::class, 'index'])->name('admin.complaints.index');
+    // Application Logs
+    Route::get('/admin/application-logs', [\App\Http\Controllers\Admin\ApplicationLogController::class, 'index'])->name('admin.application-logs.index');
     Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
 
     // 15. Red Flags Routes

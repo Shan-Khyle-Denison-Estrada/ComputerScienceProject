@@ -12,6 +12,7 @@ use App\Models\Application;
 use App\Observers\ApplicationObserver;
 use App\Models\Payment;
 use App\Observers\PaymentObserver;
+use App\Observers\ApplicationLoggingObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -30,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     {
         Application::observe(ApplicationObserver::class);
         Payment::observe(PaymentObserver::class);
+        Application::observe(ApplicationLoggingObserver::class);
         // 2. Force HTTPS if we are deployed to production 
         // This ensures Cloudflare and AWS communicate securely without breaking assets or camera permissions
         if ($this->app->environment('production')) {
