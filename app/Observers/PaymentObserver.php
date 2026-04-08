@@ -13,8 +13,8 @@ class PaymentObserver
         if ($payment->assessment && $payment->assessment->application) {
             $application = $payment->assessment->application;
 
-            // If it's a New Franchise, run our check to see if this payment was the final missing piece
-            if ($application->application_type === 'New Franchise') {
+            // Trigger the check for any application type that requires pre-review payment
+            if (in_array($application->application_type, ['New Franchise', 'Change of Owner', 'Change of Owner (Deceased)'])) {
                 $appObserver = new ApplicationObserver();
                 $appObserver->checkAndNotifyReviewer($application);
             }

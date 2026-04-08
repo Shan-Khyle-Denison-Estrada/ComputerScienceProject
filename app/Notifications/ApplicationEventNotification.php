@@ -29,6 +29,7 @@ class ApplicationEventNotification extends Notification
     {
         $type = $this->application->application_type;
         $applicantName = "{$this->application->first_name} {$this->application->last_name}";
+        $franchiseNumber = $this->application->franchise->franchise_number;
         
         // Default values
         $title = "Application Update: {$type}";
@@ -80,6 +81,32 @@ class ApplicationEventNotification extends Notification
             }
         }
 
+        // --- CHANGE OF OWNER & DECEASED MESSAGES ---
+        if (in_array($type, ['Change of Owner', 'Change of Owner (Deceased)'])) {
+            if ($this->eventType === 'created') {
+                $title = "New {$type} Application";
+                $message = "{$franchiseNumber} has submitted a {$type} application.";
+            } elseif ($this->eventType === 'completed_initial') { 
+                $title = "{$type} Completed";
+                $message = "{$franchiseNumber} has completed and submitted their initial {$type} application.";
+            } elseif ($this->eventType === 'ready_for_review') {
+                $title = "Application Ready for Review";
+                $message = "{$franchiseNumber}'s application is fully evaluated and paid. Review needed.";
+            } elseif ($this->eventType === 'reviewer_approved') {
+                $title = "TAB Approval Needed";
+                $message = "Reviewer has approved {$franchiseNumber}'s application. TAB Approver action required.";
+            } elseif ($this->eventType === 'tab_approved') {
+                $title = "Application Ready for Finalization";
+                $message = "TAB Approver has approved {$franchiseNumber}'s application. It is ready to be finalized.";
+            } elseif ($this->eventType === 'rejected') {
+                $title = "Application Rejected";
+                $message = "Your {$type} application for {$franchiseNumber} has been rejected.";
+            } elseif ($this->eventType === 'returned') {
+                $title = "Application Returned";
+                $message = "Your {$type} application for {$franchiseNumber} has been returned. Please check the remarks and update.";
+            }
+        }
+
         return [
             'application_id' => $this->application->id,
             'reference_number' => $this->application->reference_number,
@@ -115,7 +142,8 @@ class ApplicationEventNotification extends Notification
             return match($type) {
                 'New Driver'          => route('admin.applications.new-driver.show', $this->application->id), // Adjust route name
                 'Change of Unit'      => route('admin.applications.change-of-unit.show', $this->application->id),
-                'Change of Ownership' => route('admin.applications.change-of-owner.show', $this->application->id),
+                'Change of Owner'            => route('admin.applications.change-of-owner.show', $this->application->id),
+                'Change of Owner (Deceased)' => route('admin.applications.change-of-owner.show', $this->application->id),
                 'Renewal'             => route('admin.applications.renewal.show', $this->application->id),
                 'New Franchise' => route('admin.applications.show', $this->application->id),
                 default               => route('admin.applications.show', $this->application->id),

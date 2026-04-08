@@ -23,6 +23,12 @@ class ApplicationObserver
         if ($application->application_type === 'New Franchise' && $application->status === 'Pending') {
             $this->notifyRoles(['admin', 'evaluator', 'inspector'], $application, 'created');
         }
+
+        // --- CHANGE OF OWNER (BOTH TYPES) ---
+        if (in_array($application->application_type, ['Change of Owner', 'Change of Owner (Deceased)']) && $application->status === 'Pending') {
+            $this->notifyRoles(['admin', 'evaluator'], $application, 'created');
+        }
+
         // Add future application types here...
     }
 
@@ -88,6 +94,42 @@ class ApplicationObserver
                 $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
             }
         }
+
+        // --- CHANGE OF OWNER (Standard & Deceased) SEQUENTIAL WORKFLOW ---
+        if (in_array($application->application_type, ['Change of Owner', 'Change of Owner (Deceased)'])) {
+            
+            // 0. Applicant completes an "Initial" Deceased application -> Notify Admin & Evaluator
+            if ($application->wasChanged('status') && 
+                $application->status === 'Pending' && 
+                $application->getOriginal('status') === 'Initial') {
+                
+                $this->notifyRoles(['admin', 'evaluator'], $application, 'completed_initial');
+            }
+
+            // 0.1 Return or Rejection (Notify Applicant)
+            if ($application->wasChanged('status')) {
+                if ($application->status === 'Rejected' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'rejected'));
+                } elseif ($application->status === 'Returned' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'returned'));
+                }
+            }
+
+            // 1. Pre-Reviewer Check (Triggered if Evaluator status changes)
+            if ($application->wasChanged('evaluator_status')) {
+                $this->checkAndNotifyReviewer($application);
+            }
+
+            // 2. Reviewer Approves -> Notify TAB Approver (Skips SP!)
+            if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
+                $this->notifyRoles(['tab_approver'], $application, 'reviewer_approved');
+            }
+
+            // 3. TAB Approves -> Notify Admin & Encoder for Finalization
+            if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
+                $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
+            }
+        }
     }
 
     /**
@@ -95,19 +137,25 @@ class ApplicationObserver
      */
     public function checkAndNotifyReviewer(Application $application): void
     {
-        // Must have all three approvals
-        if ($application->evaluator_status === 'Approved' &&
-            $application->inspector_status === 'Approved' &&
-            $application->capo_status === 'Approved') {
-            
-            $assessment = $application->assessment;
+        $type = $application->application_type;
+        $hasApprovals = false;
 
-            // Check if assessment is cleared: 
-            // If there is an assessment, balance must be <= 0. If NO assessment exists, consider it cleared (true).
+        // 1. Check approvals based on application type
+        if ($type === 'New Franchise') {
+            $hasApprovals = ($application->evaluator_status === 'Approved' &&
+                             $application->inspector_status === 'Approved' &&
+                             $application->capo_status === 'Approved');
+        } elseif (in_array($type, ['Change of Owner', 'Change of Owner (Deceased)'])) {
+            // Change of owner only requires evaluator approval
+            $hasApprovals = ($application->evaluator_status === 'Approved');
+        }
+
+        // 2. If approvals are met, check if payment is cleared
+        if ($hasApprovals) {
+            $assessment = $application->assessment;
             $isAssessmentCleared = $assessment ? ($assessment->balance <= 0) : true;
 
             if ($isAssessmentCleared) {
-                // Ensure we haven't already notified them by checking if reviewer_status is still Pending/null
                 if (in_array($application->reviewer_status, [null, 'Pending'])) {
                     $this->notifyRoles(['reviewer'], $application, 'ready_for_review');
                 }

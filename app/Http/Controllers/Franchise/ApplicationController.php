@@ -431,6 +431,7 @@ class ApplicationController extends Controller
             $address = $operator->user->street_address;
             $barangay = $operator->user->barangay;
             $city = $operator->user->city;
+            $province = $operator->user->province;
         } else {
             $request->validate([
                 'new_owner_first_name' => 'required|string',
@@ -518,6 +519,7 @@ class ApplicationController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            Log::error("Change of Owner application failed: " . $e->getMessage()); // Add this line
             return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
         }
     }
