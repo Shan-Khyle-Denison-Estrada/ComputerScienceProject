@@ -91,14 +91,14 @@ class AutoRenewFranchises extends Command
             $user = $franchise->currentOwnership->newOwner->user ?? null;
             if (!$user) continue; 
 
-            // Create the Application
+            // 1. Create the Application
             $application = Application::create([
                 'reference_number' => 'APP-' . $fiscalYearString . '-' . strtoupper(Str::random(6)),
                 'user_id'          => $user->id,
                 'franchise_id'     => $franchise->id,
                 'zone_id'          => $franchise->zone_id,
                 'application_type' => 'Renewal',
-                'status'           => 'Pending',
+                'status'           => 'Initial', // Explicitly set to Initial
                 'remarks'          => "SYSTEM AUTO-GENERATED: {$fiscalYearString} Annual Renewal.",
                 'submitted_at'     => now(),
                 'first_name'       => $user->first_name,
@@ -110,8 +110,36 @@ class AutoRenewFranchises extends Command
                 'street_address'   => $user->street_address,
                 'barangay'         => $user->barangay,
                 'city'             => $user->city ?? 'Zamboanga City',
+                'province'         => $user->province ?? 'Zamboanga del Sur',
             ]);
 
+            // 2. Clone the Current Active Unit as the Proposed Unit
+            // Admin show pages require a Proposed Unit to view the unit details!
+            $currentActiveUnit = $franchise->currentActiveUnit;
+            
+            if ($currentActiveUnit && $currentActiveUnit->newUnit) {
+                $unit = $currentActiveUnit->newUnit;
+                
+                \App\Models\ProposedUnit::create([
+                    'application_id'   => $application->id,
+                    'franchise_number' => $franchise->franchise_number,
+                    'make_id'          => $unit->make_id,
+                    'zone_id'          => $unit->zone_id,
+                    'model_year'       => $unit->model_year,
+                    'plate_number'     => $unit->plate_number,
+                    'motor_number'     => $unit->motor_number,
+                    'chassis_number'   => $unit->chassis_number,
+                    'cr_number'        => $unit->cr_number,
+                    'unit_front_photo' => $unit->unit_front_photo,
+                    'unit_back_photo'  => $unit->unit_back_photo,
+                    'unit_left_photo'  => $unit->unit_left_photo,
+                    'unit_right_photo' => $unit->unit_right_photo,
+                    'cr_photo'         => $unit->cr_photo,
+                    'or_photo'         => $unit->or_photo,
+                ]);
+            }
+
+            // 3. Create Assessment and Update Franchise... (Keep existing assessment logic)
             if ($particulars->isNotEmpty()) {
                 $assessment = Assessment::create([
                     'application_id'    => $application->id,

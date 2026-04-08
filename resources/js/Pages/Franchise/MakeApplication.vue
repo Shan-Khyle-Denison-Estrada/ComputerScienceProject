@@ -36,6 +36,11 @@ const selectedReturnedApp = ref(null);
 const selectedRenewalApp = ref(null);
 const appToCancel = ref(null);
 
+const openSubmitRenewalModal = (app) => {
+    selectedRenewalApp.value = app;
+    showSubmitRenewalModal.value = true;
+};
+
 const activeApplications = computed(() => props.applications.filter(app => app.is_active));
 const pastApplications = computed(() => props.applications.filter(app => !app.is_active));
 
@@ -265,6 +270,13 @@ const resubmitForInspection = () => {
                                     <td class="px-6 py-4"><div class="text-xs text-gray-500 max-w-xs truncate" :title="app.remarks">"{{ app.remarks }}"</div></td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <div class="flex items-center justify-end gap-3 ml-auto">
+                                            <button 
+                                                v-if="app.application_type === 'Renewal' && app.status === 'Initial'"
+                                                @click.prevent="openSubmitRenewalModal(app)"
+                                                class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-xs font-bold uppercase rounded hover:bg-blue-700"
+                                            >
+                                                Upload Renewal Requirements
+                                            </button>
                                             <button v-if="app.status === 'Returned'" class="text-blue-600 hover:text-blue-900 font-bold text-xs uppercase flex items-center gap-1">
                                                 {{ app.inspector_status === 'Rejected' ? 'View Issues' : 'Comply' }}
                                             </button>

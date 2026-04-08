@@ -124,7 +124,7 @@ class ApplicationEventNotification extends Notification
             }
         }
 
-        // --- CHANGE OF UNIT MESSAGES (NEW) ---
+        // --- CHANGE OF UNIT MESSAGES ---
         if ($type === 'Change of Unit') {
             if ($this->eventType === 'created') {
                 $title = "New Change of Unit Application";
@@ -147,6 +147,41 @@ class ApplicationEventNotification extends Notification
             } elseif ($this->eventType === 'returned') {
                 $title = "Application Returned";
                 $message = "Your Change of Unit application for {$applicantName} has been returned. Please check the remarks.";
+            }
+        }
+
+        // --- RENEWAL MESSAGES ---
+        if ($type === 'Renewal') {
+            if ($this->eventType === 'created') {
+                $title = "New Renewal Application";
+                $message = "{$applicantName} has submitted a Franchise Renewal application.";
+            } elseif ($this->eventType === 'auto_generated') { // <-- ADD THIS BLOCK
+                $title = "Annual Renewal Required";
+                $message = "Your franchise renewal period for {$franchiseNumber} has started. Please complete your application and requirements.";
+            } elseif ($this->eventType === 'completed_initial') { 
+                $title = "Renewal Completed";
+                $message = "{$applicantName} has completed and submitted their initial Renewal application.";
+            } elseif ($this->eventType === 'inspector_approved') {
+                $title = "CAPO Approval Needed";
+                $message = "Inspector has approved {$applicantName}'s Renewal. CAPO review required.";
+            } elseif ($this->eventType === 'ready_for_review') {
+                $title = "Application Ready for Review";
+                $message = "{$applicantName}'s Renewal is fully evaluated, CAPO-approved, and paid. Review needed.";
+            } elseif ($this->eventType === 'reviewer_approved') {
+                $title = "SP Approval Needed";
+                $message = "Reviewer has approved {$applicantName}'s Renewal. SP Approver action required.";
+            } elseif ($this->eventType === 'sp_approved') {
+                $title = "TAB Approval Needed";
+                $message = "SP Approver has approved {$applicantName}'s Renewal. TAB Approver action required.";
+            } elseif ($this->eventType === 'tab_approved') {
+                $title = "Application Ready for Finalization";
+                $message = "TAB Approver has approved {$applicantName}'s Renewal. Ready for finalization.";
+            } elseif ($this->eventType === 'rejected') {
+                $title = "Application Rejected";
+                $message = "Your Renewal application for {$applicantName} has been rejected.";
+            } elseif ($this->eventType === 'returned') {
+                $title = "Application Returned";
+                $message = "Your Renewal application for {$applicantName} has been returned. Please check the remarks.";
             }
         }
 
