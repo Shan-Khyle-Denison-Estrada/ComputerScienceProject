@@ -29,6 +29,11 @@ class ApplicationObserver
             $this->notifyRoles(['admin', 'evaluator'], $application, 'created');
         }
 
+        // --- FRANCHISE OWNER ACCOUNT ---
+        if ($application->application_type === 'Franchise Owner Account') {
+            $this->notifyRoles(['admin', 'evaluator'], $application, 'created');
+        }
+
         // Add future application types here...
     }
 
@@ -128,6 +133,24 @@ class ApplicationObserver
             // 3. TAB Approves -> Notify Admin & Encoder for Finalization
             if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
                 $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
+            }
+        }
+
+        // --- FRANCHISE OWNER ACCOUNT SEQUENTIAL WORKFLOW ---
+        if ($application->application_type === 'Franchise Owner Account') {
+            
+            // 0.1 Return or Rejection (Notify Applicant)
+            if ($application->wasChanged('status')) {
+                if ($application->status === 'Rejected' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'rejected'));
+                } elseif ($application->status === 'Returned' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'returned'));
+                }
+            }
+
+            // 1. Evaluator Approves -> Notify Admin & Encoder for account setup/finalization
+            if ($application->wasChanged('evaluator_status') && $application->evaluator_status === 'Approved') {
+                $this->notifyRoles(['admin', 'encoder'], $application, 'evaluator_approved');
             }
         }
     }

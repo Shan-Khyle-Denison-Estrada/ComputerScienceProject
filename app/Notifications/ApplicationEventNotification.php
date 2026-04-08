@@ -29,7 +29,7 @@ class ApplicationEventNotification extends Notification
     {
         $type = $this->application->application_type;
         $applicantName = "{$this->application->first_name} {$this->application->last_name}";
-        $franchiseNumber = $this->application->franchise->franchise_number;
+        $franchiseNumber = $this->application->franchise?->franchise_number ?? 'N/A';
         
         // Default values
         $title = "Application Update: {$type}";
@@ -107,6 +107,23 @@ class ApplicationEventNotification extends Notification
             }
         }
 
+        // --- FRANCHISE OWNER ACCOUNT MESSAGES ---
+        if ($type === 'Franchise Owner Account') {
+            if ($this->eventType === 'created') {
+                $title = "New Account Application";
+                $message = "{$applicantName} has applied for a Franchise Owner Account.";
+            } elseif ($this->eventType === 'evaluator_approved') {
+                $title = "Account Application Approved";
+                $message = "Evaluator has approved {$applicantName}'s account application. Admin/Encoder action required.";
+            } elseif ($this->eventType === 'rejected') {
+                $title = "Application Rejected";
+                $message = "Your Franchise Owner Account application has been rejected.";
+            } elseif ($this->eventType === 'returned') {
+                $title = "Application Returned";
+                $message = "Your Franchise Owner Account application has been returned. Please check the remarks.";
+            }
+        }
+
         return [
             'application_id' => $this->application->id,
             'reference_number' => $this->application->reference_number,
@@ -146,6 +163,7 @@ class ApplicationEventNotification extends Notification
                 'Change of Owner (Deceased)' => route('admin.applications.change-of-owner.show', $this->application->id),
                 'Renewal'             => route('admin.applications.renewal.show', $this->application->id),
                 'New Franchise' => route('admin.applications.show', $this->application->id),
+                'Franchise Owner Account' => route('admin.applications.show', $this->application->id),
                 default               => route('admin.applications.show', $this->application->id),
             };
         }
