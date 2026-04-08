@@ -14,7 +14,7 @@ class PaymentObserver
             $application = $payment->assessment->application;
 
             // Trigger the check for any application type that requires pre-review payment
-            if (in_array($application->application_type, ['New Franchise', 'Change of Owner', 'Change of Owner (Deceased)'])) {
+            if (in_array($application->application_type, ['New Franchise', 'Change of Owner', 'Change of Owner (Deceased)', 'Change of Unit'])) {
                 $appObserver = new ApplicationObserver();
                 $appObserver->checkAndNotifyReviewer($application);
             }

@@ -33,6 +33,11 @@ class ApplicationObserver
         if ($application->application_type === 'Franchise Owner Account') {
             $this->notifyRoles(['admin', 'evaluator'], $application, 'created');
         }
+        
+        // --- CHANGE OF UNIT ---
+        if ($application->application_type === 'Change of Unit' && $application->status === 'Pending') {
+            $this->notifyRoles(['admin', 'evaluator', 'inspector'], $application, 'created');
+        }
 
         // Add future application types here...
     }
@@ -153,6 +158,39 @@ class ApplicationObserver
                 $this->notifyRoles(['admin', 'encoder'], $application, 'evaluator_approved');
             }
         }
+
+        // --- CHANGE OF UNIT SEQUENTIAL WORKFLOW ---
+        if ($application->application_type === 'Change of Unit') {
+            
+            // 0. Return or Rejection (Notify Applicant)
+            if ($application->wasChanged('status')) {
+                if ($application->status === 'Rejected' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'rejected'));
+                } elseif ($application->status === 'Returned' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'returned'));
+                }
+            }
+
+            // 1. Inspector Approves -> Notify CAPO
+            if ($application->wasChanged('inspector_status') && $application->inspector_status === 'Approved') {
+                $this->notifyRoles(['city_anti_pollution_officer'], $application, 'inspector_approved');
+            }
+
+            // 2. Pre-Reviewer Check (Triggered if Evaluator or CAPO status changes)
+            if ($application->wasChanged('evaluator_status') || $application->wasChanged('capo_status')) {
+                $this->checkAndNotifyReviewer($application);
+            }
+
+            // 3. Reviewer Approves -> Notify TAB Approver
+            if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
+                $this->notifyRoles(['tab_approver'], $application, 'reviewer_approved');
+            }
+
+            // 4. TAB Approves -> Notify Admin & Encoder for Finalization
+            if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
+                $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
+            }
+        }
     }
 
     /**
@@ -169,8 +207,11 @@ class ApplicationObserver
                              $application->inspector_status === 'Approved' &&
                              $application->capo_status === 'Approved');
         } elseif (in_array($type, ['Change of Owner', 'Change of Owner (Deceased)'])) {
-            // Change of owner only requires evaluator approval
             $hasApprovals = ($application->evaluator_status === 'Approved');
+        } elseif ($type === 'Change of Unit') {
+            // Evaluator + CAPO approval required
+            $hasApprovals = ($application->evaluator_status === 'Approved' && 
+                             $application->capo_status === 'Approved');
         }
 
         // 2. If approvals are met, check if payment is cleared
@@ -185,6 +226,7 @@ class ApplicationObserver
             }
         }
     }
+    
     private function notifyRoles(array $rolesToNotify, Application $application, string $eventType): void
     {
         $usersToNotify = User::whereIn('role', $rolesToNotify)

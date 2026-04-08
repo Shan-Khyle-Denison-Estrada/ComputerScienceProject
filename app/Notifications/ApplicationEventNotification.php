@@ -124,6 +124,32 @@ class ApplicationEventNotification extends Notification
             }
         }
 
+        // --- CHANGE OF UNIT MESSAGES (NEW) ---
+        if ($type === 'Change of Unit') {
+            if ($this->eventType === 'created') {
+                $title = "New Change of Unit Application";
+                $message = "{$applicantName} has submitted a Change of Unit application.";
+            } elseif ($this->eventType === 'inspector_approved') {
+                $title = "CAPO Approval Needed";
+                $message = "Inspector has approved {$applicantName}'s Change of Unit. CAPO review required.";
+            } elseif ($this->eventType === 'ready_for_review') {
+                $title = "Application Ready for Review";
+                $message = "{$applicantName}'s Change of Unit is fully evaluated, CAPO-approved, and paid. Review needed.";
+            } elseif ($this->eventType === 'reviewer_approved') {
+                $title = "TAB Approval Needed";
+                $message = "Reviewer has approved {$applicantName}'s Change of Unit. TAB Approver action required.";
+            } elseif ($this->eventType === 'tab_approved') {
+                $title = "Application Ready for Finalization";
+                $message = "TAB Approver has approved {$applicantName}'s Change of Unit. Ready for finalization.";
+            } elseif ($this->eventType === 'rejected') {
+                $title = "Application Rejected";
+                $message = "Your Change of Unit application for {$applicantName} has been rejected.";
+            } elseif ($this->eventType === 'returned') {
+                $title = "Application Returned";
+                $message = "Your Change of Unit application for {$applicantName} has been returned. Please check the remarks.";
+            }
+        }
+
         return [
             'application_id' => $this->application->id,
             'reference_number' => $this->application->reference_number,
@@ -149,7 +175,7 @@ class ApplicationEventNotification extends Notification
         if (in_array('evaluator', $roles)) {
             return match($type) {
                 'New Driver'          => route('evaluator.applications.show-new-driver', $this->application->id), // Adjust route name
-                'Change of Unit'      => route('evaluator.applications.change-of-unit.show', $this->application->id), // Example
+                'Change of Unit'      => route('evaluator.applications.show-change-of-unit', $this->application->id), // Example
                 default               => route('evaluator.applications.show', $this->application->id),
             };
         }

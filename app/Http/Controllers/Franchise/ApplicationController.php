@@ -390,6 +390,7 @@ class ApplicationController extends Controller
             
         } catch (\Exception $e) {
             DB::rollBack();
+            // dd('Observer Crash Reason: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
         }
     }
