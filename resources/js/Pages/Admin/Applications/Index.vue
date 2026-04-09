@@ -310,6 +310,7 @@ const getApplicationRoute = (app) => {
                             <InputLabel>Status</InputLabel>
                             <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
                                 <option value="">All Statuses</option>
+                                <option value="Initial">Initial</option>
                                 <option value="Pending">Pending</option>
                                 <option value="Approved">Approved</option>
                                 <option value="Rejected">Rejected</option>
