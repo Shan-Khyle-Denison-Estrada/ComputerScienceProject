@@ -392,6 +392,34 @@ const submit = () => {
         });
     } 
 };
+
+const ownerSearchQuery = ref('');
+const isOwnerDropdownOpen = ref(false);
+
+const filteredAvailableOperators = computed(() => {
+    // The current logged-in operator making the application is passed globally by the controller.
+    // We can pull their ID directly from Inertia's page props.
+    const currentOperatorId = page.props.operator?.id;
+
+    return props.operators.filter(o => {
+        // 1. Exclude the current logged-in operator from the dropdown
+        if (currentOperatorId && o.id === currentOperatorId) return false;
+
+        // 2. Apply text search
+        if (ownerSearchQuery.value) {
+            const query = ownerSearchQuery.value.toLowerCase();
+            return o.name.toLowerCase().includes(query) || (o.email && o.email.toLowerCase().includes(query));
+        }
+
+        return true;
+    });
+});
+
+const selectExistingOwner = (operator) => {
+    form.existing_operator_id = operator.id;
+    ownerSearchQuery.value = operator.name;
+    isOwnerDropdownOpen.value = false;
+};
 </script>
 
 <template>
@@ -448,13 +476,51 @@ const submit = () => {
                                 <button type="button" @click="ownerMode = 'new'" :class="ownerMode === 'new' ? 'border-blue-500 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'" class="px-4 py-2 border-b-2 font-medium text-sm transition-colors">Register New Owner</button>
                             </div>
 
-                            <div v-if="ownerMode === 'existing'" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <InputLabel value="Search / Select Existing Owner" />
-                                <select v-model="form.existing_operator_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
-                                    <option value="">-- Select Owner --</option>
-                                    <option v-for="o in operators" :key="o.id" :value="o.id">{{ o.name }} ({{ o.email }})</option>
-                                </select>
-                            </div>
+                            <div v-if="ownerMode === 'existing'" class="p-4 bg-gray-50 rounded-lg border border-gray-200 relative">
+    <InputLabel value="Search / Select Existing Owner" />
+    
+    <div v-if="isOwnerDropdownOpen" @click="isOwnerDropdownOpen = false" class="fixed inset-0 z-10"></div>
+
+    <div class="relative mt-1 z-20">
+        <input 
+            type="text" 
+            v-model="ownerSearchQuery"
+            @focus="isOwnerDropdownOpen = true"
+            @input="isOwnerDropdownOpen = true; form.existing_operator_id = ''"
+            placeholder="Search by name or email..."
+            class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 pr-10"
+        />
+        
+        <button 
+            v-if="ownerSearchQuery" 
+            @click="ownerSearchQuery = ''; form.existing_operator_id = ''; isOwnerDropdownOpen = true" 
+            class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+            type="button"
+        >
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+
+        <div 
+            v-if="isOwnerDropdownOpen" 
+            class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto custom-scrollbar"
+        >
+            <div v-if="filteredAvailableOperators.length === 0" class="p-3 text-sm text-gray-500 text-center">
+                No matching owners found.
+            </div>
+            <div 
+                v-for="o in filteredAvailableOperators" 
+                :key="o.id" 
+                @click="selectExistingOwner(o)"
+                class="p-3 text-sm hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                :class="{'bg-blue-100 font-semibold text-blue-700': form.existing_operator_id === o.id}"
+            >
+                {{ o.name }} <span class="text-xs text-gray-500 ml-1">({{ o.email }})</span>
+            </div>
+        </div>
+    </div>
+</div>
 
                             <div v-if="ownerMode === 'new'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div><InputLabel value="First Name" /><TextInput v-model="form.new_owner_first_name" class="w-full text-sm py-1.5 mt-1" /></div>
