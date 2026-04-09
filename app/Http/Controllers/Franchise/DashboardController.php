@@ -41,7 +41,10 @@ class DashboardController extends Controller
             'ownershipHistory.previousOwner.user', 
             'zone',                           
             'assessments.payments',           
-            'assessments.particulars'         
+            'assessments.particulars',
+            'complaints',
+            'redFlags.nature',
+            'driverLogs.driver' // Added driverLogs to verify actual historical drivers
         ])
         ->get();
 
@@ -70,6 +73,51 @@ class DashboardController extends Controller
             $franchise->driver_history = $franchise->driverAssignments
                 ->sortByDesc('is_active')
                 ->values();
+
+            // Process Complaints strictly against Driver Logs using local time string comparison
+            $franchise->complaints_history = $franchise->complaints->map(function($complaint) use ($franchise) {
+                $assignedDriver = null;
+
+                if ($complaint->incident_date && $complaint->incident_time) {
+                    
+                    // 1. Format the incident date and time into a standard "YYYY-MM-DD HH:MM" string 
+                    // (Dropping seconds to avoid mismatch if the database has seconds but the input doesn't)
+                    $incidentString = \Carbon\Carbon::parse($complaint->incident_date . ' ' . $complaint->incident_time)
+                                        ->format('Y-m-d H:i');
+
+                    // 2. Strictly check against driver logs
+                    foreach ($franchise->driverLogs as $log) {
+                        
+                        // Parse log timestamps, enforce Philippine Time (Asia/Manila) in case the DB stores UTC, 
+                        // and format identically without seconds.
+                        $startString = \Carbon\Carbon::parse($log->started_at)
+                                        ->timezone('Asia/Manila')
+                                        ->format('Y-m-d H:i');
+                        
+                        $endString = $log->ended_at 
+                            ? \Carbon\Carbon::parse($log->ended_at)->timezone('Asia/Manila')->format('Y-m-d H:i')
+                            : \Carbon\Carbon::now()->timezone('Asia/Manila')->format('Y-m-d H:i');
+
+                        // 3. Alphabetical string comparison works perfectly for 'YYYY-MM-DD HH:MM'
+                        if ($incidentString >= $startString && $incidentString <= $endString) {
+                            $assignedDriver = $log->driver;
+                            break;
+                        }
+                    }
+                }
+
+                $complaint->driver_name = $assignedDriver 
+                    ? ($assignedDriver->first_name . ' ' . $assignedDriver->last_name) 
+                    : 'No Driver Assigned';
+                    
+                $complaint->driver_contact = $assignedDriver 
+                    ? $assignedDriver->contact_number 
+                    : 'N/A';
+
+                return $complaint;
+            })->sortByDesc('incident_date')->values();
+
+            $franchise->red_flags_history = $franchise->redFlags->sortByDesc('created_at')->values();
 
             // Helper to quickly identify active driver for the frontend card
             $franchise->active_driver = $franchise->driverAssignments

@@ -61,6 +61,8 @@ const currentTabData = computed(() => {
         case 'payments': return selectedFranchise.value.assessments?.flatMap(a => a.payments) || []; 
         case 'units': return selectedFranchise.value.unit_history || [];
         case 'ownership': return selectedFranchise.value.ownership_history || [];
+        case 'complaints': return selectedFranchise.value.complaints_history || [];
+        case 'redFlags': return selectedFranchise.value.red_flags_history || [];
         default: return [];
     }
 });
@@ -170,7 +172,18 @@ const getStatusClasses = (status) => {
 
 const getTabLabel = (tabKey) => {
     if (tabKey === 'driver') return 'Assigned Drivers';
+    if (tabKey === 'redFlags') return 'Red Flags';
+    if (tabKey === 'complaints') return 'Complaints';
     return tabKey.charAt(0).toUpperCase() + tabKey.slice(1) + ' History';
+};
+
+const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hourStr, minute] = timeString.split(':');
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12; // Convert 0 to 12
+    return `${hour}:${minute} ${ampm}`;
 };
 </script>
 
@@ -333,7 +346,7 @@ const getTabLabel = (tabKey) => {
                         
                         <div class="flex border-b border-gray-200 bg-gray-50 px-4 md:px-6 pt-2 gap-4 md:gap-6 overflow-x-auto shrink-0 custom-scrollbar">
                             <button 
-                                v-for="tab in ['driver', 'payments', 'units', 'ownership']" 
+                                v-for="tab in ['driver', 'payments', 'units', 'ownership', 'complaints', 'redFlags']" 
                                 :key="tab"
                                 @click="activeTab = tab"
                                 class="pb-3 pt-3 text-xs md:text-sm font-bold border-b-2 transition-colors capitalize whitespace-nowrap outline-none focus:outline-none"
@@ -538,6 +551,106 @@ const getTabLabel = (tabKey) => {
                                 </table>
                             </div>
 
+                            <div v-if="activeTab === 'complaints'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
+                                <table class="min-w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Incident Date & Time</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Driver on Duty</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Contact Number</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Nature of Complaint</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr v-if="!selectedFranchise.complaints_history?.length">
+                                            <td colspan="5" class="px-4 md:px-6 py-12 text-center text-gray-400 whitespace-nowrap">No complaints recorded.</td>
+                                        </tr>
+                                        <tr v-for="complaint in paginatedTabData" :key="complaint.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">
+                                                {{ formatDate(complaint.incident_date) }} {{ formatTime(complaint.incident_time) }}
+                                            </td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-bold text-gray-800 whitespace-nowrap">
+                                                <span :class="complaint.driver_name === 'No Driver Assigned' ? 'text-red-500 italic' : ''">
+                                                    {{ complaint.driver_name }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">
+                                                <span :class="complaint.driver_contact === 'N/A' ? 'text-gray-400 italic' : ''">
+                                                    {{ complaint.driver_contact }}
+                                                </span>
+                                            </td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ complaint.nature_of_complaint }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">
+                                                <span class="px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase border"
+                                                    :class="complaint.status === 'Resolved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'">
+                                                    {{ complaint.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot v-if="totalPages > 1">
+                                        <tr>
+                                            <td colspan="5" class="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                                                    <span class="text-xs md:text-sm text-gray-500 whitespace-nowrap">
+                                                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
+                                                    </span>
+                                                    <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+
+                            <div v-if="activeTab === 'redFlags'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
+                                <table class="min-w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">
+                                        <tr>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Date Created</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Nature of Red Flag</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Remarks</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100">
+                                        <tr v-if="!selectedFranchise.red_flags_history?.length">
+                                            <td colspan="4" class="px-4 md:px-6 py-12 text-center text-gray-400 whitespace-nowrap">No red flags recorded.</td>
+                                        </tr>
+                                        <tr v-for="flag in paginatedTabData" :key="flag.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ formatDate(flag.created_at) }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 font-bold text-gray-800 whitespace-nowrap">{{ flag.nature?.name }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ flag.remarks || '-' }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">
+                                                <span class="px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase border"
+                                                    :class="flag.status === 'Resolved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-red-100 text-red-700 border-red-200'">
+                                                    {{ flag.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                    <tfoot v-if="totalPages > 1">
+                                        <tr>
+                                            <td colspan="4" class="px-4 md:px-6 py-3 bg-gray-50 border-t border-gray-200">
+                                                <div class="flex flex-col sm:flex-row items-center justify-between w-full gap-3">
+                                                    <span class="text-xs md:text-sm text-gray-500 whitespace-nowrap">
+                                                        Showing {{ (currentPage - 1) * itemsPerPage + 1 }} to {{ Math.min(currentPage * itemsPerPage, currentTabData.length) }} of {{ currentTabData.length }}
+                                                    </span>
+                                                    <div class="flex gap-2 w-full sm:w-auto justify-between sm:justify-end">
+                                                        <button @click="currentPage--" :disabled="currentPage === 1" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Prev</button>
+                                                        <button @click="currentPage++" :disabled="currentPage === totalPages" class="px-3 py-1 text-xs md:text-sm bg-white border border-gray-300 rounded text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-colors">Next</button>
+                                                    </div>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            
                         </div>
                     </div>
                 </div>
