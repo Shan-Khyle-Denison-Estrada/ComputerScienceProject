@@ -72,6 +72,20 @@ const submitComplaint = () => {
         }
     });
 };
+
+const formatContactNumber = (event) => {
+    let value = event.target.value.replace(/\D/g, ''); // Strip non-digits
+    if (value.length > 11) value = value.slice(0, 11);
+    
+    let formatted = value;
+    if (value.length > 4) {
+        formatted = value.slice(0, 4) + '-' + value.slice(4);
+    }
+    if (value.length > 7) {
+        formatted = formatted.slice(0, 8) + '-' + value.slice(7);
+    }
+    form.complainant_contact = formatted;
+};
 </script>
 
 <template>
@@ -215,7 +229,7 @@ const submitComplaint = () => {
                         <div class="space-y-3 text-sm">
                             
                             <div>
-                                <label class="block text-xs font-bold text-gray-700 mb-1">Nature of Complaint *</label>
+                                <label class="block text-xs font-bold text-gray-700 mb-1">Nature of Complaint <span class="text-red-500">*</span></label>
                                 <select v-model="form.nature_of_complaint" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                     <option value="" disabled>Select Issue...</option>
                                     <option v-for="nature in natureOfComplaints" :key="nature.id" :value="nature.name">
@@ -234,34 +248,34 @@ const submitComplaint = () => {
 
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Incident Date *</label>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Incident Date <span class="text-red-500">*</span></label>
                                     <input type="date" v-model="form.incident_date" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Time *</label>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Time <span class="text-red-500">*</span></label>
                                     <input type="time" v-model="form.incident_time" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Pick Up Point</label>
-                                    <input type="text" v-model="form.pick_up_point" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Pick Up Point <span class="text-red-500">*</span></label>
+                                    <input type="text" v-model="form.pick_up_point" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Drop Off Point</label>
-                                    <input type="text" v-model="form.drop_off_point" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Drop Off Point <span class="text-red-500">*</span></label>
+                                    <input type="text" v-model="form.drop_off_point" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                 </div>
                             </div>
 
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Fare Collected (₱)</label>
-                                    <input type="number" step="0.01" v-model="form.fare_collected" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm">
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Fare Collected (₱) <span class="text-red-500">*</span></label>
+                                    <input type="number" step="0.01" v-model="form.fare_collected" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" required>
                                 </div>
                                 <div>
-                                    <label class="block text-xs font-bold text-gray-700 mb-1">Your Contact # *</label>
-                                    <input type="text" v-model="form.complainant_contact" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" placeholder="09xxxxxxxxx" required>
+                                    <label class="block text-xs font-bold text-gray-700 mb-1">Your Contact # <span class="text-red-500">*</span></label>
+                                    <input type="text" v-model="form.complainant_contact" @input="formatContactNumber" class="block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm" placeholder="09XX-XXX-XXXX" maxlength="13" required>
                                 </div>
                             </div>
 
