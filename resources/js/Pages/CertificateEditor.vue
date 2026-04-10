@@ -42,18 +42,25 @@ const zoomLevel = ref(1.0);
 const zoomIn = () => zoomLevel.value = Math.min(zoomLevel.value + 0.1, 2.0);
 const zoomOut = () => zoomLevel.value = Math.max(zoomLevel.value - 0.1, 0.4);
 
+// 1. Use exact physical dimensions for robust printing
 const paperDimensions = {
-    'A4': { width: 794, height: 1123 },
-    'Letter': { width: 816, height: 1056 },
-    'Legal': { width: 816, height: 1344 }
+    'A4': { width: '210mm', minHeight: '297mm' },
+    'Letter': { width: '8.5in', minHeight: '11in' },
+    'Legal': { width: '8.5in', minHeight: '14in' }
 };
 
 const paperStyle = computed(() => {
     const size = paperDimensions[form.paper_size] || paperDimensions['A4'];
     return {
-        width: `${size.width}px`, minHeight: `${size.height}px`,
-        padding: `${(form.margins.top || 0) * 96}px ${(form.margins.right || 0) * 96}px ${(form.margins.bottom || 0) * 96}px ${(form.margins.left || 0) * 96}px`,
-        zoom: zoomLevel.value, 
+        width: size.width, 
+        minHeight: size.minHeight,
+        // 2. Use inches directly for perfect print-to-screen accuracy
+        padding: `${form.margins.top || 0}in ${form.margins.right || 0}in ${form.margins.bottom || 0}in ${form.margins.left || 0}in`,
+        // 3. Use transform instead of the buggy 'zoom' property
+        transform: `scale(${zoomLevel.value})`,
+        transformOrigin: 'top center',
+        position: 'relative',
+        backgroundColor: 'white'
     };
 });
 
@@ -187,7 +194,6 @@ const TextVariable = Node.create({
         else if (wrap === 'in-front') style += ` position: absolute; z-index: 10; left: ${x}px; top: ${y}px; white-space: nowrap;`;
         else style += ' margin: 0;'; 
 
-        // FIX: We MUST include the data-* attributes here so TipTap can remember them when the page reloads!
         return ['span', { 
             'data-text-variable': HTMLAttributes.variable, 
             'data-label': HTMLAttributes.label,
@@ -196,7 +202,10 @@ const TextVariable = Node.create({
             'data-y': y,
             'data-width': w,
             'data-text-align': align,
-            style 
+            style,
+            // CRITICAL FIX: Prevent absolute elements from breaking text flow editing
+            class: (wrap === 'behind' || wrap === 'in-front') ? 'absolute-node' : '',
+            contenteditable: (wrap === 'behind' || wrap === 'in-front') ? "false" : "true"
         }, `[${HTMLAttributes.label}]`];
     },
     addNodeView() { return VueNodeViewRenderer(DraggableTextVariable) }
@@ -247,7 +256,6 @@ const CustomImage = Node.create({
         else if (wrap === 'in-front') { style += ` position: absolute; z-index: 10; left: ${x}px; top: ${y}px; white-space: nowrap;`; imgStyle += ' max-width: none;'; }
         else style += ' margin: 0;'; 
 
-        // FIX: Ensure image parameters are saved on reload
         return ['span', { 
             'data-type': 'customImage', 
             'data-src': HTMLAttributes.src, 
@@ -257,7 +265,10 @@ const CustomImage = Node.create({
             'data-x': x, 
             'data-y': y, 
             'data-variable': HTMLAttributes['data-variable'] || '', 
-            style 
+            style,
+            // CRITICAL FIX: Lock node if absolutely positioned
+            class: (wrap === 'behind' || wrap === 'in-front') ? 'absolute-node' : '',
+            contenteditable: (wrap === 'behind' || wrap === 'in-front') ? "false" : "true"
         }, ['img', { src: HTMLAttributes.src, style: imgStyle }]];
     },
     addNodeView() { return VueNodeViewRenderer(ResizableImage) }
@@ -735,16 +746,44 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
     border: 2px dashed #3b82f6; padding: 4px; border-radius: 8px; background-color: #eff6ff;
 }
 
-/* Print Specific Overrides */
+/* Robust Print Styles */
 @media print {
-    @page { margin: 0; size: auto; }
+    /* Tell the printer to use the dimensions defined by the div, not the browser defaults */
+    @page {
+        margin: 0; 
+        size: auto;
+    }
     
-    .print-container { padding: 0; background-color: transparent; align-items: flex-start !important; }
-    .certificate-content { box-shadow: none !important; border: none !important; page-break-after: avoid; page-break-inside: avoid; }
+    /* Hide the entire application UI by default */
+    body * {
+        visibility: hidden;
+    }
+
+    /* ONLY show the editor canvas and its children */
+    .editor-paper, .editor-paper * {
+        visibility: visible;
+    }
+
+    .editor-paper {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important; /* Allow the print dialog to manage the physical boundaries */
+        min-height: 100% !important;
+        transform: none !important; /* Strip the zoom scale so it prints at 100% */
+        box-shadow: none !important;
+        margin: 0 !important;
+        /* Note: Your inline padding set in inches will seamlessly create the print margins! */
+    }
+
+    /* Hide TipTap UI helpers */
+    .ProseMirror-selectednode {
+        outline: none !important;
+    }
     
-    * {
-        -webkit-print-color-adjust: exact !important;
-        print-color-adjust: exact !important;
+    /* Hide Vue/TipTap resizing handles */
+    .resize-handle, .column-resize-handle {
+        display: none !important;
     }
 }
 </style>
