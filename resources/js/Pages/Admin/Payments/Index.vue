@@ -9,6 +9,7 @@ import Modal from '@/Components/Modal.vue';
 import ReceiptPrint from '@/Components/ReceiptPrint.vue'; 
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, watch, nextTick, onMounted } from 'vue'; // <-- ADDED onMounted
+import debounce from 'lodash/debounce';
 
 // --- PROPS ---
 const props = defineProps({
@@ -165,9 +166,10 @@ const addForm = useForm({
     payee_barangay: '',
 });
 
-const filterForm = ref({
-    city: props.filters.city || '',
-});
+// --- SEARCH, SORT & FILTER STATE ---
+const filterCity = ref(props.filters.city || '');
+const sortField = ref(props.filters.sortField || '');
+const sortDirection = ref(props.filters.sortDirection || '');
 
 // --- HELPERS ---
 const formatCurrency = (value) => {
@@ -230,15 +232,37 @@ const submitAdd = () => {
     });
 };
 
-const handleSearch = () => {
-    router.get(route('admin.payments.index'), { 
-        search: search.value, 
-        city: filterForm.value.city 
-    }, { 
-        preserveState: true, 
-        preserveScroll: true,
-        replace: true
-    });
+const fetchResults = debounce(() => {
+    router.get(route('admin.payments.index'), {
+        search: search.value,
+        city: filterCity.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true, preserveScroll: true });
+}, 300);
+
+// Automatically trigger on typing or filter changes
+watch([search, filterCity], () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
+};
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
 };
 
 const openFilterModal = () => {
@@ -252,14 +276,14 @@ const closeFilterModal = () => {
 };
 
 const applyFilters = () => {
-    handleSearch();
     closeFilterModal();
+    fetchResults();
 };
 
 const resetFilters = () => {
-    filterForm.value.city = '';
-    search.value = '';
-    applyFilters();
+    filterCity.value = '';
+    closeFilterModal();
+    fetchResults();
 };
 
 // --- PRINT / VIEW ACTIONS ---
@@ -310,19 +334,34 @@ const printReceipt = async (payment) => {
                 </div>
 
                 <div class="flex items-center gap-3">
-                    <div class="relative">
-                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            </span>
+                            <input 
+                                v-model="search"
+                                type="text" 
+                                class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" 
+                                placeholder="Search payee or OR No..." 
+                            />
+                            <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <button 
+                            @click="openFilterModal"
+                            class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition relative" 
+                            :class="{'ring-2 ring-blue-500 bg-blue-50': filterCity}"
+                            title="Filter Options"
+                        >
+                            <svg class="h-5 w-5" :class="filterCity ? 'text-blue-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                             </svg>
-                        </span>
-                        <input 
-                            v-model="search"
-                            @keyup.enter="handleSearch"
-                            type="text" 
-                            class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" 
-                            placeholder="Search payee..." 
-                        />
+                            <span v-if="filterCity" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-blue-500 border-2 border-white rounded-full"></span>
+                        </button>
                     </div>
                     <PrimaryButton v-if="userRole === 'collector'" @click="openAddModal" class="flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -336,15 +375,43 @@ const printReceipt = async (payment) => {
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
+                        <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider select-none">
                             <tr>
-                                <th class="px-6 py-4">OR Number</th>
-                                <th class="px-6 py-4">Payee Details</th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('or_number')">
+                                    <div class="flex items-center gap-1">
+                                        OR
+                                        <svg v-if="sortField === 'or_number' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'or_number' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('payee_name')">
+                                    <div class="flex items-center gap-1">
+                                        Payee Details
+                                        <svg v-if="sortField === 'payee_name' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'payee_name' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
                                 <th class="px-6 py-4">Payee Address</th>
                                 <th class="px-6 py-4">Franchise Details</th>
                                 <th class="px-6 py-4">Assessment / Ref ID</th>
-                                <th class="px-6 py-4">Amount</th>
-                                <th class="px-6 py-4">Date Recorded</th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('amount_paid')">
+                                    <div class="flex items-center gap-1">
+                                        Amount
+                                        <svg v-if="sortField === 'amount_paid' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'amount_paid' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('created_at')">
+                                    <div class="flex items-center gap-1">
+                                        Date
+                                        <svg v-if="sortField === 'created_at' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'created_at' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
                                 <th class="px-6 py-4 text-center">Action</th> 
                             </tr>
                         </thead>
@@ -357,7 +424,7 @@ const printReceipt = async (payment) => {
                                     <div class="flex items-center">
                                         <div class="ml-4">
                                             <div class="font-medium text-gray-900">
-                                                {{ payment.payee_last_name }}, {{ payment.payee_first_name }}
+                                                {{ payment.payee_first_name }} {{ payment.payee_last_name }}
                                             </div>
                                             <div class="text-gray-500 text-xs">{{ payment.payee_contact_number || 'No contact' }}</div>
                                         </div>
@@ -715,39 +782,27 @@ const printReceipt = async (payment) => {
                 </div>
             </Transition>
 
-            <Transition
-                enter-active-class="transition duration-200 ease-out"
-                enter-from-class="opacity-0"
-                enter-to-class="opacity-100"
-                leave-active-class="transition duration-150 ease-in"
-                leave-from-class="opacity-100"
-                leave-to-class="opacity-0"
-            >
-                <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6" aria-labelledby="filter-modal-title" role="dialog" aria-modal="true">
-                    <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" @click="closeFilterModal"></div>
-
-                    <div class="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden transform transition-all">
-                        <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-                            <h2 class="text-lg font-bold text-gray-900" id="filter-modal-title">Filter Payments</h2>
-                            <button @click="closeFilterModal" class="text-gray-400 hover:text-gray-600 hover:bg-gray-200 p-1.5 rounded-full transition-colors">
-                                <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                            </button>
+            <transition name="fade">
+                <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeFilterModal"></div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                            <h2 class="text-lg font-bold text-gray-900">Filter Payments</h2>
+                            <button @click="closeFilterModal" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
                         </div>
-
                         <div class="p-6 space-y-4">
                             <div>
                                 <InputLabel>Filter by City</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="filterForm.city" placeholder="e.g. Polomolok" @keyup.enter="applyFilters" />
+                                <TextInput type="text" class="mt-1 block w-full text-sm py-2.5" v-model="filterCity" placeholder="e.g. Zamboanga City" />
                             </div>
                         </div>
-
-                        <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-end gap-3">
-                            <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
-                            <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <SecondaryButton @click="resetFilters">Clear All</SecondaryButton>
+                            <PrimaryButton @click="applyFilters">Done</PrimaryButton>
                         </div>
                     </div>
                 </div>
-            </Transition>
+            </transition>
 
             <Modal :show="showViewModal" @close="closeViewModal" maxWidth="lg">
                 <div v-if="selectedPayment" class="p-6">
@@ -798,3 +853,8 @@ const printReceipt = async (payment) => {
     </div>
 
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
