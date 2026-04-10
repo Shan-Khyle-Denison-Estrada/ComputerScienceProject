@@ -355,14 +355,14 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
     <Head title="Edit Certificate Format" />
 
     <AuthenticatedLayout>
-        <template #header>
+        <!-- <template #header>
             <div class="flex justify-between items-center">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">Edit Certificate Format</h2>
                 <Link :href="route('admin.franchises.index')" class="text-sm text-gray-600 hover:text-gray-900 underline">Back to Franchises</Link>
             </div>
-        </template>
+        </template> -->
 
-        <div class="h-[calc(100vh-5rem)]">
+        <div class="h-[calc(100vh-6rem)]">
             <div class="h-full relative">
                 
                 <div v-if="$page.props.flash?.success" class="fixed top-20 right-8 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg">
