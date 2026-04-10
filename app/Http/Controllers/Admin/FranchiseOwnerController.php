@@ -19,6 +19,8 @@ class FranchiseOwnerController extends Controller
     {
         $search = $request->input('search');
         $status = $request->input('status'); // Get status filter
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
 
         // Fetch Users with 'franchise_owner' role
         $users = User::with('operator')
@@ -35,7 +37,21 @@ class FranchiseOwnerController extends Controller
             ->when($status, function ($query, $status) {
                 $query->where('status', $status);
             })
-            ->latest()
+            // 3. Handle Sorting
+            ->when($sortField, function ($query) use ($sortField, $sortDirection) {
+                if ($sortField === 'name') {
+                    $query->orderBy('last_name', $sortDirection)
+                          ->orderBy('first_name', $sortDirection);
+                } else {
+                    $allowedSorts = ['status'];
+                    if (in_array($sortField, $allowedSorts)) {
+                        $query->orderBy($sortField, $sortDirection);
+                    }
+                }
+            }, function ($query) {
+                // Default sorting when no sortField is provided
+                $query->latest();
+            })
             ->paginate(6)
             ->withQueryString();
 
@@ -52,7 +68,7 @@ class FranchiseOwnerController extends Controller
 
         return Inertia::render('Admin/FranchiseOwners/Index', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status']), // Pass status back to view
+            'filters' => $request->only(['search', 'status', 'sortField', 'sortDirection']), 
         ]);
     }
 
