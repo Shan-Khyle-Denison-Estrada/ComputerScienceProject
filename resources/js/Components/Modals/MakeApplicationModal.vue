@@ -189,7 +189,9 @@ const handleCityChange = async (event) => {
 
 // Watch for Server-Side Validation Errors as a fallback
 watch(() => form.errors.selected_franchise_id, (newError) => {
-    if (newError) {
+    // Only trigger the warning modal for server-returned duplicate/conflict errors, 
+    // NOT our simple client-side "Required" validation.
+    if (newError && newError !== 'Please select a franchise to modify.') {
         warningMessage.value = newError;
         showWarningModal.value = true;
         currentStep.value = 2; 
@@ -271,45 +273,87 @@ const validateFranchiseSelection = () => {
     }
 };
 
-const isStep2Valid = computed(() => {
-    if (isFranchiseSelectRequired.value && !form.selected_franchise_id) return false;
-    if (duplicateApplicationError.value) return false;
-    if (!areAllDocsUploaded.value) return false;
+const goToNextStep = () => {
+    if (currentStep.value !== 2) {
+        currentStep.value++;
+        return;
+    }
+
+    form.clearErrors();
+    let isValid = true;
+
+    if (isFranchiseSelectRequired.value && !form.selected_franchise_id) {
+        form.setError('selected_franchise_id', 'Please select a franchise to modify.');
+        isValid = false;
+    }
 
     if (isOwnerRequired.value) {
-        if (ownerMode.value === 'existing' && !form.existing_operator_id) return false;
-        if (ownerMode.value === 'new') {
-            if (!form.new_owner_first_name || !form.new_owner_last_name || 
-                !form.new_owner_contact || !form.new_owner_address || 
-                !form.new_owner_province || !form.new_owner_city || 
-                !form.new_owner_barangay || !form.new_owner_tin) {
-                return false;
+        if (ownerMode.value === 'existing') {
+            if (!form.existing_operator_id) {
+                form.setError('existing_operator_id', 'Please select an existing owner.');
+                isValid = false;
             }
+        } else if (ownerMode.value === 'new') {
+            if (!form.new_owner_first_name) { form.setError('new_owner_first_name', 'Required.'); isValid = false; }
+            if (!form.new_owner_last_name) { form.setError('new_owner_last_name', 'Required.'); isValid = false; }
+            if (!form.new_owner_contact) { form.setError('new_owner_contact', 'Required.'); isValid = false; }
+            if (!form.new_owner_tin) { form.setError('new_owner_tin', 'Required.'); isValid = false; }
+            if (!form.new_owner_address) { form.setError('new_owner_address', 'Required.'); isValid = false; }
+            if (!form.new_owner_province) { form.setError('new_owner_province', 'Required.'); isValid = false; }
+            if (!form.new_owner_city) { form.setError('new_owner_city', 'Required.'); isValid = false; }
+            if (!form.new_owner_barangay) { form.setError('new_owner_barangay', 'Required.'); isValid = false; }
         }
     }
 
     if (isUnitRequired.value) {
-        if (unitMode.value === 'existing' && !form.existing_unit_id) return false;
-        
-        if (unitMode.value === 'new') {
-            if (!form.make_id || !form.model_year || !form.plate_number || !form.motor_number || !form.chassis_number || !form.cr_number) return false;
-            // Photos are ONLY strictly required to be uploaded if the user is registering a brand NEW unit
-            if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) return false;
+        if (unitMode.value === 'existing') {
+            if (!form.existing_unit_id) {
+                form.setError('existing_unit_id', 'Please select an existing unit.');
+                isValid = false;
+            }
+        } else if (unitMode.value === 'new') {
+            if (!form.make_id) { form.setError('make_id', 'Required.'); isValid = false; }
+            if (!form.model_year) { form.setError('model_year', 'Required.'); isValid = false; }
+            if (!form.plate_number) { form.setError('plate_number', 'Required.'); isValid = false; }
+            if (!form.motor_number) { form.setError('motor_number', 'Required.'); isValid = false; }
+            if (!form.chassis_number) { form.setError('chassis_number', 'Required.'); isValid = false; }
+            if (!form.cr_number) { form.setError('cr_number', 'Required.'); isValid = false; }
+            if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) {
+                form.setError('unit_photos', 'Please upload all 4 photos (front, back, left, right) of the proposed unit.');
+                isValid = false;
+            }
         }
     }
 
     if (isNewDriverRequired.value) {
-        if (!form.new_driver_first_name || !form.new_driver_last_name || 
-            !form.new_driver_contact || !form.new_driver_license_number || 
-            !form.new_driver_license_expiration_date || !form.new_driver_province || 
-            !form.new_driver_city || !form.new_driver_barangay || !form.new_driver_street ||
-            !form.driver_user_photo || !form.driver_license_front || !form.driver_license_back) {
-            return false;
-        }
+        if (!form.new_driver_first_name) { form.setError('new_driver_first_name', 'Required.'); isValid = false; }
+        if (!form.new_driver_last_name) { form.setError('new_driver_last_name', 'Required.'); isValid = false; }
+        if (!form.new_driver_contact) { form.setError('new_driver_contact', 'Required.'); isValid = false; }
+        if (!form.new_driver_license_number) { form.setError('new_driver_license_number', 'Required.'); isValid = false; }
+        if (!form.new_driver_license_expiration_date) { form.setError('new_driver_license_expiration_date', 'Required.'); isValid = false; }
+        if (!form.new_driver_province) { form.setError('new_driver_province', 'Required.'); isValid = false; }
+        if (!form.new_driver_city) { form.setError('new_driver_city', 'Required.'); isValid = false; }
+        if (!form.new_driver_barangay) { form.setError('new_driver_barangay', 'Required.'); isValid = false; }
+        if (!form.new_driver_street) { form.setError('new_driver_street', 'Required.'); isValid = false; }
+        if (!form.driver_user_photo) { form.setError('driver_user_photo', 'Required.'); isValid = false; }
+        if (!form.driver_license_front) { form.setError('driver_license_front', 'Required.'); isValid = false; }
+        if (!form.driver_license_back) { form.setError('driver_license_back', 'Required.'); isValid = false; }
     }
 
-    return true;
-});
+    if (!areAllDocsUploaded.value) {
+        form.setError('documents', 'Please upload all required evaluation documents before proceeding.');
+        isValid = false;
+    }
+
+    if (duplicateApplicationError.value) {
+        validateFranchiseSelection(); 
+        isValid = false;
+    }
+
+    if (isValid) {
+        currentStep.value++;
+    }
+};
 
 const closeModal = () => { 
     form.reset();
@@ -326,6 +370,25 @@ const closeModal = () => {
     barangaysList.value = [];
 
     emit('close');
+};
+
+const goBack = () => {
+    if (currentStep.value === 1) {
+        closeModal();
+    } else {
+        currentStep.value--;
+        if (currentStep.value === 1) {
+            // Completely reset form and errors when returning to Step 1
+            form.reset();
+            form.clearErrors();
+            docPreviews.value = {}; 
+            unitPhotoPreviews.value = { front: null, back: null, left: null, right: null };
+            ownerMode.value = 'existing'; 
+            unitMode.value = 'existing';
+            selectedProvinceCode.value = '';
+            selectedCityCode.value = '';
+        }
+    }
 };
 
 const selectType = (typeId) => { 
@@ -458,8 +521,8 @@ const selectExistingOwner = (operator) => {
 
                     <div v-if="currentStep === 2" class="space-y-6">
                         <div v-if="isFranchiseSelectRequired">
-                            <InputLabel value="Select Existing Franchise to Modify" />
-                            <select v-model="form.selected_franchise_id" @change="validateFranchiseSelection" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2 mt-1">
+                            <InputLabel>Select Existing Franchise to Modify <span class="text-red-500">*</span></InputLabel>
+                            <select v-model="form.selected_franchise_id" @change="validateFranchiseSelection" :class="form.errors.selected_franchise_id ? 'border-red-500 ring-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'" class="w-full rounded-lg shadow-sm text-sm py-2 mt-1">
                                 <option value="" disabled>-- Choose Unit --</option>
                                 <option v-for="fran in franchises" :key="fran.id" :value="fran.id">
                                     {{ fran.mtfrb_case_no || `Franchise #${fran.id}` }} 
@@ -467,6 +530,7 @@ const selectExistingOwner = (operator) => {
                                     (Plate: {{ fran.current_active_unit?.new_unit?.plate_number || 'N/A' }})
                                 </option>
                             </select>
+                            <p v-if="form.errors.selected_franchise_id" class="text-red-500 text-xs mt-1">{{ form.errors.selected_franchise_id }}</p>
                         </div>
 
                         <div v-if="isOwnerRequired">
@@ -477,8 +541,9 @@ const selectExistingOwner = (operator) => {
                             </div>
 
                             <div v-if="ownerMode === 'existing'" class="p-4 bg-gray-50 rounded-lg border border-gray-200 relative">
-    <InputLabel value="Search / Select Existing Owner" />
-    
+    <InputLabel>Search / Select Existing Owner <span class="text-red-500">*</span></InputLabel>
+    <p v-if="form.errors.existing_operator_id" class="text-red-500 text-xs mt-1 mb-2">{{ form.errors.existing_operator_id }}</p>
+
     <div v-if="isOwnerDropdownOpen" @click="isOwnerDropdownOpen = false" class="fixed inset-0 z-10"></div>
 
     <div class="relative mt-1 z-20">
@@ -523,43 +588,48 @@ const selectExistingOwner = (operator) => {
 </div>
 
                             <div v-if="ownerMode === 'new'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div><InputLabel value="First Name" /><TextInput v-model="form.new_owner_first_name" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Middle Name" /><TextInput v-model="form.new_owner_middle_name" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Last Name" /><TextInput v-model="form.new_owner_last_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel>First Name <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_owner_first_name" :class="{'border-red-500': form.errors.new_owner_first_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_owner_first_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_first_name }}</p></div>
+                                <div><InputLabel>Middle Name</InputLabel><TextInput v-model="form.new_owner_middle_name" :class="{'border-red-500': form.errors.new_owner_middle_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_owner_middle_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_middle_name }}</p></div>
+                                <div><InputLabel>Last Name <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_owner_last_name" :class="{'border-red-500': form.errors.new_owner_last_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_owner_last_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_last_name }}</p></div>
                                 
-                                <div class="sm:col-span-2"><InputLabel value="Email Address" /><TextInput type="email" v-model="form.new_owner_email" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div class="sm:col-span-2"><InputLabel>Email Address</InputLabel><TextInput type="email" v-model="form.new_owner_email" :class="{'border-red-500': form.errors.new_owner_email}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_owner_email" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_email }}</p></div>
                                 <div>
-                                    <InputLabel value="Contact Number" />
-                                    <TextInput v-model="form.new_owner_contact" @input="form.new_owner_contact = formatContactNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/>
+                                    <InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel>
+                                    <TextInput v-model="form.new_owner_contact" @input="form.new_owner_contact = formatContactNumber($event.target.value)" :class="{'border-red-500': form.errors.new_owner_contact}" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/>
+                                    <p v-if="form.errors.new_owner_contact" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_contact }}</p>
                                 </div>
                                 
                                 <div>
-                                    <InputLabel value="TIN Number" />
-                                    <TextInput v-model="form.new_owner_tin" @input="form.new_owner_tin = formatTinNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="XXX-XXX-XXX-XXX" />
+                                    <InputLabel>TIN Number <span class="text-red-500">*</span></InputLabel>
+                                    <TextInput v-model="form.new_owner_tin" @input="form.new_owner_tin = formatTinNumber($event.target.value)" :class="{'border-red-500': form.errors.new_owner_tin}" class="w-full text-sm py-1.5 mt-1" placeholder="XXX-XXX-XXX-XXX" />
+                                    <p v-if="form.errors.new_owner_tin" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_tin }}</p>
                                 </div>
                                 
-                                <div class="sm:col-span-2"><InputLabel value="Street Address" /><TextInput v-model="form.new_owner_address" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div class="sm:col-span-2"><InputLabel>Street Address <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_owner_address" :class="{'border-red-500': form.errors.new_owner_address}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_owner_address" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_address }}</p></div>
                                 
                                 <div>
-                                    <InputLabel value="Province" />
-                                    <select v-model="selectedProvinceCode" @change="handleProvinceChange" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500">
+                                    <InputLabel>Province <span class="text-red-500">*</span></InputLabel>
+                                    <select v-model="selectedProvinceCode" @change="handleProvinceChange" :class="{'border-red-500': form.errors.new_owner_province}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500">
                                         <option value="" disabled>-- Select Province --</option>
                                         <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
                                     </select>
+                                    <p v-if="form.errors.new_owner_province" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_province }}</p>
                                 </div>
                                 <div>
-                                    <InputLabel value="City/Municipality" />
-                                    <select v-model="selectedCityCode" @change="handleCityChange" :disabled="!citiesList.length" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                    <InputLabel>City/Municipality <span class="text-red-500">*</span></InputLabel>
+                                    <select v-model="selectedCityCode" @change="handleCityChange" :disabled="!citiesList.length" :class="{'border-red-500': form.errors.new_owner_city}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
                                         <option value="" disabled>-- Select City --</option>
                                         <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
                                     </select>
+                                    <p v-if="form.errors.new_owner_city" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_city }}</p>
                                 </div>
                                 <div>
-                                    <InputLabel value="Barangay" />
-                                    <select v-model="form.new_owner_barangay" :disabled="!barangaysList.length" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                    <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
+                                    <select v-model="form.new_owner_barangay" :disabled="!barangaysList.length" :class="{'border-red-500': form.errors.new_owner_barangay}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1 focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
                                         <option value="" disabled>-- Select Barangay --</option>
                                         <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
                                     </select>
+                                    <p v-if="form.errors.new_owner_barangay" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_barangay }}</p>
                                 </div>
                             </div>
                         </div>
@@ -572,42 +642,44 @@ const selectExistingOwner = (operator) => {
                             </div>
 
                             <div v-if="unitMode === 'existing'" class="p-4 bg-gray-50 rounded-lg border border-gray-200">
-                                <InputLabel value="Search / Select Existing Unit" />
-                                <select v-model="form.existing_unit_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
+                                <InputLabel>Search / Select Existing Unit <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="form.existing_unit_id" :class="{'border-red-500': form.errors.existing_unit_id}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 mt-1">
                                     <option value="">-- Select Unit --</option>
                                     <option v-for="u in units" :key="u.id" :value="u.id">{{ u.plate }} - {{ u.make }} (Motor: {{ u.motor }})</option>
                                 </select>
+                                <p v-if="form.errors.existing_unit_id" class="text-red-500 text-xs mt-1">{{ form.errors.existing_unit_id }}</p>
                             </div>
 
                             <div v-if="unitMode === 'new'" class="space-y-4">
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
-                                        <InputLabel value="Make" />
-                                        <select v-model="form.make_id" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1">
+                                        <InputLabel>Make <span class="text-red-500">*</span></InputLabel>
+                                        <select v-model="form.make_id" :class="{'border-red-500': form.errors.make_id}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1">
                                             <option value="">-- Select Make --</option>
                                             <option v-for="m in unitMakes" :key="m.id" :value="m.id">{{ m.name }}</option>
                                         </select>
                                         <p v-if="form.errors.make_id" class="text-red-500 text-xs mt-1">{{ form.errors.make_id }}</p>
                                     </div>
-                                    <div><InputLabel value="Model Year" /><TextInput type="number" v-model="form.model_year" class="w-full text-sm py-1.5 mt-1" placeholder="YYYY" />
+                                    <div><InputLabel>Model Year <span class="text-red-500">*</span></InputLabel><TextInput type="number" v-model="form.model_year" :class="{'border-red-500': form.errors.model_year}" class="w-full text-sm py-1.5 mt-1" placeholder="YYYY" />
                                         <p v-if="form.errors.model_year" class="text-red-500 text-xs mt-1">{{ form.errors.model_year }}</p>
                                     </div>
-                                    <div><InputLabel value="Plate No." /><TextInput v-model="form.plate_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
+                                    <div><InputLabel>Plate No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.plate_number" :class="{'border-red-500': form.errors.plate_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.plate_number" class="text-red-500 text-xs mt-1">{{ form.errors.plate_number }}</p>
                                     </div>
-                                    <div><InputLabel value="Motor No." /><TextInput v-model="form.motor_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
+                                    <div><InputLabel>Motor No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.motor_number" :class="{'border-red-500': form.errors.motor_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.motor_number" class="text-red-500 text-xs mt-1">{{ form.errors.motor_number }}</p>
                                     </div>
-                                    <div><InputLabel value="Chassis No." /><TextInput v-model="form.chassis_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
+                                    <div><InputLabel>Chassis No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.chassis_number" :class="{'border-red-500': form.errors.chassis_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.chassis_number" class="text-red-500 text-xs mt-1">{{ form.errors.chassis_number }}</p>
                                     </div>
-                                    <div><InputLabel value="CR No." /><TextInput v-model="form.cr_number" class="w-full text-sm py-1.5 mt-1 uppercase" />
+                                    <div><InputLabel>CR No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.cr_number" :class="{'border-red-500': form.errors.cr_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.cr_number" class="text-red-500 text-xs mt-1">{{ form.errors.cr_number }}</p>
                                     </div>
                                 </div>
 
                                 <div class="mt-2">
-                                    <InputLabel value="Proposed Unit Photos" class="mb-1" />
+                                    <InputLabel class="mb-1">Proposed Unit Photos <span class="text-red-500">*</span></InputLabel>
+                                    <p v-if="form.errors.unit_photos" class="text-red-500 text-xs mb-2">{{ form.errors.unit_photos }}</p>
                                     <p class="text-[11px] text-gray-500 mb-2">Upload clear photos of all 4 sides of the proposed unit.</p>
                                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div v-for="side in ['front', 'back', 'left', 'right']" :key="side" 
@@ -631,33 +703,33 @@ const selectExistingOwner = (operator) => {
                             </div>
                             
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                <div><InputLabel value="First Name" /><TextInput v-model="form.new_driver_first_name" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Middle Name" /><TextInput v-model="form.new_driver_middle_name" class="w-full text-sm py-1.5 mt-1" /></div>
-                                <div><InputLabel value="Last Name" /><TextInput v-model="form.new_driver_last_name" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel>First Name <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_driver_first_name" :class="{'border-red-500': form.errors.new_driver_first_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_driver_first_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_first_name }}</p></div>
+                                <div><InputLabel>Middle Name</InputLabel><TextInput v-model="form.new_driver_middle_name" :class="{'border-red-500': form.errors.new_driver_middle_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_driver_middle_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_middle_name }}</p></div>
+                                <div><InputLabel>Last Name <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_driver_last_name" :class="{'border-red-500': form.errors.new_driver_last_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_driver_last_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_last_name }}</p></div>
                                 
-                                <div><InputLabel value="Contact Number" /><TextInput v-model="form.new_driver_contact" @input="form.new_driver_contact = formatContactNumber($event.target.value)" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/></div>
-                                <div><InputLabel value="License Number" /><TextInput v-model="form.new_driver_license_number" class="w-full text-sm py-1.5 mt-1 uppercase" /><p v-if="form.errors.new_driver_license_number" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_license_number }}</p></div>
-                                <div><InputLabel value="Expiration Date" /><TextInput type="date" v-model="form.new_driver_license_expiration_date" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_driver_contact" @input="form.new_driver_contact = formatContactNumber($event.target.value)" :class="{'border-red-500': form.errors.new_driver_contact}" class="w-full text-sm py-1.5 mt-1" placeholder="09XX-XXX-XXXX"/><p v-if="form.errors.new_driver_contact" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_contact }}</p></div>
+                                <div><InputLabel>License Number <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_driver_license_number" :class="{'border-red-500': form.errors.new_driver_license_number}" class="w-full text-sm py-1.5 mt-1 uppercase" /><p v-if="form.errors.new_driver_license_number" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_license_number }}</p></div>
+                                <div><InputLabel>Expiration Date <span class="text-red-500">*</span></InputLabel><TextInput type="date" v-model="form.new_driver_license_expiration_date" :class="{'border-red-500': form.errors.new_driver_license_expiration_date}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_driver_license_expiration_date" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_license_expiration_date }}</p></div>
 
-                                <div><InputLabel value="Province" /><select v-model="selectedProvinceCode" @change="handleProvinceChange" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select Province</option><option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option></select></div>
-                                <div><InputLabel value="City/Municipality" /><select v-model="selectedCityCode" @change="handleCityChange" :disabled="!selectedProvinceCode" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select City</option><option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option></select></div>
-                                <div><InputLabel value="Barangay" /><select v-model="form.new_driver_barangay" :disabled="!selectedCityCode" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select Barangay</option><option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option></select></div>
-                                <div class="sm:col-span-3"><InputLabel value="Street Address" /><TextInput v-model="form.new_driver_street" class="w-full text-sm py-1.5 mt-1" /></div>
+                                <div><InputLabel>Province <span class="text-red-500">*</span></InputLabel><select v-model="selectedProvinceCode" @change="handleProvinceChange" :class="{'border-red-500': form.errors.new_driver_province}" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select Province</option><option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option></select><p v-if="form.errors.new_driver_province" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_province }}</p></div>
+                                <div><InputLabel>City/Municipality <span class="text-red-500">*</span></InputLabel><select v-model="selectedCityCode" @change="handleCityChange" :disabled="!selectedProvinceCode" :class="{'border-red-500': form.errors.new_driver_city}" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select City</option><option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option></select><p v-if="form.errors.new_driver_city" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_city }}</p></div>
+                                <div><InputLabel>Barangay <span class="text-red-500">*</span></InputLabel><select v-model="form.new_driver_barangay" :disabled="!selectedCityCode" :class="{'border-red-500': form.errors.new_driver_barangay}" class="w-full text-sm border-gray-300 rounded-md py-1.5 mt-1"><option value="">Select Barangay</option><option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option></select><p v-if="form.errors.new_driver_barangay" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_barangay }}</p></div>
+                                <div class="sm:col-span-3"><InputLabel>Street Address <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_driver_street" :class="{'border-red-500': form.errors.new_driver_street}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_driver_street" class="text-red-500 text-xs mt-1">{{ form.errors.new_driver_street }}</p></div>
                             </div>
 
                             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t pt-4">
                                 <div>
-                                    <InputLabel value="Driver Photo (2x2)" />
+                                    <InputLabel>Driver Photo (2x2) <span class="text-red-500">*</span></InputLabel>
                                     <input type="file" @change="e => form.driver_user_photo = e.target.files[0]" class="mt-1 block w-full text-xs" accept="image/*" />
                                     <p v-if="form.errors.driver_user_photo" class="text-red-500 text-xs mt-1">{{ form.errors.driver_user_photo }}</p>
                                 </div>
                                 <div>
-                                    <InputLabel value="License Front" />
+                                    <InputLabel>License Front <span class="text-red-500">*</span></InputLabel>
                                     <input type="file" @change="e => form.driver_license_front = e.target.files[0]" class="mt-1 block w-full text-xs" accept="image/*" />
                                     <p v-if="form.errors.driver_license_front" class="text-red-500 text-xs mt-1">{{ form.errors.driver_license_front }}</p>
                                 </div>
                                 <div>
-                                    <InputLabel value="License Back" />
+                                    <InputLabel>License Back <span class="text-red-500">*</span></InputLabel>
                                     <input type="file" @change="e => form.driver_license_back = e.target.files[0]" class="mt-1 block w-full text-xs" accept="image/*" />
                                     <p v-if="form.errors.driver_license_back" class="text-red-500 text-xs mt-1">{{ form.errors.driver_license_back }}</p>
                                 </div>
@@ -666,9 +738,13 @@ const selectExistingOwner = (operator) => {
 
                         <div class="pt-2">
                             <h3 class="text-sm font-bold text-gray-800 mb-1 border-b border-gray-200 pb-2">Evaluation Requirements</h3>
-                            <p class="text-xs text-gray-500 mb-4 leading-tight">Please upload clear copies (PDF, JPG, PNG) of the following mandatory documents.</p>
+                            <p class="text-xs text-gray-500 mb-2 leading-tight">Please upload clear copies (PDF, JPG, PNG) of the following mandatory documents.</p>
+                            <p v-if="form.errors.documents" class="text-red-500 text-xs mb-3 font-semibold bg-red-50 p-2 rounded-md border border-red-200">{{ form.errors.documents }}</p>
                             
                             <div class="space-y-3">
+                                <!-- <p v-if="form.errors.documents" class="text-red-500 text-sm mb-3 font-semibold bg-red-50 p-2 rounded-md border border-red-200">
+                                    {{ form.errors.documents }}
+                                </p> -->
                                 <div v-for="req in currentEvaluationRequirements" :key="req.id" 
                                         class="flex items-center justify-between p-3 border rounded-lg bg-gray-50/50 hover:bg-gray-50 transition-colors">
                                     <div class="flex-1 pr-4">
@@ -716,15 +792,15 @@ const selectExistingOwner = (operator) => {
                 </div>
 
                 <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-between flex-shrink-0">
-                    <SecondaryButton @click="currentStep === 1 ? closeModal() : currentStep--">
+                    <SecondaryButton @click="goBack">
                         {{ currentStep === 1 ? 'Cancel' : 'Back' }}
                     </SecondaryButton>
                     
-                    <PrimaryButton v-if="currentStep < 3" @click="currentStep++" :disabled="currentStep === 2 && !isStep2Valid">
+                    <PrimaryButton v-if="currentStep === 2" @click="goToNextStep">
                         Next Review
                     </PrimaryButton>
                     
-                    <PrimaryButton v-else @click="submit" :class="{ 'opacity-50': form.processing }" :disabled="form.processing" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
+                    <PrimaryButton v-if="currentStep === 3" @click="submit" :class="{ 'opacity-50': form.processing }" :disabled="form.processing" class="bg-green-600 hover:bg-green-700 focus:ring-green-500">
                         {{ form.processing ? 'Submitting...' : 'Confirm Submission' }}
                     </PrimaryButton>
                 </div>
