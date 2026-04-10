@@ -14,14 +14,16 @@ class RedFlagController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
-        $status = $request->input('status');      // <--- NEW
-        $natureId = $request->input('nature_id'); // <--- NEW
+        $status = $request->input('status');
+        $natureId = $request->input('nature_id');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
 
         $redFlags = RedFlag::with(['franchise', 'nature'])
-            // 1. Search by Franchise ID
+            // 1. Search by Franchise Number
             ->when($search, function ($query, $search) {
                 $query->whereHas('franchise', function ($q) use ($search) {
-                    $q->where('id', 'like', "%{$search}%");
+                    $q->where('franchise_number', 'like', "%{$search}%");
                 });
             })
             // 2. Filter by Status
@@ -32,7 +34,26 @@ class RedFlagController extends Controller
             ->when($natureId, function ($query, $natureId) {
                 $query->where('nature_id', $natureId);
             })
-            ->latest()
+            // 4. Handle Sorting
+            ->when($sortField, function ($query) use ($sortField, $sortDirection) {
+                if ($sortField === 'franchise') {
+                    $query->join('franchises', 'red_flags.franchise_id', '=', 'franchises.id')
+                          ->orderBy('franchises.franchise_number', $sortDirection)
+                          ->select('red_flags.*');
+                } elseif ($sortField === 'nature') {
+                    $query->join('nature_of_red_flags', 'red_flags.nature_id', '=', 'nature_of_red_flags.id')
+                          ->orderBy('nature_of_red_flags.name', $sortDirection)
+                          ->select('red_flags.*');
+                } else {
+                    $allowedSorts = ['status', 'created_at'];
+                    if (in_array($sortField, $allowedSorts)) {
+                        $query->orderBy($sortField, $sortDirection);
+                    }
+                }
+            }, function ($query) {
+                // Default fallback
+                $query->latest();
+            })
             ->paginate(7)
             ->withQueryString();
 
@@ -41,8 +62,7 @@ class RedFlagController extends Controller
         return Inertia::render('Admin/RedFlags/Index', [
             'redFlags' => $redFlags,
             'natures' => $natures,
-            // Pass current filters back to the view so dropdowns stay selected
-            'filters' => $request->only(['search', 'status', 'nature_id']), 
+            'filters' => $request->only(['search', 'status', 'nature_id', 'sortField', 'sortDirection']),
         ]);
     }
 
