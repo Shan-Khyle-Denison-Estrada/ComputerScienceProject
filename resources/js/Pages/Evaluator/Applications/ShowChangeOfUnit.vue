@@ -433,8 +433,8 @@ const isImageUrl = (url) => {
                         <div v-else-if="activeTab === 'assessment'" class="space-y-6">
                             <div v-if="!application.assessment" class="p-8 text-center bg-gray-50 rounded-xl border border-dashed border-gray-300">
                                 <svg class="w-12 h-12 text-gray-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 14l6-6m-5.5.5h.01m4.99 5h.01M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16l3.5-2 3.5 2 3.5-2 3.5 2zM10 8.5a.5.5 0 11-1 0 .5.5 0 011 0zm5 5a.5.5 0 11-1 0 .5.5 0 011 0z" /></svg>
-                                <h3 class="text-lg font-medium text-gray-900">No Assessment Yet</h3>
-                                <p class="text-sm text-gray-500 mt-1">An assessment will be created once all requirements are evaluated.</p>
+                                <h3 class="text-lg font-medium text-gray-900">No Assessment</h3>
+                                <!-- <p class="text-sm text-gray-500 mt-1">An assessment will be created once all requirements are evaluated.</p> -->
                             </div>
                             <div v-else class="bg-white border rounded-xl shadow-sm overflow-hidden">
                                 <div class="p-6 border-b bg-gray-50 flex justify-between items-center">
