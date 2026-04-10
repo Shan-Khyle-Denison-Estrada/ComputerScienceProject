@@ -118,7 +118,7 @@ const application = computed(() => {
             contact: currentUser.contact_number || 'N/A',
             email: currentUser.email || 'N/A',
             tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}, ${currentUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
         current_unit: {
@@ -291,11 +291,11 @@ const isImageUrl = (url) => {
                         <div v-else-if="activeTab === 'unit_details'" class="space-y-6">
                             <div class="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100 mb-6">
                                 <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Make / Model</p><p class="font-medium text-gray-900">{{ application.current_unit.make }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Year</p><p class="font-medium text-gray-900">{{ application.current_unit.year }}</p></div>
+                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Model Year</p><p class="font-medium text-gray-900">{{ application.current_unit.year }}</p></div>
                                 <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Motor No.</p><p class="font-medium text-gray-900">{{ application.current_unit.motor_no }}</p></div>
                                 <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Chassis No.</p><p class="font-medium text-gray-900">{{ application.current_unit.chassis_no }}</p></div>
                                 <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Plate Number</p><p class="font-medium text-gray-900">{{ application.current_unit.plate_no }}</p></div>
-                                <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div>
+                                <!-- <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div> -->
                             </div>
                             <h4 class="font-bold text-gray-700 text-sm mb-3">Unit Photos</h4>
                             <div class="grid grid-cols-2 gap-4">
