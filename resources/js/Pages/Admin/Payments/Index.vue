@@ -351,7 +351,7 @@ const printReceipt = async (payment) => {
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <button 
+                        <!-- <button 
                             @click="openFilterModal"
                             class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition relative" 
                             :class="{'ring-2 ring-blue-500 bg-blue-50': filterCity}"
@@ -361,7 +361,7 @@ const printReceipt = async (payment) => {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                             </svg>
                             <span v-if="filterCity" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-blue-500 border-2 border-white rounded-full"></span>
-                        </button>
+                        </button> -->
                     </div>
                     <PrimaryButton v-if="userRole === 'collector'" @click="openAddModal" class="flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
