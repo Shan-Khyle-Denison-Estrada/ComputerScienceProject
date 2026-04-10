@@ -9,6 +9,7 @@ import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagin
 import InputError from '@/Components/InputError.vue';
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref, computed, watch, onMounted } from 'vue';
+import debounce from 'lodash/debounce';
 
 // --- PROPS ---
 const props = defineProps({
@@ -213,9 +214,10 @@ const editForm = useForm({
     _method: 'PUT'
 });
 
-const filterForm = ref({
-    status: props.filters.status || '',
-});
+// --- SEARCH, SORT & FILTER STATE ---
+const filterStatus = ref(props.filters.status || '');
+const sortField = ref(props.filters.sortField || '');
+const sortDirection = ref(props.filters.sortDirection || '');
 
 // --- FORMATTERS & WATCHERS ---
 const formatContactNumber = (val) => {
@@ -389,14 +391,53 @@ const closeLicenseModal = () => {
     selectedLicense.value = { front: null, back: null, number: '' };
 };
 
-// --- FILTERS ---
+// --- SEARCH, SORT & FILTERS ---
+const fetchResults = debounce(() => {
+    router.get(route('admin.drivers.index'), {
+        search: search.value,
+        status: filterStatus.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true });
+}, 300);
+
+// Automatically trigger on typing or filter changes
+watch([search, filterStatus], () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
+};
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
 const openFilterModal = () => showFilterModal.value = true;
 const closeFilterModal = () => showFilterModal.value = false;
-const handleSearch = () => {
-    router.get(route('admin.drivers.index'), { search: search.value, status: filterForm.value.status }, { preserveState: true, preserveScroll: true, replace: true });
+
+const applyFilters = () => {
+    closeFilterModal();
+    fetchResults();
 };
-const applyFilters = () => { handleSearch(); closeFilterModal(); };
-const resetFilters = () => { filterForm.value.status = ''; search.value = ''; applyFilters(); };
+
+const resetFilters = () => {
+    filterStatus.value = '';
+    closeFilterModal();
+    fetchResults();
+};
 
 watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
 </script>
@@ -413,16 +454,21 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
             </div>
 
             <div class="flex items-center gap-3">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input v-model="search" @keyup.enter="handleSearch" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search name or license..." />
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </span>
+                        <input v-model="search" type="text" class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search name or license..." />
+                        <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <button @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative" :class="{'ring-2 ring-red-500 bg-red-50': filterStatus}">
+                        <svg class="h-5 w-5" :class="filterStatus ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        <span v-if="filterStatus" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                    </button>
                 </div>
-                <button @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                    <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
-                </button>
                 <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     Add Driver
@@ -433,12 +479,33 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
+                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider select-none">
                         <tr>
-                            <th class="px-6 py-4">Driver</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('name')" title="Sort by Name">
+                                <div class="flex items-center gap-1">
+                                    Driver
+                                    <svg v-if="sortField === 'name' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'name' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4">Address</th>
-                            <th class="px-6 py-4">License Info</th>
-                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('license_expiration_date')" title="Sort by Expiration Date">
+                                <div class="flex items-center gap-1">
+                                    License Info
+                                    <svg v-if="sortField === 'license_expiration_date' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'license_expiration_date' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('status')">
+                                <div class="flex items-center gap-1">
+                                    Status
+                                    <svg v-if="sortField === 'status' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'status' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4 text-center">View License</th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
@@ -810,31 +877,32 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
             </div>
         </Modal>
 
-        <Modal :show="showFilterModal" @close="closeFilterModal" maxWidth="sm">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 class="text-lg font-bold text-gray-900">Filter Drivers</h2>
-                    <button @click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-                <div class="space-y-4">
-                    <div>
-                        <InputLabel>Account Status</InputLabel>
-                        <select v-model="filterForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                            <option value="suspended">Suspended</option>
-                        </select>
+        <transition name="fade">
+            <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeFilterModal"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                        <h2 class="text-lg font-bold text-gray-900">Filter Drivers</h2>
+                        <button @click="closeFilterModal" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <InputLabel>Account Status</InputLabel>
+                            <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                                <option value="suspended">Suspended</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                        <SecondaryButton @click="resetFilters">Clear All</SecondaryButton>
+                        <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
                     </div>
                 </div>
-                <div class="mt-6 flex justify-end gap-3 pt-2">
-                    <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
-                    <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
-                </div>
             </div>
-        </Modal>
+        </transition>
 
         <Modal :show="showAlreadyDriverModal" @close="showAlreadyDriverModal = false" maxWidth="sm">
             <div class="p-6">
@@ -943,3 +1011,8 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
 
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

@@ -14,27 +14,51 @@ class DriverController extends Controller
 {
     public function index(Request $request)
     {
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
+
         $query = Driver::query();
 
-        // Search Filter
-        if ($request->search) {
-            $query->where(function($q) use ($request) {
-                $q->where('first_name', 'like', "%{$request->search}%")
-                  ->orWhere('last_name', 'like', "%{$request->search}%")
-                  ->orWhere('license_number', 'like', "%{$request->search}%");
+       // 1. Search Filter
+        if ($search) {
+            $query->where(function($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  // Allows searching for "First Last"
+                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                  // Allows searching for "Last First"
+                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"])
+                  ->orWhere('license_number', 'like', "%{$search}%");
             });
         }
 
-        // Status Filter
-        if ($request->status) {
-            $query->where('status', $request->status);
+        // 2. Status Filter
+        if ($status) {
+            $query->where('status', $status);
+        }
+
+        // 3. Handle Sorting
+        if ($sortField) {
+            if ($sortField === 'name') {
+                $query->orderBy('last_name', $sortDirection)
+                      ->orderBy('first_name', $sortDirection);
+            } else {
+                $allowedSorts = ['license_expiration_date', 'status'];
+                if (in_array($sortField, $allowedSorts)) {
+                    $query->orderBy($sortField, $sortDirection);
+                }
+            }
+        } else {
+            $query->latest();
         }
 
         // Eager load assignments and logs to find franchises and complaints
         $drivers = $query->with([
             'driverAssignments.franchise',
             'driverLogs.franchise.complaints'
-        ])->latest()->paginate(6)->withQueryString();
+        ])->paginate(6)->withQueryString();
 
         // Process strictly-matched complaints for each driver based on their logs
         $drivers->getCollection()->transform(function ($driver) {
@@ -76,7 +100,7 @@ class DriverController extends Controller
             'franchiseOwners' => $franchiseOwners,
             'barangays' => $barangays, // Pass to View
             'existingDriverUserIds' => $existingDriverUserIds,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search', 'status', 'sortField', 'sortDirection']),
         ]);
     }
 
