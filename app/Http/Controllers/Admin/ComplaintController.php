@@ -16,36 +16,50 @@ class ComplaintController extends Controller
     {
         $query = Complaint::with(['franchise.currentActiveUnit.newUnit']);
 
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $nature = $request->input('nature');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
+
         // 1. Filter by Search
-        if ($request->input('search')) {
-            $search = $request->input('search');
+        if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('id', 'like', "%{$search}%")
                   ->orWhere('nature_of_complaint', 'like', "%{$search}%")
                   ->orWhere('complainant_contact', 'like', "%{$search}%")
                   ->orWhereHas('franchise', function($fq) use ($search) {
-                      $fq->where('id', 'like', "%{$search}%");
+                      $fq->where('franchise_number', 'like', "%{$search}%"); // Better search accuracy than raw ID
                   });
             });
         }
 
         // 2. Filter by Status
-        if ($request->input('status')) {
-            $query->where('status', $request->input('status'));
+        if ($status) {
+            $query->where('status', $status);
         }
 
         // 3. Filter by Nature
-        if ($request->input('nature')) {
-            $query->where('nature_of_complaint', $request->input('nature'));
+        if ($nature) {
+            $query->where('nature_of_complaint', $nature);
         }
 
-        // [!code ++] Fetch from the specific table instead of distinct strings
+        // 4. Handle Sorting
+        if ($sortField) {
+            $allowedSorts = ['id', 'nature_of_complaint', 'status', 'incident_date'];
+            if (in_array($sortField, $allowedSorts)) {
+                $query->orderBy($sortField, $sortDirection);
+            }
+        } else {
+            $query->latest();
+        }
+
         $natures = NatureOfComplaint::orderBy('name')->get();
 
         return Inertia::render('Admin/Complaints/Index', [
-            'complaints' => $query->latest()->paginate(5)->withQueryString(),
+            'complaints' => $query->paginate(5)->withQueryString(),
             'natures' => $natures, 
-            'filters' => $request->only(['search', 'status', 'nature'])
+            'filters' => $request->only(['search', 'status', 'nature', 'sortField', 'sortDirection'])
         ]);
     }
 

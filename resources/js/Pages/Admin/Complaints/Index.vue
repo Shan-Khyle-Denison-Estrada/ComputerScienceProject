@@ -21,6 +21,9 @@ const props = defineProps({
 const search = ref(props.filters.search || '');
 const statusFilter = ref(props.filters.status || '');
 const natureFilter = ref(props.filters.nature || '');
+const sortField = ref(props.filters.sortField || '');
+const sortDirection = ref(props.filters.sortDirection || '');
+
 const showFilterModal = ref(false);
 const showManageModal = ref(false); // [!code ++] State for new modal
 
@@ -30,37 +33,55 @@ const natureForm = useForm({
     name: '',
 });
 
-// --- ACTIONS ---
-
-// 1. Search (Debounced)
-const handleSearch = debounce(() => {
-    applyFilters(false);
-}, 300);
-
-watch(search, handleSearch);
-
-// 2. Apply Filters
-const applyFilters = (closeModal = true) => {
-    router.get(route('admin.complaints.index'), { 
+// --- SEARCH, SORT & FILTER ACTIONS ---
+const fetchResults = debounce(() => {
+    router.get(route('admin.complaints.index'), {
         search: search.value,
         status: statusFilter.value,
-        nature: natureFilter.value
-    }, { 
-        preserveState: true, 
-        replace: true,
-        preserveScroll: true
-    });
-    
-    if (closeModal) {
-        showFilterModal.value = false;
-    }
+        nature: natureFilter.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true, preserveScroll: true });
+}, 300);
+
+// Automatically trigger on typing or filter changes
+watch([search, statusFilter, natureFilter], () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
 };
 
-// 3. Clear Filters
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
 const clearFilters = () => {
     statusFilter.value = '';
     natureFilter.value = '';
-    applyFilters();
+    showFilterModal.value = false;
+};
+
+// --- HELPERS ---
+const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hourStr, minute] = timeString.split(':');
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12; // Convert 0 to 12 for midnight
+    return `${hour}:${minute} ${ampm}`;
 };
 
 // 4. Resolve Complaint
@@ -101,22 +122,29 @@ const deleteNature = (id) => {
             </div>
             
             <div class="flex items-center gap-3">
-                <div class="relative">
-                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search..." />
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </span>
+                        <input v-model="search" type="text" class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search..." />
+                        <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    
+                    <button 
+                        @click="showFilterModal = true"
+                        class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative" 
+                        :class="{'ring-2 ring-red-500 bg-red-50': statusFilter || natureFilter}"
+                        title="Filter Options"
+                    >
+                        <svg class="h-5 w-5" :class="(statusFilter || natureFilter) ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span v-if="statusFilter || natureFilter" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                    </button>
                 </div>
-                
-                <button 
-                    @click="showFilterModal = true"
-                    class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 text-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
-                    title="Filter Options"
-                >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                </button>
 
                 <SecondaryButton @click="showManageModal = true">
                     Manage Types
@@ -134,13 +162,41 @@ const deleteNature = (id) => {
 
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
+                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider select-none">
                         <tr>
-                            <th class="px-6 py-4">Complaint ID</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('id')">
+                                <div class="flex items-center gap-1">
+                                    Complaint ID
+                                    <svg v-if="sortField === 'id' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'id' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4">Franchise</th>
-                            <th class="px-6 py-4">Nature of Complaint</th>
-                            <th class="px-6 py-4">Status</th>
-                            <th class="px-6 py-4">Incident Details</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('nature_of_complaint')">
+                                <div class="flex items-center gap-1">
+                                    Nature of Complaint
+                                    <svg v-if="sortField === 'nature_of_complaint' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'nature_of_complaint' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('status')">
+                                <div class="flex items-center gap-1">
+                                    Status
+                                    <svg v-if="sortField === 'status' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'status' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('incident_date')">
+                                <div class="flex items-center gap-1">
+                                    Incident Details
+                                    <svg v-if="sortField === 'incident_date' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'incident_date' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4">Complainant</th>
                             <th class="px-6 py-4 text-right">Action</th>
                         </tr>
@@ -179,7 +235,7 @@ const deleteNature = (id) => {
                                 <div class="flex flex-col gap-1 text-xs">
                                     <div class="flex items-center gap-1 text-gray-700">
                                         <svg class="w-3 h-3 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        {{ complaint.incident_date }} | {{ complaint.incident_time }}
+                                        {{ complaint.incident_date }} | {{ formatTime(complaint.incident_time) }}
                                     </div>
                                     <div v-if="complaint.pick_up_point || complaint.drop_off_point" class="text-gray-500 mt-1">
                                         <span class="font-semibold">Route:</span> {{ complaint.pick_up_point || '?' }} <span class="text-gray-400">→</span> {{ complaint.drop_off_point || '?' }}
@@ -225,37 +281,40 @@ const deleteNature = (id) => {
             </div>
         </div>
 
-        <Modal :show="showFilterModal" @close="showFilterModal = false" maxWidth="sm">
-            <div class="p-6">
-                <h2 class="text-lg font-bold text-gray-900 mb-4">Filter Complaints</h2>
-                
-                <div class="space-y-4">
-                    <div>
-                        <InputLabel value="Filter by Status" class="mb-1" />
-                        <select v-model="statusFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
-                            <option value="">All Statuses</option>
-                            <option value="pending">Pending</option>
-                            <option value="Resolved">Resolved</option>
-                        </select>
+        <transition name="fade">
+            <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showFilterModal = false"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                        <h2 class="text-lg font-bold text-gray-900">Filter Complaints</h2>
+                        <button @click="showFilterModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
                     </div>
-
-                    <div>
-                        <InputLabel value="Filter by Nature" class="mb-1" />
-                        <select v-model="natureFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500">
-                            <option value="">All Types</option>
-                            <option v-for="nature in natures" :key="nature.id" :value="nature.name">
-                                {{ nature.name }}
-                            </option>
-                        </select>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <InputLabel value="Filter by Status" class="mb-1" />
+                            <select v-model="statusFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 text-sm py-2.5">
+                                <option value="">All Statuses</option>
+                                <option value="pending">Pending</option>
+                                <option value="Resolved">Resolved</option>
+                            </select>
+                        </div>
+                        <div>
+                            <InputLabel value="Filter by Nature" class="mb-1" />
+                            <select v-model="natureFilter" class="w-full border-gray-300 rounded-lg shadow-sm focus:border-red-500 focus:ring-red-500 text-sm py-2.5">
+                                <option value="">All Types</option>
+                                <option v-for="nature in natures" :key="nature.id" :value="nature.name">
+                                    {{ nature.name }}
+                                </option>
+                            </select>
+                        </div>
                     </div>
-                </div>
-
-                <div class="mt-6 flex justify-end gap-3">
-                    <SecondaryButton @click="showFilterModal = false">Cancel</SecondaryButton>
-                    <PrimaryButton @click="applyFilters(true)">Apply Filters</PrimaryButton>
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                        <SecondaryButton @click="clearFilters">Clear All</SecondaryButton>
+                        <PrimaryButton @click="showFilterModal = false">Apply Filters</PrimaryButton>
+                    </div>
                 </div>
             </div>
-        </Modal>
+        </transition>
 
         <Modal :show="showManageModal" @close="showManageModal = false" maxWidth="md">
             <div class="p-6">
@@ -302,3 +361,9 @@ const deleteNature = (id) => {
 
     </AuthenticatedLayout>
 </template>
+
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
