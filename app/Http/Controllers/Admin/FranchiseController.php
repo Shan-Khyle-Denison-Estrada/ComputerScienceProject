@@ -28,6 +28,10 @@ class FranchiseController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $sortField = $request->input('sortField', 'created_at');
+        $sortDirection = $request->input('sortDirection', 'desc');
+        $status = $request->input('status');
+        $zoneId = $request->input('zone_id');
 
         $franchises = Franchise::with([
                 'currentOwnership.newOwner.user', 
@@ -38,9 +42,31 @@ class FranchiseController extends Controller
             ->when($search, function ($query, $search) {
                 $query->where('franchise_number', 'like', "%{$search}%");
             })
-            ->latest()
-            ->paginate(6)
-            ->withQueryString();
+            ->when($status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($zoneId, function ($query, $zoneId) {
+                $query->where('zone_id', $zoneId);
+            });
+
+        // Handle Sorting
+        if ($sortField === 'owner') {
+            $franchises->leftJoin('ownerships', 'franchises.ownership_id', '=', 'ownerships.id')
+                       ->leftJoin('operators', 'ownerships.new_operator_id', '=', 'operators.id')
+                       ->leftJoin('users', 'operators.user_id', '=', 'users.id')
+                       ->orderBy('users.last_name', $sortDirection)
+                       ->orderBy('users.first_name', $sortDirection)
+                       ->select('franchises.*'); // Select only franchise columns to prevent ID collision
+        } else {
+            $allowedSorts = ['franchise_number', 'status', 'created_at'];
+            if (in_array($sortField, $allowedSorts)) {
+                $franchises->orderBy('franchises.' . $sortField, $sortDirection);
+            } else {
+                $franchises->orderBy('franchises.created_at', 'desc');
+            }
+        }
+
+        $franchises = $franchises->paginate(6)->withQueryString();
 
         return Inertia::render('Admin/Franchises/Index', [
             'franchises' => $franchises,
@@ -48,7 +74,7 @@ class FranchiseController extends Controller
             'units' => Unit::with('make')->orderBy('plate_number')->get(),
             'drivers' => Driver::with('user')->get(),
             'zones' => Zone::orderBy('description')->get(),
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'sortField', 'sortDirection', 'status', 'zone_id']),
             'userRole' => auth()->user()->role->value ?? auth()->user()->role,
         ]);
     }

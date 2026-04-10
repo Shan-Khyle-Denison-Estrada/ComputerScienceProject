@@ -7,7 +7,8 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; // <-- ADDED: Import Pagination Component
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import debounce from 'lodash/debounce';
 
 const props = defineProps({
     franchises: Object,
@@ -21,9 +22,14 @@ const props = defineProps({
 // --- MODAL STATES ---
 const showAddModal = ref(false);
 const showDriversModal = ref(false);
+const showFilterModal = ref(false);
 
-// --- SEARCH STATE ---
+// --- SEARCH, SORT & FILTER STATE ---
 const search = ref(props.filters.search || '');
+const sortField = ref(props.filters.sortField || 'created_at');
+const sortDirection = ref(props.filters.sortDirection || 'desc');
+const filterStatus = ref(props.filters.status || '');
+const filterZone = ref(props.filters.zone_id || '');
 
 // --- SELECTED DATA FOR MODALS ---
 const selectedDrivers = ref([]);
@@ -84,8 +90,53 @@ const submitForm = () => {
     });
 };
 
-const handleSearch = () => {
-    router.get(route('admin.franchises.index'), { search: search.value }, { preserveState: true, replace: true });
+const fetchResults = debounce(() => {
+    router.get(route('admin.franchises.index'), { 
+        search: search.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value,
+        status: filterStatus.value,
+        zone_id: filterZone.value
+    }, { preserveState: true, replace: true });
+}, 300);
+
+// Watch for search to trigger automatically
+watch(search, () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
+};
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        // Cycle through: Ascending -> Descending -> Default
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            // Revert to default sorting (clears the active column sort)
+            sortField.value = 'created_at';
+            sortDirection.value = 'desc';
+        }
+    } else {
+        // New column click starts with Ascending
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
+const applyFilters = () => {
+    showFilterModal.value = false;
+    fetchResults();
+};
+
+const clearFilters = () => {
+    filterStatus.value = '';
+    filterZone.value = '';
+    showFilterModal.value = false;
+    fetchResults();
 };
 </script>
 
@@ -99,11 +150,20 @@ const handleSearch = () => {
                 <p class="text-gray-600 text-sm">Manage franchises, assignments, and history.</p>
             </div>
             <div class="flex items-center gap-3">
-                <div class="relative">
-                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input v-model="search" @keyup.enter="handleSearch" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search Franchise ID..." />
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                         <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </span>
+                        <input v-model="search" type="text" class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search Franchise ID..." />
+                        <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    
+                    <button @click="showFilterModal = true" class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition" :class="{'ring-2 ring-blue-500 bg-blue-50': filterStatus || filterZone}">
+                        <svg class="h-5 w-5" :class="filterStatus || filterZone ? 'text-blue-500' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    </button>
                 </div>
                 
                 <Link :href="route('certificate-template.edit')" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 gap-2">
@@ -118,8 +178,22 @@ const handleSearch = () => {
                 <table class="w-full text-sm text-left">
                     <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
                         <tr>
-                            <th class="px-6 py-4">Franchise ID</th>
-                            <th class="px-6 py-4">Current Owner</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors select-none" @click="sortBy('franchise_number')">
+                                <div class="flex items-center gap-1">
+                                    Franchise ID
+                                    <svg v-if="sortField === 'franchise_number' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'franchise_number' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors select-none" @click="sortBy('owner')">
+                                <div class="flex items-center gap-1">
+                                    Current Owner
+                                    <svg v-if="sortField === 'owner' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'owner' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4">Assigned Unit</th>
                             <th class="px-6 py-4">Assigned Drivers</th>
                             <th class="px-6 py-4 text-right">Actions</th>
@@ -195,6 +269,41 @@ const handleSearch = () => {
                 <Pagination :links="franchises.links" />
             </div>
         </div>
+
+        <Modal :show="showFilterModal" @close="showFilterModal = false">
+            <div class="p-6">
+                <div class="text-center mb-6 border-b pb-4">
+                    <h2 class="text-xl font-bold text-gray-900">Filter Franchises</h2>
+                    <p class="text-sm text-gray-500">Refine the list of franchises based on specific attributes.</p>
+                </div>
+
+                <div class="space-y-4">
+                    <div>
+                        <InputLabel>Status</InputLabel>
+                        <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">All Statuses</option>
+                            <option value="active">Active</option>
+                            <option value="renewed">Renewed</option>
+                            <option value="pending renewal">Pending Renewal</option>
+                            <option value="terminated">Terminated</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <InputLabel>Zone</InputLabel>
+                        <select v-model="filterZone" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                            <option value="">All Zones</option>
+                            <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.description }}</option>
+                        </select>
+                    </div>
+
+                    <div class="mt-6 flex justify-end gap-3 border-t pt-4">
+                        <SecondaryButton @click="clearFilters">Clear All</SecondaryButton>
+                        <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
+                    </div>
+                </div>
+            </div>
+        </Modal>
 
         <Modal :show="showAddModal" @close="showAddModal = false">
             <div class="p-6">
