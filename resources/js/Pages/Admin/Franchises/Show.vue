@@ -258,8 +258,16 @@ const getDriverName = (driver) => {
                                     <span class="font-medium text-gray-700">{{ franchise.current_ownership?.date_transferred }}</span>
                                 </div>
                                 <div>
-                                    <span class="text-xs text-gray-400 block uppercase">Contact</span>
+                                    <span class="text-xs text-gray-400 block uppercase">Email</span>
                                     <span class="font-medium text-gray-700 truncate block" :title="currentOwner.user.email">{{ currentOwner.user.email }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-400 block uppercase">Contact</span>
+                                    <span class="font-medium text-gray-700 truncate block" :title="currentOwner.user.email">{{ currentOwner.user.contact_number }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-gray-400 block uppercase">Address</span>
+                                    <span class="font-medium text-gray-700 block" :title="currentOwner.user.email">{{ currentOwner.user.street_address }}, {{ currentOwner.user.barangay }}, {{ currentOwner.user.city }}, {{ currentOwner.user.province }}</span>
                                 </div>
                             </div>
                         </div>
