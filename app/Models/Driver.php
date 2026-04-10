@@ -48,4 +48,9 @@ class Driver extends Model
     {
         return $this->hasManyThrough(Franchise::class, DriverAssignment::class, 'driver_id', 'id', 'id', 'franchise_id');
     }
+
+    public function driverLogs()
+    {
+        return $this->hasMany(DriverLog::class);
+    }
 }

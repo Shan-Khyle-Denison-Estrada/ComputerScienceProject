@@ -30,10 +30,44 @@ class DriverController extends Controller
             $query->where('status', $request->status);
         }
 
-        $drivers = $query->latest()->paginate(6)->withQueryString();
+        // Eager load assignments and logs to find franchises and complaints
+        $drivers = $query->with([
+            'driverAssignments.franchise',
+            'driverLogs.franchise.complaints'
+        ])->latest()->paginate(6)->withQueryString();
+
+        // Process strictly-matched complaints for each driver based on their logs
+        $drivers->getCollection()->transform(function ($driver) {
+            $myComplaints = collect();
+
+            foreach ($driver->driverLogs as $log) {
+                if (!$log->franchise) continue;
+                
+                foreach ($log->franchise->complaints as $complaint) {
+                    if ($complaint->incident_date && $complaint->incident_time) {
+                        $incidentString = \Carbon\Carbon::parse($complaint->incident_date . ' ' . $complaint->incident_time)->format('Y-m-d H:i');
+                        $startString = \Carbon\Carbon::parse($log->started_at)->timezone('Asia/Manila')->format('Y-m-d H:i');
+                        $endString = $log->ended_at 
+                            ? \Carbon\Carbon::parse($log->ended_at)->timezone('Asia/Manila')->format('Y-m-d H:i')
+                            : \Carbon\Carbon::now()->timezone('Asia/Manila')->format('Y-m-d H:i');
+
+                        if ($incidentString >= $startString && $incidentString <= $endString) {
+                            // Ensure no duplicates if logs somehow overlapped
+                            if (!$myComplaints->contains('id', $complaint->id)) {
+                                $complaint->franchise_number = $log->franchise->franchise_number; // attach for the UI
+                                $myComplaints->push($complaint);
+                            }
+                        }
+                    }
+                }
+            }
+            
+            $driver->assigned_complaints = $myComplaints->sortByDesc('incident_date')->values();
+            return $driver;
+        });
 
         // Fetch Data for Dropdowns
-        $franchiseOwners = User::where('role', 'franchise_owner')->get(); 
+        $franchiseOwners = User::where('role', 'franchise_owner')->get();
         $barangays = Barangay::orderBy('name')->get(); // Fetch Barangays sorted by name
         $existingDriverUserIds = Driver::whereNotNull('user_id')->pluck('user_id')->toArray();
 

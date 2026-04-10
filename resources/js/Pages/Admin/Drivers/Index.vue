@@ -101,7 +101,25 @@ const showAddModal = ref(false);
 const showEditModal = ref(false);
 const showFilterModal = ref(false);
 const showLicenseModal = ref(false); 
+const showDriverDetailsModal = ref(false); // NEW
+const selectedDriverDetails = ref(null);   // NEW
 const search = ref(props.filters.search || '');
+
+// Helper to open details modal
+const openDriverDetailsModal = (driver) => {
+    selectedDriverDetails.value = driver;
+    showDriverDetailsModal.value = true;
+};
+
+// Helper to convert 24hr time to 12hr AM/PM
+const formatTime = (timeString) => {
+    if (!timeString) return '';
+    const [hourStr, minute] = timeString.split(':');
+    let hour = parseInt(hourStr, 10);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    hour = hour % 12 || 12; // Convert 0 to 12 for midnight
+    return `${hour}:${minute} ${ampm}`;
+};
 
 // Data containers
 const addPhotos = ref({ user: null, front: null, back: null });
@@ -468,7 +486,9 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                                 </button>
                             </td>
                             <td class="px-6 py-4 text-right">
-                                <button @click="openEditModal(driver)" class="text-gray-400 hover:text-blue-600 font-medium transition-colors">Edit</button>
+                                <!-- <button @click="openEditModal(driver)" class="text-gray-400 hover:text-blue-600 font-medium transition-colors">Edit</button> -->
+                                <button @click="openEditModal(driver)" class="text-blue-600 hover:text-blue-900 mx-1" title="Edit Details">Edit</button>
+                                <button @click="openDriverDetailsModal(driver)" class="text-blue-600 hover:text-blue-900 mx-1" title="View Details">View</button>
                             </td>
                         </tr>
                         <tr v-if="drivers.data.length === 0">
@@ -830,6 +850,96 @@ watch(addOwnerSearch, (val) => { if (val === '') addForm.user_id = ''; });
                 </div>
             </div>
         </Modal>
+
+        <transition enter-active-class="ease-out duration-300" enter-from-class="opacity-0" enter-to-class="opacity-100" leave-active-class="ease-in duration-200" leave-from-class="opacity-100" leave-to-class="opacity-0">
+            <div v-if="showDriverDetailsModal" class="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+                <div class="absolute inset-0 bg-gray-900 bg-opacity-60 backdrop-blur-sm" @click="showDriverDetailsModal = false"></div>
+
+                <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl max-h-full flex flex-col overflow-hidden transform transition-all">
+                    
+                    <div class="flex justify-between items-start border-b border-gray-100 p-6 bg-white z-10 shrink-0">
+                        <div>
+                            <h2 class="text-xl font-bold text-gray-900">{{ selectedDriverDetails?.first_name }} {{ selectedDriverDetails?.last_name }}</h2>
+                            <p class="text-sm text-gray-500">Driver License: {{ selectedDriverDetails?.license_number }}</p>
+                        </div>
+                        <button @click="showDriverDetailsModal = false" class="p-1 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                        </button>
+                    </div>
+
+                    <div v-if="selectedDriverDetails" class="p-6 overflow-y-auto space-y-8 flex-1">
+                        
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Assigned Franchises & Schedule</h3>
+                            <div v-if="!selectedDriverDetails.driver_assignments?.length" class="text-sm text-gray-500 italic p-6 bg-gray-50 rounded-lg text-center border border-dashed border-gray-200">
+                                No assigned franchises.
+                            </div>
+                            <div v-else class="grid gap-5">
+                                <div v-for="assignment in selectedDriverDetails.driver_assignments" :key="assignment.id" class="p-5 border border-gray-200 rounded-xl bg-gray-50/50 shadow-sm">
+                                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                                        <span class="text-lg font-bold text-gray-900">Franchise #{{ assignment.franchise?.franchise_number || 'Unknown' }}</span>
+                                        <span :class="assignment.is_active ? 'bg-green-100 text-green-700 border border-green-200' : 'bg-gray-200 text-gray-600 border border-gray-300'" class="px-2.5 py-1 rounded-md text-xs font-bold uppercase shadow-sm">
+                                            {{ assignment.is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    </div>
+                                    
+                                    <div v-if="assignment.schedule?.filter(d => !d.is_off).length" class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                                        <div v-for="day in assignment.schedule.filter(d => !d.is_off)" :key="day.day" class="text-xs p-3 bg-white rounded-lg border border-gray-200 shadow-sm text-center">
+                                            <div class="font-bold text-gray-800 mb-1.5">{{ day.day }}</div>
+                                            <div class="text-blue-600 font-medium bg-blue-50 py-1 rounded">
+                                                {{ day.start ? formatTime(day.start) : '-' }} to {{ day.end ? formatTime(day.end) : '-' }}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-sm text-gray-400 italic bg-white p-3 rounded-lg border border-gray-200 text-center">
+                                        No active schedule days.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <h3 class="text-lg font-semibold text-gray-800 mb-4 pb-2 border-b border-gray-100">Complaints on Record</h3>
+                            <div v-if="!selectedDriverDetails.assigned_complaints?.length" class="text-sm text-gray-500 italic p-6 bg-gray-50 rounded-lg text-center border border-dashed border-gray-200">
+                                No complaints linked to this driver's logs.
+                            </div>
+                            <div v-else class="overflow-x-auto w-full rounded-xl border border-gray-200 shadow-sm">
+                                <table class="min-w-full text-sm text-left">
+                                    <thead class="bg-gray-50 text-gray-600 border-b border-gray-200">
+                                        <tr>
+                                            <th class="px-5 py-3.5 font-semibold">Date & Time</th>
+                                            <th class="px-5 py-3.5 font-semibold">Franchise</th>
+                                            <th class="px-5 py-3.5 font-semibold">Nature</th>
+                                            <th class="px-5 py-3.5 font-semibold">Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 bg-white">
+                                        <tr v-for="complaint in selectedDriverDetails.assigned_complaints" :key="complaint.id" class="hover:bg-gray-50 transition-colors">
+                                            <td class="px-5 py-4 text-gray-700 whitespace-nowrap">
+                                                {{ complaint.incident_date }} {{ formatTime(complaint.incident_time) }}
+                                            </td>
+                                            <td class="px-5 py-4 font-bold text-gray-900">#{{ complaint.franchise_number }}</td>
+                                            <td class="px-5 py-4 text-gray-600">{{ complaint.nature_of_complaint }}</td>
+                                            <td class="px-5 py-4">
+                                                <span class="px-2.5 py-1 rounded-md text-xs font-bold uppercase border shadow-sm"
+                                                    :class="complaint.status === 'Resolved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'">
+                                                    {{ complaint.status }}
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                    </div>
+                    
+                    <div class="bg-gray-50 p-6 border-t border-gray-100 flex justify-end shrink-0 rounded-b-xl z-10">
+                        <SecondaryButton @click="showDriverDetailsModal = false">Close Profile</SecondaryButton>
+                    </div>
+                </div>
+            </div>
+        </transition>
 
     </AuthenticatedLayout>
 </template>
