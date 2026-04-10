@@ -272,7 +272,8 @@ class EvaluatorApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
-            'proposedUnits'
+            'proposedUnits.make', // <--- Load the Make relationship
+            'proposedUnits.zone'  // <--- Load the Zone relationship
         ]);
 
         $inspectionItems = InspectionItem::all();
