@@ -64,7 +64,7 @@ watch(search, handleSearch);
                                     </span>
                                 </td>
                                 <td class="p-4 text-sm">
-                                    <Link v-if="app.application_type === 'Change of Owner'" 
+                                    <Link v-if="app.application_type === 'Change of Owner' || app.application_type === 'Change of Owner (Deceased)'" 
                                         :href="route('evaluator.applications.show-change-of-owner', app.id)" 
                                         class="text-blue-600 hover:text-blue-800 font-medium text-sm">Evaluate &rarr;</Link>
                                         

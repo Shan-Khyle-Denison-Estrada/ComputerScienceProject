@@ -78,10 +78,14 @@ class EvaluatorApplicationController extends Controller
 
     public function showChangeOfOwner(Application $application)
     {
-        abort_if($application->application_type !== 'Change of Owner', 404);
+        abort_if(!in_array($application->application_type, [
+            'Change of Owner', 
+            'Change of Owner (Deceased)'
+        ]), 404);
 
         $application->load([
             'user',
+            'franchise',
             'franchise.currentOwnership.newOwner.user',
             'franchise.currentActiveUnit.newUnit.make',
             'franchise.zone',
