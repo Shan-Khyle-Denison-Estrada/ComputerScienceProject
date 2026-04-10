@@ -154,6 +154,7 @@ class EvaluatorApplicationController extends Controller
             'user',
             'zone',
             'proposedUnits.make',
+            'proposedUnits.zone',
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments'

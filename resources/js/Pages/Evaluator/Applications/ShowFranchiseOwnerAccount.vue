@@ -41,6 +41,10 @@ const unitViews = [
 const application = computed(() => {
     const app = props.application || {};
     
+    // Extract the latest proposed unit from the array
+    const proposedUnits = app.proposed_units || [];
+    const latestProposedUnit = proposedUnits.length > 0 ? proposedUnits[proposedUnits.length - 1] : {};
+
     return {
         id: app.id,
         type: app.application_type || 'New Franchise',
@@ -55,7 +59,8 @@ const application = computed(() => {
             email: app.email || 'N/A',
             tin_number: app.tin_number || 'N/A',
             address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
-            zone: app.zone?.description || 'N/A'
+            // Try reading zone from application directly, fallback to the latest proposed unit
+            zone: app.zone?.description || latestProposedUnit.zone?.description || 'N/A'
         },
 
         // Support for Multiple Proposed Units
@@ -206,11 +211,11 @@ const isImageUrl = (url) => {
                                 
                                 <div class="grid grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
                                     <div><p class="text-xs text-gray-500 mb-1">Make / Model</p><p class="font-bold text-blue-900">{{ unit.make }}</p></div>
-                                    <div><p class="text-xs text-gray-500 mb-1">Year</p><p class="font-medium text-gray-900">{{ unit.year }}</p></div>
+                                    <div><p class="text-xs text-gray-500 mb-1">Model Year</p><p class="font-medium text-gray-900">{{ unit.year }}</p></div>
                                     <div><p class="text-xs text-gray-500 mb-1">Plate Number</p><p class="font-medium text-gray-900">{{ unit.plate_no }}</p></div>
                                     <div><p class="text-xs text-gray-500 mb-1">Motor No.</p><p class="font-medium text-gray-900">{{ unit.motor_no }}</p></div>
                                     <div><p class="text-xs text-gray-500 mb-1">Chassis No.</p><p class="font-medium text-gray-900">{{ unit.chassis_no }}</p></div>
-                                    <div><p class="text-xs text-gray-500 mb-1">CR No.</p><p class="font-medium text-gray-900">{{ unit.cr_no }}</p></div>
+                                    <!-- <div><p class="text-xs text-gray-500 mb-1">CR No.</p><p class="font-medium text-gray-900">{{ unit.cr_no }}</p></div> -->
                                 </div>
 
                                 <div class="flex flex-wrap gap-3 mb-6">
