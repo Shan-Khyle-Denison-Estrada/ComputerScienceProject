@@ -7,7 +7,8 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; 
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
+import debounce from 'lodash/debounce';
 
 // --- PROPS ---
 const props = defineProps({
@@ -21,7 +22,13 @@ const showAddModal = ref(false);
 const showEditModal = ref(false);
 const showMakesModal = ref(false);
 const showPhotoModal = ref(false); 
+const showFilterModal = ref(false); 
+
+// --- SEARCH, SORT & FILTER STATE ---
 const search = ref(props.filters.search || '');
+const filterMakeId = ref(props.filters.make_id || '');
+const sortField = ref(props.filters.sortField || '');
+const sortDirection = ref(props.filters.sortDirection || '');
 
 // --- PHOTO PREVIEWS ---
 const previews = ref({ front: null, back: null, left: null, right: null });
@@ -110,7 +117,51 @@ const submitForm = () => {
     const routeParams = showEditModal.value ? form.id : undefined;
     form.post(route(routeName, routeParams), { onSuccess: () => closeModals(), forceFormData: true });
 };
-const handleSearch = () => { router.get(route('admin.units.index'), { search: search.value }, { preserveState: true, replace: true }); };
+
+// --- SEARCH, SORT & FILTER ACTIONS ---
+const fetchResults = debounce(() => {
+    router.get(route('admin.units.index'), {
+        search: search.value,
+        make_id: filterMakeId.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true });
+}, 300);
+
+watch([search, filterMakeId], () => {
+    fetchResults();
+});
+
+const clearSearch = () => { search.value = ''; };
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
+const openFilterModal = () => showFilterModal.value = true;
+const closeFilterModal = () => showFilterModal.value = false;
+
+const applyFilters = () => {
+    closeFilterModal();
+    fetchResults();
+};
+
+const resetFilters = () => {
+    filterMakeId.value = '';
+    closeFilterModal();
+    fetchResults();
+};
 </script>
 
 <template>
@@ -123,11 +174,28 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                 <p class="text-gray-600 text-sm">Inventory of all registered units.</p>
             </div>
             <div class="flex items-center gap-3">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input v-model="search" @keyup.enter="handleSearch" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search Plate, Motor, Chassis..." />
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </span>
+                        <input v-model="search" type="text" class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search Plate, Motor, Chassis..." />
+                        <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <button 
+                        @click="openFilterModal"
+                        class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative" 
+                        :class="{'ring-2 ring-red-500 bg-red-50': filterMakeId}"
+                        title="Filter Units"
+                    >
+                        <svg class="h-5 w-5" :class="filterMakeId ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span v-if="filterMakeId" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                    </button>
                 </div>
                 <SecondaryButton @click="showMakesModal = true" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" /></svg>
@@ -139,10 +207,32 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider text-xs">
+                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider text-xs select-none">
                         <tr>
-                            <th class="px-6 py-4">Make & Model</th>
-                            <th class="px-6 py-4">Plate No.</th> 
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('make')" title="Sort by Make/Brand Name">
+                                <div class="flex items-center gap-1">
+                                    Make / Brand
+                                    <svg v-if="sortField === 'make' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'make' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('model_year')">
+                                <div class="flex items-center gap-1">
+                                    Year
+                                    <svg v-if="sortField === 'model_year' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'model_year' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('plate_number')">
+                                <div class="flex items-center gap-1">
+                                    Plate No.
+                                    <svg v-if="sortField === 'plate_number' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'plate_number' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4">Motor No.</th> 
                             <th class="px-6 py-4">Chassis No.</th> 
                             <th class="px-6 py-4 text-center">Photos</th>
@@ -153,13 +243,10 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                         <tr v-for="unit in units.data" :key="unit.id" class="hover:bg-gray-50 transition-colors align-middle">
                             
                             <td class="px-6 py-4">
-                                <div class="flex flex-col">
-                                    <span class="font-bold text-gray-900 text-base">{{ unit.make ? unit.make.name : 'Unknown Make' }}</span>
-                                    <span class="text-xs text-gray-500 flex items-center gap-1 mt-1">
-                                        <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                                        Model Year: <span class="font-medium text-gray-700">{{ unit.model_year }}</span>
-                                    </span>
-                                </div>
+                                <span class="font-bold text-gray-900 text-base">{{ unit.make ? unit.make.name : 'Unknown Make' }}</span>
+                            </td>
+                            <td class="px-6 py-4">
+                                <span class="font-medium text-gray-700 px-2 py-1 rounded">{{ unit.model_year }}</span>
                             </td>
 
                             <td class="px-6 py-4">
@@ -190,7 +277,7 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                             </td>
                         </tr>
                         <tr v-if="units.data.length === 0">
-                            <td colspan="6" class="px-6 py-10 text-center text-gray-500">
+                            <td colspan="7" class="px-6 py-10 text-center text-gray-500">
                                 No active units found.
                             </td>
                         </tr>
@@ -398,5 +485,36 @@ const handleSearch = () => { router.get(route('admin.units.index'), { search: se
                 </div>
             </div>
         </Modal>
+
+        <transition name="fade">
+            <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeFilterModal"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                        <h2 class="text-lg font-bold text-gray-900">Filter Units</h2>
+                        <button @click="closeFilterModal" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <InputLabel>Unit Make</InputLabel>
+                            <select v-model="filterMakeId" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
+                                <option value="">All Makes</option>
+                                <option v-for="make in unitMakes" :key="make.id" :value="make.id">{{ make.name }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                        <SecondaryButton @click="resetFilters">Clear All</SecondaryButton>
+                        <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
+                    </div>
+                </div>
+            </div>
+        </transition>
+
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

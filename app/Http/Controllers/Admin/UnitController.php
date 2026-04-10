@@ -14,14 +14,41 @@ class UnitController extends Controller
     public function index(Request $request)
     {
         $search = $request->input('search');
+        $makeId = $request->input('make_id');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
 
         $units = Unit::with('make')
+            // 1. Handle Search
             ->when($search, function ($query, $search) {
-                $query->where('plate_number', 'like', "%{$search}%")
+                $query->where(function ($q) use ($search) {
+                    $q->where('plate_number', 'like', "%{$search}%")
                       ->orWhere('motor_number', 'like', "%{$search}%")
                       ->orWhere('chassis_number', 'like', "%{$search}%");
+                });
             })
-            ->latest()
+            // 2. Handle Filter
+            ->when($makeId, function ($query, $makeId) {
+                $query->where('make_id', $makeId);
+            })
+            // 3. Handle Sorting
+            ->when($sortField, function ($query) use ($sortField, $sortDirection) {
+                if ($sortField === 'make') {
+                    // This sorts alphabetically by the Make/Brand Name (e.g. Honda, Kawasaki)
+                    $query->join('unit_makes', 'units.make_id', '=', 'unit_makes.id')
+                          ->orderBy('unit_makes.name', $sortDirection)
+                          ->select('units.*'); // Avoid ID collision
+                } else {
+                    // Added model_year to allowed sorts
+                    $allowedSorts = ['plate_number', 'model_year'];
+                    if (in_array($sortField, $allowedSorts)) {
+                        $query->orderBy($sortField, $sortDirection);
+                    }
+                }
+            }, function ($query) {
+                // Default fallback
+                $query->latest();
+            })
             ->paginate(6)
             ->withQueryString();
 
@@ -30,7 +57,7 @@ class UnitController extends Controller
         return Inertia::render('Admin/Units/Index', [
             'units' => $units,
             'unitMakes' => $unitMakes,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'make_id', 'sortField', 'sortDirection']),
         ]);
     }
 
