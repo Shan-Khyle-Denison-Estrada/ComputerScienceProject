@@ -44,10 +44,12 @@ const showCreateApplicationModal = ref(false); // Add this state
 const openCreateApplicationModal = () => showCreateApplicationModal.value = true;
 const closeCreateApplicationModal = () => showCreateApplicationModal.value = false;
 
-// Initialize search variables using the props filters
+// Initialize search, filter, and sort variables using the props filters
 const search = ref(props.filters?.search || '');
 const filterStatus = ref(props.filters?.status || '');
 const filterType = ref(props.filters?.type || '');
+const sortField = ref(props.filters?.sortField || 'submitted_at');
+const sortDirection = ref(props.filters?.sortDirection || 'desc');
 
 // Requirements Modal State
 const activeReqTab = ref('evaluation');
@@ -73,35 +75,55 @@ const getViewUrl = (app) => {
     }
 }
 
-// --- SEARCH & FILTER LOGIC (Server-side) ---
-const handleSearch = debounce(() => {
-    router.get(window.location.pathname, {
-        search: search.value,
-        status: filterStatus.value,
-        type: filterType.value
-    }, { preserveState: true, replace: true });
-}, 500);
-
-// Watch for search input changes directly
-watch(search, handleSearch);
-
-const applyFilters = () => {
+// --- SEARCH, FILTER & SORT LOGIC (Server-side) ---
+const fetchResults = debounce(() => {
     router.get(route('admin.applications.index'), {
         search: search.value,
         status: filterStatus.value,
-        type: filterType.value
-    }, { 
-        preserveState: true, 
-        preserveScroll: true,
-        onSuccess: () => showFilterModal.value = false 
-    });
+        type: filterType.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true });
+}, 300);
+
+// Watch for search input changes directly
+watch(search, () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
+};
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        // Cycle through: Ascending -> Descending -> Default (Clear active state)
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            // Clears the active sort field, turning all header icons grey.
+            // The backend controller will automatically fallback to 'submitted_at' descending.
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        // Clicking a new column starts with ascending
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
+const applyFilters = () => {
+    showFilterModal.value = false;
+    fetchResults();
 };
 
 const resetFilters = () => { 
     filterStatus.value = ''; 
     filterType.value = ''; 
-    search.value = ''; 
-    applyFilters(); 
+    showFilterModal.value = false;
+    fetchResults(); 
 };
 
 // --- COMPUTED PROPERTIES ---
@@ -203,19 +225,24 @@ const getApplicationRoute = (app) => {
             </div>
 
             <div class="flex items-center gap-3">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                    </span>
-                    <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search applications..." />
-                </div>
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </span>
+                        <input v-model="search" type="text" class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" placeholder="Search applications..." />
+                        <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
 
-                <button v-if="!isEncoder" @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative" title="Filter Applications">
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    <span v-if="filterStatus || filterType" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
-                </button>
+                    <button v-if="!isEncoder" @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative" :class="{'ring-2 ring-red-500 bg-red-50': filterStatus || filterType}" title="Filter Applications">
+                        <svg class="h-5 w-5" :class="filterStatus || filterType ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                        </svg>
+                        <span v-if="filterStatus || filterType" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                    </button>
+                </div>
 
                 <PrimaryButton v-if="!isEncoder" @click="openRequirementsModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
@@ -232,12 +259,40 @@ const getApplicationRoute = (app) => {
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
+                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider select-none">
                         <tr>
-                            <th class="px-6 py-4">Application Details</th>
-                            <th class="px-6 py-4">Applicant</th>
-                            <th class="px-6 py-4">Date Submitted</th>
-                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('reference_number')">
+                                <div class="flex items-center gap-1">
+                                    Application Details
+                                    <svg v-if="sortField === 'reference_number' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'reference_number' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('applicant')">
+                                <div class="flex items-center gap-1">
+                                    Applicant
+                                    <svg v-if="sortField === 'applicant' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'applicant' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('submitted_at')">
+                                <div class="flex items-center gap-1">
+                                    Date Submitted
+                                    <svg v-if="sortField === 'submitted_at' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'submitted_at' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('status')">
+                                <div class="flex items-center gap-1">
+                                    Status
+                                    <svg v-if="sortField === 'status' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'status' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>

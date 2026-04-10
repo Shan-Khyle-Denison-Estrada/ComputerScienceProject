@@ -28,6 +28,8 @@ class ApplicationController extends Controller
         $search = $request->input('search');
         $status = $request->input('status');
         $type = $request->input('type');
+        $sortField = $request->input('sortField', 'submitted_at');
+        $sortDirection = $request->input('sortDirection', 'desc');
 
         $user = auth()->user();
         $isEncoder = strtolower($user->role->value ?? $user->role) === 'encoder';
@@ -55,7 +57,17 @@ class ApplicationController extends Controller
                     $query->where('status', $status);
                 }
             })
-            ->latest('submitted_at')
+            ->when($sortField === 'applicant', function($query) use ($sortDirection) {
+                $query->orderBy('last_name', $sortDirection)
+                      ->orderBy('first_name', $sortDirection);
+            }, function($query) use ($sortField, $sortDirection) {
+                $allowedSorts = ['reference_number', 'application_type', 'status', 'submitted_at'];
+                if (in_array($sortField, $allowedSorts)) {
+                    $query->orderBy($sortField, $sortDirection);
+                } else {
+                    $query->orderBy('submitted_at', 'desc');
+                }
+            })
             ->paginate(6)
             ->withQueryString()
             ->through(function ($app) {
@@ -117,7 +129,7 @@ class ApplicationController extends Controller
             'applications' => $applications,
             'evaluationRequirements' => $evalReqs,
             'inspectionRequirements' => $inspReqs,
-            'filters' => $request->only(['search', 'status', 'type']),
+            'filters' => $request->only(['search', 'status', 'type', 'sortField', 'sortDirection']),
             'isEncoder' => $isEncoder,
             
             // Add Modal Data Props here

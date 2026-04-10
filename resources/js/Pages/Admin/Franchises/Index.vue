@@ -161,8 +161,9 @@ const clearFilters = () => {
                         </button>
                     </div>
                     
-                    <button @click="showFilterModal = true" class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition" :class="{'ring-2 ring-blue-500 bg-blue-50': filterStatus || filterZone}">
-                        <svg class="h-5 w-5" :class="filterStatus || filterZone ? 'text-blue-500' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                    <button @click="showFilterModal = true" class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative" :class="{'ring-2 ring-red-500 bg-red-50': filterStatus || filterZone}" title="Filter Franchises">
+                        <svg class="h-5 w-5" :class="filterStatus || filterZone ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        <span v-if="filterStatus || filterZone" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
                     </button>
                 </div>
                 
@@ -270,40 +271,41 @@ const clearFilters = () => {
             </div>
         </div>
 
-        <Modal :show="showFilterModal" @close="showFilterModal = false">
-            <div class="p-6">
-                <div class="text-center mb-6 border-b pb-4">
-                    <h2 class="text-xl font-bold text-gray-900">Filter Franchises</h2>
-                    <p class="text-sm text-gray-500">Refine the list of franchises based on specific attributes.</p>
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <InputLabel>Status</InputLabel>
-                        <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="renewed">Renewed</option>
-                            <option value="pending renewal">Pending Renewal</option>
-                            <option value="terminated">Terminated</option>
-                        </select>
+        <transition name="fade">
+            <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="showFilterModal = false"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                        <h2 class="text-lg font-bold text-gray-900">Filter Franchises</h2>
+                        <button @click="showFilterModal = false" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
                     </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <InputLabel>Status</InputLabel>
+                            <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
+                                <option value="">All Statuses</option>
+                                <!-- <option value="active">Active</option> -->
+                                <option value="renewed">Renewed</option>
+                                <option value="pending renewal">Pending Renewal</option>
+                                <option value="terminated">Terminated</option>
+                            </select>
+                        </div>
 
-                    <div>
-                        <InputLabel>Zone</InputLabel>
-                        <select v-model="filterZone" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Zones</option>
-                            <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.description }}</option>
-                        </select>
+                        <div>
+                            <InputLabel>Zone</InputLabel>
+                            <select v-model="filterZone" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
+                                <option value="">All Zones</option>
+                                <option v-for="z in zones" :key="z.id" :value="z.id">{{ z.description }}</option>
+                            </select>
+                        </div>
                     </div>
-
-                    <div class="mt-6 flex justify-end gap-3 border-t pt-4">
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
                         <SecondaryButton @click="clearFilters">Clear All</SecondaryButton>
                         <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
                     </div>
                 </div>
             </div>
-        </Modal>
+        </transition>
 
         <Modal :show="showAddModal" @close="showAddModal = false">
             <div class="p-6">
@@ -446,3 +448,8 @@ const clearFilters = () => {
 
     </AuthenticatedLayout>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
