@@ -23,20 +23,47 @@ class EvaluatorApplicationController extends Controller
                   ->orWhereNull('evaluator_status');
             });
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        $search = $request->input('search');
+        $type = $request->input('type');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
+
+        // 1. Handle Advanced Search
+        if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('reference_number', 'like', "%{$search}%")
                   ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
             });
         }
 
-        $applications = $query->latest()->paginate(7)->withQueryString();
+        // 2. Handle Application Type Filter
+        if ($type) {
+            $query->where('application_type', $type);
+        }
+
+        // 3. Handle Sorting
+        $query->when($sortField, function ($q) use ($sortField, $sortDirection) {
+            if ($sortField === 'applicant_name') {
+                $q->orderBy('first_name', $sortDirection)
+                  ->orderBy('last_name', $sortDirection);
+            } else {
+                $allowedSorts = ['reference_number', 'application_type', 'status'];
+                if (in_array($sortField, $allowedSorts)) {
+                    $q->orderBy($sortField, $sortDirection);
+                }
+            }
+        }, function ($q) {
+            $q->latest();
+        });
+
+        $applications = $query->paginate(7)->withQueryString();
 
         return Inertia::render('Evaluator/Applications/Index', [
             'applications' => $applications,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'type', 'sortField', 'sortDirection']),
         ]);
     }
 
