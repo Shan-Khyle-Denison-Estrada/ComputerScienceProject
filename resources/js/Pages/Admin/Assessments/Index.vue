@@ -9,6 +9,7 @@ import Pagination from '@/Components/Pagination.vue';
 import AssessmentPrint from '@/Components/AssessmentPrint.vue';
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
 import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
+import debounce from 'lodash/debounce';
 
 // --- PROPS ---
 const props = defineProps({
@@ -26,12 +27,12 @@ const showViewModal = ref(false);
 const showFilterModal = ref(false);
 const selectedAssessment = ref(null);
 
-// --- FILTERS STATE ---
+// --- SEARCH, SORT & FILTER STATE ---
 const search = ref(props.filters.search || '');
-const filterForm = ref({
-    status: props.filters.status || '',
-    franchise_id: props.filters.franchise_id || ''
-});
+const filterStatus = ref(props.filters.status || '');
+const filterFranchiseId = ref(props.filters.franchise_id || '');
+const sortField = ref(props.filters.sortField || '');
+const sortDirection = ref(props.filters.sortDirection || '');
 
 // --- COMPUTED: GROUPING ---
 const renewalParticulars = computed(() => props.particulars.filter(p => p.group === 'renewal'));
@@ -63,22 +64,54 @@ const getOperatorName = (assessment) => {
     return franchise?.owner_name || 'N/A';
 };
 
-// --- SEARCH & FILTER ---
-const handleSearch = () => {
-    router.get(route('admin.assessments.index'), { 
+// --- SEARCH, SORT & FILTER ACTIONS ---
+const fetchResults = debounce(() => {
+    router.get(route('admin.assessments.index'), {
         search: search.value,
-        status: filterForm.value.status,
-        franchise_id: filterForm.value.franchise_id
+        status: filterStatus.value,
+        franchise_id: filterFranchiseId.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
     }, { preserveState: true, replace: true, preserveScroll: true });
+}, 300);
+
+// Automatically trigger on typing or filter changes
+watch([search, filterStatus, filterFranchiseId], () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
 };
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
 const openFilterModal = () => showFilterModal.value = true;
 const closeFilterModal = () => showFilterModal.value = false;
-const applyFilters = () => { handleSearch(); closeFilterModal(); };
+
+const applyFilters = () => {
+    closeFilterModal();
+    fetchResults();
+};
+
 const resetFilters = () => {
-    filterForm.value.status = '';
-    filterForm.value.franchise_id = '';
-    search.value = '';
-    applyFilters();
+    filterStatus.value = '';
+    filterFranchiseId.value = '';
+    closeFilterModal();
+    fetchResults();
 };
 
 // --- VIEW & PRINT ACTIONS ---
@@ -248,17 +281,30 @@ onUnmounted(() => {
                 </div>
 
                 <div class="flex flex-wrap items-center gap-3">
-                    <div class="relative">
-                        <input 
-                            v-model="search" @keyup.enter="handleSearch" type="text" 
-                            class="pl-3 pr-4 py-2 border-gray-300 rounded-lg block w-full sm:w-64 shadow-sm text-sm" 
-                            placeholder="Search ID or Remarks..." 
-                        />
+                    <div class="flex items-center gap-2">
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                            </span>
+                            <input 
+                                v-model="search" type="text" 
+                                class="pl-10 pr-10 py-2 border-gray-300 rounded-lg block w-full sm:w-64 shadow-sm text-sm focus:ring-red-500 focus:border-red-500" 
+                                placeholder="Search ASM ID, Remarks..." 
+                            />
+                            <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                                <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                            </button>
+                        </div>
+                        <button 
+                            @click="openFilterModal" 
+                            class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative"
+                            :class="{'ring-2 ring-red-500 bg-red-50': filterStatus || filterFranchiseId}"
+                            title="Filter Assessments"
+                        >
+                            <svg class="h-5 w-5" :class="(filterStatus || filterFranchiseId) ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            <span v-if="filterStatus || filterFranchiseId" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                        </button>
                     </div>
-                    <button @click="openFilterModal" class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm relative">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                        <span v-if="filterForm.status || filterForm.franchise_id" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
-                    </button>
                     <SecondaryButton v-if="userRole === 'admin'" @click="showParticularsModal = true">Particulars</SecondaryButton>
                     <PrimaryButton v-if="['evaluator', 'encoder', 'admin'].includes(userRole)" @click="openAddModal">New Assessment</PrimaryButton>
                 </div>
@@ -267,22 +313,57 @@ onUnmounted(() => {
             <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden flex flex-col min-h-[500px]">
                 <div class="overflow-x-auto flex-grow">
                     <table class="w-full text-sm text-left">
-                        <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
+                        <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider select-none">
                             <tr>
-                                <th class="px-6 py-4">ID</th>
-                                <th class="px-6 py-4">Franchise</th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('id')">
+                                    <div class="flex items-center gap-1">
+                                        ID
+                                        <svg v-if="sortField === 'id' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'id' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('franchise')">
+                                    <div class="flex items-center gap-1">
+                                        Franchise
+                                        <svg v-if="sortField === 'franchise' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'franchise' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
                                 <th class="px-6 py-4">Operator</th>
                                 <th class="px-6 py-4">Application</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4">Due Date</th>
-                                <th class="px-6 py-4 text-right">Balance</th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('assessment_status')">
+                                    <div class="flex items-center gap-1">
+                                        Status
+                                        <svg v-if="sortField === 'assessment_status' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'assessment_status' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('assessment_due')">
+                                    <div class="flex items-center gap-1">
+                                        Due Date
+                                        <svg v-if="sortField === 'assessment_due' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'assessment_due' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors text-right" @click="sortBy('total_amount_due')">
+                                    <div class="flex items-center justify-end gap-1">
+                                        Balance
+                                        <svg v-if="sortField === 'total_amount_due' && sortDirection === 'asc'" class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else-if="sortField === 'total_amount_due' && sortDirection === 'desc'" class="w-4 h-4 text-blue-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                        <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                    </div>
+                                </th>
                                 <th class="px-6 py-4 text-center">Action</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-100">
                             <tr v-for="assessment in assessments.data" :key="assessment.id" class="hover:bg-gray-50">
                                 <td class="px-6 py-4">
-                                    <span class="text-blue-600 font-bold">#{{ assessment.id }}</span>
+                                    <span class="text-blue-600 font-bold">ASM-{{ assessment.id }}</span>
                                     <div v-if="assessment.remarks" class="text-xs text-gray-400 italic truncate max-w-[150px]">{{ assessment.remarks }}</div>
                                 </td>
                                 <td class="px-6 py-4 font-medium text-gray-900">
@@ -623,29 +704,32 @@ onUnmounted(() => {
                 </div>
             </Modal>
 
-            <Modal :show="showFilterModal" @close="closeFilterModal" maxWidth="sm">
-                <div class="p-6">
-                    <div class="flex justify-between items-center mb-4 border-b pb-2">
-                        <h2 class="text-lg font-bold text-gray-900">Filter</h2>
-                        <button @click="closeFilterModal" class="text-gray-400">✕</button>
-                    </div>
-                    <div class="space-y-4">
-                        <div>
-                            <InputLabel>Status</InputLabel>
-                            <select v-model="filterForm.status" class="mt-1 block w-full border-gray-300 rounded-md text-sm">
-                                <option value="">All Statuses</option>
-                                <option value="pending">Pending</option>
-                                <option value="paid">Paid</option>
-                                <option value="overdue">Overdue</option>
-                            </select>
+            <transition name="fade">
+                <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                    <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeFilterModal"></div>
+                    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                        <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                            <h2 class="text-lg font-bold text-gray-900">Filter Assessments</h2>
+                            <button @click="closeFilterModal" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
+                        </div>
+                        <div class="p-6 space-y-4">
+                            <div>
+                                <InputLabel>Status</InputLabel>
+                                <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-2.5">
+                                    <option value="">All Statuses</option>
+                                    <option value="pending">Pending</option>
+                                    <option value="paid">Paid</option>
+                                    <option value="overdue">Overdue</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                            <SecondaryButton @click="resetFilters">Clear All</SecondaryButton>
+                            <PrimaryButton @click="applyFilters">Done</PrimaryButton>
                         </div>
                     </div>
-                    <div class="mt-6 flex justify-end gap-3 pt-2">
-                        <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
-                        <PrimaryButton @click="applyFilters">Apply</PrimaryButton>
-                    </div>
                 </div>
-            </Modal>
+            </transition>
 
         </AuthenticatedLayout>
     </div>
@@ -658,3 +742,8 @@ onUnmounted(() => {
         />
     </div>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

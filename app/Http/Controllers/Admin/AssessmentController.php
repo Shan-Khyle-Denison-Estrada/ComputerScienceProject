@@ -24,14 +24,30 @@ class AssessmentController extends Controller
         $search = $request->input('search');
         $status = $request->input('status');
         $franchiseId = $request->input('franchise_id');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
 
         // 1. Pagination set to 6 rows
         $assessments = Assessment::query()
-            ->with(['particulars', 'payments', 'application', 'franchise']) // <-- ADD 'franchise' HERE
+            // Added currentOwnership.newOwner.user to safely fetch operator names
+            ->with(['particulars', 'payments', 'application', 'franchise.currentOwnership.newOwner.user']) 
             ->when($search, function($query, $search) {
-                $query->where(function($q) use ($search) {
-                    $q->where('id', 'like', "%{$search}%")
-                      ->orWhere('remarks', 'like', "%{$search}%");
+                // Strip "ASM-", "ASM", and leading zeros so "ASM-000012" becomes "12"
+                $parsedId = preg_replace('/^ASM-?0*/i', '', $search);
+
+                $query->where(function($q) use ($search, $parsedId) {
+                    // FIX: Explicitly target the assessments table to prevent ambiguous column errors during joins
+                    $q->where('assessments.id', 'like', "%{$parsedId}%")
+                      ->orWhere('assessments.remarks', 'like', "%{$search}%")
+                      ->orWhereHas('franchise', function ($fq) use ($search) {
+                          $fq->where('franchise_number', 'like', "%{$search}%")
+                             // FIX: Properly search deeply into the users table for the owner name
+                             ->orWhereHas('currentOwnership.newOwner.user', function ($uq) use ($search) {
+                                 $uq->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%")
+                                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                             });
+                      });
                 });
             })
             ->when($status, function($query, $status) {
@@ -40,30 +56,39 @@ class AssessmentController extends Controller
             ->when($franchiseId, function($query, $franchiseId) {
                 $query->where('franchise_id', $franchiseId);
             })
-            ->latest()
-            ->paginate(6) // Adjust pagination as needed
+            ->when($sortField, function ($query) use ($sortField, $sortDirection) {
+                if ($sortField === 'franchise') {
+                    $query->leftJoin('franchises', 'assessments.franchise_id', '=', 'franchises.id')
+                          ->orderBy('franchises.franchise_number', $sortDirection)
+                          ->select('assessments.*');
+                } else {
+                    $allowedSorts = ['id', 'assessment_status', 'assessment_due', 'total_amount_due'];
+                    if (in_array($sortField, $allowedSorts)) {
+                        $query->orderBy($sortField, $sortDirection);
+                    }
+                }
+            }, function ($query) {
+                $query->latest();
+            })
+            ->paginate(6)
             ->withQueryString();
 
-        $particulars = Particular::orderBy('group')->orderBy('name')->get();
+        $particulars = Particular::orderBy('name')->get();
         
-        // Load franchise data safely with mapping
-    $franchises = Franchise::with('currentOwnership.newOwner.user')
-    ->get()
-    ->map(function ($franchise) {
-        // Safely dig through the relationships
-        $user = $franchise->currentOwnership?->newOwner?->user;
-        
-        // Attach a clean string for the frontend
-        $franchise->owner_name = $user 
-            ? "{$user->first_name} {$user->last_name}" 
-            : 'No Owner Assigned'; // Fallback if no owner exists
-            
-        return $franchise;
-    });
+        // Eager load the deeply nested relationships and map them into the required array format
+        $franchises = Franchise::with(['currentOwnership.newOwner.user'])
+            ->get()
+            ->map(function ($franchise) {
+                return [
+                    'id' => $franchise->id,
+                    'franchise_number' => $franchise->franchise_number,
+                    'owner_name' => $franchise->currentOwnership?->newOwner?->user?->full_name ?? 'Unknown Owner',
+                ];
+            });
 
         return Inertia::render('Admin/Assessments/Index', [
             'assessments' => $assessments,
-            'filters' => $request->only(['search', 'status', 'franchise_id']),
+            'filters' => $request->only(['search', 'status', 'franchise_id', 'sortField', 'sortDirection']),
             'particulars' => $particulars,
             'franchises' => $franchises,
             'userRole' => auth()->user()->role->value ?? auth()->user()->role,
