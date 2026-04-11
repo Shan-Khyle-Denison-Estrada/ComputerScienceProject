@@ -1,28 +1,52 @@
 <script setup>
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import Pagination from '@/Components/Pagination.vue'; 
-import { Head } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
+import { ref, watch } from 'vue';
+import debounce from 'lodash/debounce';
 
 const props = defineProps({
     logs: Object,
+    filters: Object,
 });
 
-const search = ref('');
+// --- SEARCH, SORT STATE ---
+const search = ref(props.filters?.search || '');
+const sortField = ref(props.filters?.sortField || '');
+const sortDirection = ref(props.filters?.sortDirection || '');
 
-// Client-side search for the current paginated data
-const visibleLogs = computed(() => {
-    if (!search.value) return props.logs.data; 
-    const q = search.value.toLowerCase();
-    return props.logs.data.filter(log => 
-        (log.log_no && log.log_no.toLowerCase().includes(q)) ||
-        log.reference_number.toLowerCase().includes(q) || 
-        (log.application_type && log.application_type.toLowerCase().includes(q)) ||
-        log.action.toLowerCase().includes(q) ||
-        log.user_name.toLowerCase().includes(q) ||
-        (log.user_role && log.user_role.toLowerCase().includes(q))
-    );
+// --- ACTIONS ---
+const fetchResults = debounce(() => {
+    router.get(window.location.pathname, {
+        search: search.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true, preserveScroll: true });
+}, 300);
+
+// Automatically trigger on typing
+watch(search, () => {
+    fetchResults();
 });
+
+const clearSearch = () => {
+    search.value = '';
+};
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
 </script>
 
 <template>
@@ -42,7 +66,15 @@ const visibleLogs = computed(() => {
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                         </svg>
                     </span>
-                    <input v-model="search" type="text" class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm transition" placeholder="Search current page..." />
+                    <input 
+                        v-model="search" 
+                        type="text" 
+                        class="pl-10 pr-10 py-2 border-gray-300 rounded-lg focus:ring-red-500 focus:border-red-500 block w-full sm:w-64 shadow-sm text-sm transition" 
+                        placeholder="Search logs, references, users..." 
+                    />
+                    <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                        <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                    </button>
                 </div>
             </div>
         </div>
@@ -52,17 +84,59 @@ const visibleLogs = computed(() => {
                 <table class="min-w-full divide-y divide-gray-200">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Audit ID</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Date & Time</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Reference No.</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Type</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">User</th>
-                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Action</th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('log_no')">
+                                <div class="flex items-center gap-1">
+                                    Audit ID
+                                    <svg v-if="sortField === 'log_no' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'log_no' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('created_at')">
+                                <div class="flex items-center gap-1">
+                                    Date & Time
+                                    <svg v-if="sortField === 'created_at' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'created_at' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('reference_number')">
+                                <div class="flex items-center gap-1">
+                                    Reference No.
+                                    <svg v-if="sortField === 'reference_number' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'reference_number' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('application_type')">
+                                <div class="flex items-center gap-1">
+                                    Type
+                                    <svg v-if="sortField === 'application_type' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'application_type' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('user_name')">
+                                <div class="flex items-center gap-1">
+                                    User
+                                    <svg v-if="sortField === 'user_name' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'user_name' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('action')">
+                                <div class="flex items-center gap-1">
+                                    Action
+                                    <svg v-if="sortField === 'action' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'action' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th scope="col" class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">Details</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        <tr v-for="log in visibleLogs" :key="log.id" class="hover:bg-gray-50 transition-colors">
+                        <tr v-for="log in logs.data" :key="log.id" class="hover:bg-gray-50 transition-colors">
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="text-xs font-mono font-bold text-gray-600 bg-gray-100 px-2 py-1 rounded">{{ log.log_no }}</span>
                             </td>
@@ -88,8 +162,8 @@ const visibleLogs = computed(() => {
                                 <div class="text-sm text-gray-500">{{ log.details }}</div>
                             </td>
                         </tr>
-                        <tr v-if="visibleLogs.length === 0">
-                            <td colspan="5" class="px-6 py-12 text-center text-gray-500">
+                        <tr v-if="logs.data.length === 0">
+                            <td colspan="7" class="px-6 py-12 text-center text-gray-500">
                                 <svg class="mx-auto h-12 w-12 text-gray-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 011.414.586l5.414 5.414a1 1 0 01.586 1.414V19a2 2 0 01-2 2z" />
                                 </svg>
@@ -102,7 +176,7 @@ const visibleLogs = computed(() => {
         </div>
 
         <div class="md:hidden space-y-4">
-            <div v-for="log in visibleLogs" :key="log.id" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div v-for="log in logs.data" :key="log.id" class="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
                 <div class="flex justify-between items-start mb-2">
                     <div class="flex flex-col gap-1">
                         <span class="text-xs font-mono font-bold text-gray-600 w-max">{{ log.log_no }}</span>
@@ -124,17 +198,17 @@ const visibleLogs = computed(() => {
                     {{ log.details }}
                 </div>
             </div>
-            <div v-if="visibleLogs.length === 0" class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
+            <div v-if="logs.data.length === 0" class="bg-white rounded-lg border border-gray-200 p-8 text-center text-gray-500">
                 <p>No logs found</p>
             </div>
         </div>
 
-        <div class="mt-6 flex justify-between items-center" v-if="props.logs.data.length > 0">
+        <div class="mt-6 flex justify-between items-center" v-if="logs.data.length > 0">
             <div class="text-sm text-gray-500">
-                Showing {{ props.logs.from }} to {{ props.logs.to }} of {{ props.logs.total }} entries
+                Showing {{ logs.from }} to {{ logs.to }} of {{ logs.total }} entries
             </div>
-            <div v-if="props.logs.links && props.logs.links.length > 3">
-                <Pagination :links="props.logs.links" />
+            <div v-if="logs.links && logs.links.length > 3">
+                <Pagination :links="logs.links" />
             </div>
         </div>
     </AuthenticatedLayout>
