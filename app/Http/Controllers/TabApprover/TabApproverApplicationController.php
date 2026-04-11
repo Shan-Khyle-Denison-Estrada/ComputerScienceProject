@@ -22,14 +22,14 @@ class TabApproverApplicationController extends Controller
             ->whereIn('application_type', ['Renewal', 'Change of Unit', 'Change of Owner', 'New Franchise'])
             ->where('status', 'Pending')
             ->where(function ($q) {
-                // Rule 1: Renewal requires SP Approval
+                // Rule 1: Renewal & New Franchise requires SP Approval
                 $q->where(function ($sub) {
                     $sub->whereIn('application_type', ['Renewal', 'New Franchise'])
                         ->where('sp_status', 'Approved');
                 })
                 // Rule 2: Change of Unit & Owner bypass SP Approval but require Reviewer Approval
                 ->orWhere(function ($sub) {
-                    $sub->whereIn('application_type', ['Change of Unit', 'Change of Owner'])
+                    $sub->whereIn('application_type', ['Change of Unit', 'Change of Owner', 'Change of Owner (Deceased)'])
                         ->where('reviewer_status', 'Approved');
                 });
             })
@@ -38,20 +38,47 @@ class TabApproverApplicationController extends Controller
                   ->orWhereNull('tab_status');
             });
 
-        if ($request->filled('search')) {
-            $search = $request->search;
+        $search = $request->input('search');
+        $type = $request->input('type');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
+
+        // 1. Handle Advanced Search
+        if ($search) {
             $query->where(function($q) use ($search) {
                 $q->where('reference_number', 'like', "%{$search}%")
                   ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%");
+                  ->orWhere('last_name', 'like', "%{$search}%")
+                  ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                  ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
             });
         }
 
-        $applications = $query->latest()->paginate(10)->withQueryString();
+        // 2. Handle Application Type Filter
+        if ($type) {
+            $query->where('application_type', $type);
+        }
+
+        // 3. Handle Sorting
+        $query->when($sortField, function ($q) use ($sortField, $sortDirection) {
+            if ($sortField === 'applicant_name') {
+                $q->orderBy('first_name', $sortDirection)
+                  ->orderBy('last_name', $sortDirection);
+            } else {
+                $allowedSorts = ['reference_number', 'application_type', 'status'];
+                if (in_array($sortField, $allowedSorts)) {
+                    $q->orderBy($sortField, $sortDirection);
+                }
+            }
+        }, function ($q) {
+            $q->latest();
+        });
+
+        $applications = $query->paginate(7)->withQueryString();
 
         return Inertia::render('TabApprover/Applications/Index', [
             'applications' => $applications,
-            'filters' => $request->only(['search']),
+            'filters' => $request->only(['search', 'type', 'sortField', 'sortDirection']),
         ]);
     }
 
