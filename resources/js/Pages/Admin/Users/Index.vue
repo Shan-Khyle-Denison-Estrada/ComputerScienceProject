@@ -7,7 +7,8 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; 
 import { Head, useForm, router, Link } from '@inertiajs/vue3';
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
+import debounce from 'lodash/debounce';
 
 // --- PROPS ---
 const props = defineProps({
@@ -19,7 +20,12 @@ const props = defineProps({
 const showAddModal = ref(false);
 const showEditModal = ref(false);
 const showFilterModal = ref(false);
+
+// --- SEARCH, SORT & FILTER STATE ---
 const search = ref(props.filters.search || '');
+const filterStatus = ref(props.filters.status || '');
+const sortField = ref(props.filters.sortField || '');
+const sortDirection = ref(props.filters.sortDirection || '');
 
 // Photo & Signature Previews
 const addPhotoPreview = ref(null);
@@ -93,11 +99,6 @@ const editForm = useForm({
     photo: null,
     signature: null,
     _method: 'PUT'
-});
-
-// 3. FILTER FORM
-const filterForm = ref({
-    status: props.filters.status || '',
 });
 
 // 4. TEMPORARY ROLES STATE & FUNCTIONS
@@ -317,31 +318,94 @@ const submitEdit = () => {
     });
 };
 
-// --- ACTIONS: FILTERS & SEARCH ---
-const openFilterModal = () => showFilterModal.value = true;
-const closeFilterModal = () => showFilterModal.value = false;
+// --- SEARCH, SORT & FILTER ACTIONS ---
+const fetchResults = debounce(() => {
+    router.get(route('admin.users.index'), {
+        search: search.value,
+        status: filterStatus.value,
+        sortField: sortField.value,
+        sortDirection: sortDirection.value
+    }, { preserveState: true, replace: true, preserveScroll: true });
+}, 300);
 
-// Debounced search or Enter key search
-const handleSearch = () => {
-    router.get(route('admin.users.index'), { 
-        search: search.value, 
-        status: filterForm.value.status 
-    }, { 
-        preserveState: true, 
-        preserveScroll: true,
-        replace: true
-    });
+// Automatically trigger on typing or filter changes
+watch([search, filterStatus], () => {
+    fetchResults();
+});
+
+const clearSearch = () => {
+    search.value = '';
+};
+
+const sortBy = (field) => {
+    if (sortField.value === field) {
+        if (sortDirection.value === 'asc') {
+            sortDirection.value = 'desc';
+        } else {
+            sortField.value = '';
+            sortDirection.value = '';
+        }
+    } else {
+        sortField.value = field;
+        sortDirection.value = 'asc';
+    }
+    fetchResults();
+};
+
+const openFilterModal = () => {
+    showFilterModal.value = true;
+    document.body.style.overflow = 'hidden';
+};
+
+const closeFilterModal = () => {
+    showFilterModal.value = false;
+    document.body.style.overflow = '';
 };
 
 const applyFilters = () => {
-    handleSearch();
     closeFilterModal();
+    fetchResults();
 };
 
 const resetFilters = () => {
-    filterForm.value.status = '';
-    search.value = '';
-    applyFilters();
+    filterStatus.value = '';
+    closeFilterModal();
+    fetchResults();
+};
+
+// --- SMART TOOLTIP STATE & LOGIC ---
+const activeTooltipUser = ref(null);
+const tooltipStyle = ref({});
+const tooltipDirection = ref('down');
+
+const showSmartTooltip = (event, user) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    
+    // Calculate available screen space
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const spaceAbove = rect.top;
+
+    // If there is less than 220px below, and more space above, flip it UP
+    if (spaceBelow < 220 && spaceAbove > spaceBelow) {
+        tooltipDirection.value = 'up';
+        tooltipStyle.value = {
+            bottom: `${window.innerHeight - rect.top + 8}px`,
+            left: `${rect.left + rect.width / 2}px`,
+        };
+    } else {
+        // Otherwise, let it hang DOWN
+        tooltipDirection.value = 'down';
+        tooltipStyle.value = {
+            top: `${rect.bottom + 8}px`,
+            left: `${rect.left + rect.width / 2}px`,
+        };
+    }
+    
+    activeTooltipUser.value = user;
+};
+
+const hideSmartTooltip = () => {
+    activeTooltipUser.value = null;
 };
 </script>
 
@@ -357,30 +421,30 @@ const resetFilters = () => {
             </div>
 
             <div class="flex items-center gap-3">
-                <div class="relative">
-                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                        </svg>
-                    </span>
-                    <input 
-                        v-model="search"
-                        @keyup.enter="handleSearch"
-                        type="text" 
-                        class="pl-10 pr-4 py-2 border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full sm:w-64 shadow-sm text-sm" 
-                        placeholder="Search admins..." 
-                    />
+                <div class="flex items-center gap-2">
+                    <div class="relative">
+                        <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <svg class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                        </span>
+                        <input 
+                            v-model="search" type="text" 
+                            class="pl-10 pr-10 py-2 border-gray-300 rounded-lg block w-full sm:w-64 shadow-sm text-sm focus:ring-red-500 focus:border-red-500" 
+                            placeholder="Search names, email..." 
+                        />
+                        <button v-if="search" @click="clearSearch" class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
+                            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+                    <button 
+                        @click="openFilterModal" 
+                        class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative"
+                        :class="{'ring-2 ring-red-500 bg-red-50': filterStatus}"
+                        title="Filter Options"
+                    >
+                        <svg class="h-5 w-5" :class="filterStatus ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                        <span v-if="filterStatus" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                    </button>
                 </div>
-
-                <button 
-                    @click="openFilterModal"
-                    class="p-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-600 shadow-sm transition-colors relative"
-                >
-                    <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                    </svg>
-                    <span v-if="filterForm.status" class="absolute top-1 right-1 h-2 w-2 bg-blue-500 rounded-full"></span>
-                </button>
 
                 <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -394,12 +458,40 @@ const resetFilters = () => {
         <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
             <div class="overflow-x-auto">
                 <table class="w-full text-sm text-left">
-                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider">
+                    <thead class="bg-gray-50 text-gray-500 font-medium border-b border-gray-200 uppercase tracking-wider select-none">
                         <tr>
-                            <th class="px-6 py-4">User</th>
-                            <th class="px-6 py-4">Contact</th> 
-                            <th class="px-6 py-4">Role</th>
-                            <th class="px-6 py-4">Status</th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('user_name')">
+                                <div class="flex items-center gap-1">
+                                    User
+                                    <svg v-if="sortField === 'user_name' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'user_name' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('contact_number')">
+                                <div class="flex items-center gap-1">
+                                    Contact
+                                    <svg v-if="sortField === 'contact_number' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'contact_number' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('role')">
+                                <div class="flex items-center gap-1">
+                                    Role
+                                    <svg v-if="sortField === 'role' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'role' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
+                            <th class="px-6 py-4 cursor-pointer hover:bg-gray-100 transition-colors" @click="sortBy('status')">
+                                <div class="flex items-center gap-1">
+                                    Status
+                                    <svg v-if="sortField === 'status' && sortDirection === 'asc'" class="w-4 h-4 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else-if="sortField === 'status' && sortDirection === 'desc'" class="w-4 h-4 text-red-600 rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7"></path></svg>
+                                    <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
+                                </div>
+                            </th>
                             <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -428,26 +520,15 @@ const resetFilters = () => {
                                         {{ user.role.replace(/_/g, ' ') }}
                                     </span>
                                     
-                                    <div v-if="user.temporary_roles && user.temporary_roles.length > 0" class="relative group cursor-help">
+                                    <div 
+                                        v-if="user.temporary_roles && user.temporary_roles.length > 0" 
+                                        class="cursor-help"
+                                        @mouseenter="showSmartTooltip($event, user)"
+                                        @mouseleave="hideSmartTooltip"
+                                    >
                                         <span class="px-3 py-1 inline-flex items-center text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800 border border-purple-200 uppercase shadow-sm transition-colors hover:bg-purple-200">
                                             +{{ user.temporary_roles.length }} Temp
                                         </span>
-                                        
-                                        <div class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 z-50 p-3 pointer-events-none">
-                                            <div class="text-xs font-extrabold text-gray-800 border-b pb-2 mb-2 uppercase tracking-wider">
-                                                Temporary Access
-                                            </div>
-                                            <ul class="space-y-2">
-                                                <li v-for="temp in user.temporary_roles" :key="temp.id" class="text-xs bg-purple-50 p-2 rounded border border-purple-100">
-                                                    <span class="block font-bold text-purple-800 uppercase">{{ temp.role.replace(/_/g, ' ') }}</span>
-                                                    <span class="block text-gray-500 mt-1">
-                                                        Exp: {{ new Date(temp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}
-                                                    </span>
-                                                </li>
-                                            </ul>
-                                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px border-[6px] border-transparent border-t-white"></div>
-                                            <div class="absolute top-full left-1/2 transform -translate-x-1/2 mt-[2px] border-[6px] border-transparent border-t-gray-200 -z-10"></div>
-                                        </div>
                                     </div>
                                 </div>
                             </td>
@@ -760,32 +841,31 @@ const resetFilters = () => {
             </div>
         </Modal>
 
-        <Modal :show="showFilterModal" @close="closeFilterModal" maxWidth="sm">
-            <div class="p-6">
-                <div class="flex justify-between items-center mb-4 border-b pb-2">
-                    <h2 class="text-lg font-bold text-gray-900">Filter Admins</h2>
-                    <button @click="closeFilterModal" class="text-gray-400 hover:text-gray-600">
-                        <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
-                </div>
-
-                <div class="space-y-4">
-                    <div>
-                        <InputLabel>Account Status</InputLabel>
-                        <select v-model="filterForm.status" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                            <option value="">All Statuses</option>
-                            <option value="active">Active</option>
-                            <option value="inactive">Inactive</option>
-                        </select>
+        <transition name="fade">
+            <div v-if="showFilterModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="fixed inset-0 bg-gray-900/60 backdrop-blur-sm" @click="closeFilterModal"></div>
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm flex flex-col overflow-hidden">
+                    <div class="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-white">
+                        <h2 class="text-lg font-bold text-gray-900">Filter Users</h2>
+                        <button @click="closeFilterModal" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">✕</button>
+                    </div>
+                    <div class="p-6 space-y-4">
+                        <div>
+                            <InputLabel>Account Status</InputLabel>
+                            <select v-model="filterStatus" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-red-500 focus:ring-red-500 text-sm py-2.5">
+                                <option value="">All Statuses</option>
+                                <option value="active">Active</option>
+                                <option value="inactive">Inactive</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
+                        <SecondaryButton @click="resetFilters">Clear All</SecondaryButton>
+                        <PrimaryButton @click="applyFilters">Done</PrimaryButton>
                     </div>
                 </div>
-
-                <div class="mt-6 flex justify-end gap-3 pt-2">
-                    <SecondaryButton @click="resetFilters">Reset</SecondaryButton>
-                    <PrimaryButton @click="applyFilters">Apply Filters</PrimaryButton>
-                </div>
             </div>
-        </Modal>
+        </transition>
 
         <Modal :show="showTempRolesModal" @close="closeTempRolesModal" maxWidth="md">
             <div class="p-6">
@@ -843,4 +923,38 @@ const resetFilters = () => {
         </Modal>
 
     </AuthenticatedLayout>
+
+
+    <Teleport to="body">
+            <transition name="fade">
+                <div 
+                    v-if="activeTooltipUser" 
+                    class="fixed transform -translate-x-1/2 w-56 bg-white border border-gray-200 rounded-lg shadow-2xl z-[9999] p-3 pointer-events-none"
+                    :style="tooltipStyle"
+                >
+                    <div class="text-xs font-extrabold text-gray-800 border-b pb-2 mb-2 uppercase tracking-wider">
+                        Temporary Access
+                    </div>
+                    <ul class="space-y-2">
+                        <li v-for="temp in activeTooltipUser.temporary_roles" :key="temp.id" class="text-xs bg-purple-50 p-2 rounded border border-purple-100">
+                            <span class="block font-bold text-purple-800 uppercase">{{ temp.role.replace(/_/g, ' ') }}</span>
+                            <span class="block text-gray-500 mt-1">
+                                Exp: {{ new Date(temp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}
+                            </span>
+                        </li>
+                    </ul>
+
+                    <div v-if="tooltipDirection === 'down'" class="absolute bottom-full left-1/2 transform -translate-x-1/2 -mb-px border-[6px] border-transparent border-b-white"></div>
+                    <div v-if="tooltipDirection === 'down'" class="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-[2px] border-[6px] border-transparent border-b-gray-200 -z-10"></div>
+
+                    <div v-if="tooltipDirection === 'up'" class="absolute top-full left-1/2 transform -translate-x-1/2 -mt-px border-[6px] border-transparent border-t-white"></div>
+                    <div v-if="tooltipDirection === 'up'" class="absolute top-full left-1/2 transform -translate-x-1/2 mt-[2px] border-[6px] border-transparent border-t-gray-200 -z-10"></div>
+                </div>
+            </transition>
+        </Teleport>
 </template>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.2s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>

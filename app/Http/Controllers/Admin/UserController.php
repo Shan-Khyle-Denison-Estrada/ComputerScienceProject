@@ -16,32 +16,45 @@ class UserController extends Controller
 {
     public function index(Request $request)
     {
-        // Eager load temporaryRoles so they are sent to the Vue frontend
-        $query = User::with('temporaryRoles');
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
 
-        // Optional: Hide Franchise Owners from this specific staff management list
-        $query->where('role', '!=', UserRole::FRANCHISE_OWNER->value); 
-
-        // Handle Search
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+        $query = User::with('temporaryRoles')
+            // Hide Franchise Owners from this specific staff management list
+            ->where('role', '!=', UserRole::FRANCHISE_OWNER->value)
+            ->when($search, function ($query, $search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name', 'like', "%{$search}%")
+                      ->orWhere('email', 'like', "%{$search}%")
+                      ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"])
+                      ->orWhereRaw("CONCAT(last_name, ' ', first_name) LIKE ?", ["%{$search}%"]);
+                });
+            })
+            ->when($status, function ($query, $status) {
+                $query->where('status', $status);
+            })
+            ->when($sortField, function ($query) use ($sortField, $sortDirection) {
+                if ($sortField === 'user_name') {
+                    $query->orderBy('first_name', $sortDirection)
+                          ->orderBy('last_name', $sortDirection);
+                } else {
+                    $allowedSorts = ['email', 'contact_number', 'role', 'status'];
+                    if (in_array($sortField, $allowedSorts)) {
+                        $query->orderBy($sortField, $sortDirection);
+                    }
+                }
+            }, function ($query) {
+                $query->latest();
             });
-        }
 
-        // Handle Filtering
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
-        }
-
-        $users = $query->latest()->paginate(6)->withQueryString();
+        $users = $query->paginate(6)->withQueryString();
 
         return Inertia::render('Admin/Users/Index', [
             'users' => $users,
-            'filters' => $request->only(['search', 'status']),
+            'filters' => $request->only(['search', 'status', 'sortField', 'sortDirection']),
         ]);
     }
 
