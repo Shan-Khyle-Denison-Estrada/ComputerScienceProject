@@ -145,7 +145,8 @@ class CapoApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
-            'proposedUnits'
+            'proposedUnits.make', // <-- FIX: Load the proposed unit's make
+            'proposedUnits.zone'  // <-- FIX: Load the proposed unit's zone
         ]);
 
         $inspectionItems = InspectionItem::all();
