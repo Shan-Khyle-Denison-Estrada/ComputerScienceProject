@@ -206,7 +206,8 @@ class InspectorApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
-            'proposedUnits' // <-- Crucial: load the proposed units
+            'proposedUnits.make', 
+            'proposedUnits.zone' // <-- FIX: Load the zone of the proposed unit
         ]);
 
         $inspectionItems = InspectionItem::all();
