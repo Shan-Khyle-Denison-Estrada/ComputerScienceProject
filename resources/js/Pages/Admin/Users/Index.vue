@@ -619,26 +619,26 @@ const hideSmartTooltip = () => {
                         <h3 class="text-sm font-medium text-gray-700 mb-2">Address Info</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="md:col-span-2">
-                                <InputLabel>Street</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street_address" />
+                                <InputLabel>Street <span class="text-red-500">*</span></InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.street_address" required />
                             </div>
                             <div>
-                                <InputLabel>Province</InputLabel>
-                                <select v-model="selectedProvinceCode" @change="(e) => handleProvinceChange(e, addForm)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <InputLabel>Province <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="selectedProvinceCode" @change="(e) => handleProvinceChange(e, addForm)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                                     <option value="" disabled>-- Select Province --</option>
                                     <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
                                 </select>
                             </div>
                             <div>
-                                <InputLabel>City</InputLabel>
-                                <select v-model="selectedCityCode" @change="(e) => handleCityChange(e, addForm)" :disabled="!citiesList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                <InputLabel>City <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="selectedCityCode" @change="(e) => handleCityChange(e, addForm)" :disabled="!citiesList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100" required>
                                     <option value="" disabled>-- Select City --</option>
                                     <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
                                 </select>
                             </div>
                             <div class="md:col-span-2">
-                                <InputLabel>Barangay</InputLabel>
-                                <select v-model="addForm.barangay" :disabled="!barangaysList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="addForm.barangay" :disabled="!barangaysList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100" required>
                                     <option value="" disabled>-- Select Barangay --</option>
                                     <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
                                 </select>
@@ -750,26 +750,26 @@ const hideSmartTooltip = () => {
                         <h3 class="text-sm font-medium text-gray-700 mb-2">Address Info</h3>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div class="md:col-span-2">
-                                <InputLabel>Street</InputLabel>
-                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.street_address" />
+                                <InputLabel>Street <span class="text-red-500">*</span></InputLabel>
+                                <TextInput type="text" class="mt-1 block w-full" v-model="editForm.street_address" required />
                             </div>
                             <div>
-                                <InputLabel>Province</InputLabel>
-                                <select v-model="selectedProvinceCode" @change="(e) => handleProvinceChange(e, editForm)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                <InputLabel>Province <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="selectedProvinceCode" @change="(e) => handleProvinceChange(e, editForm)" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
                                     <option value="" disabled>-- Select Province --</option>
                                     <option v-for="p in provincesList" :key="p.code" :value="p.code">{{ p.name }}</option>
                                 </select>
                             </div>
                             <div>
-                                <InputLabel>City</InputLabel>
-                                <select v-model="selectedCityCode" @change="(e) => handleCityChange(e, editForm)" :disabled="!citiesList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                <InputLabel>City <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="selectedCityCode" @change="(e) => handleCityChange(e, editForm)" :disabled="!citiesList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100" required>
                                     <option value="" disabled>-- Select City --</option>
                                     <option v-for="c in citiesList" :key="c.code" :value="c.code">{{ c.name }}</option>
                                 </select>
                             </div>
                             <div class="md:col-span-2">
-                                <InputLabel>Barangay</InputLabel>
-                                <select v-model="editForm.barangay" :disabled="!barangaysList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100">
+                                <InputLabel>Barangay <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="editForm.barangay" :disabled="!barangaysList.length" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 disabled:bg-gray-100" required>
                                     <option value="" disabled>-- Select Barangay --</option>
                                     <option v-for="b in barangaysList" :key="b.code" :value="b.name">{{ b.name }}</option>
                                 </select>
