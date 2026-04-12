@@ -363,7 +363,7 @@ const printReceipt = async (payment) => {
                             <span v-if="filterCity" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-blue-500 border-2 border-white rounded-full"></span>
                         </button> -->
                     </div>
-                    <PrimaryButton v-if="userRole === 'collector'" @click="openAddModal" class="flex items-center gap-2">
+                    <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
