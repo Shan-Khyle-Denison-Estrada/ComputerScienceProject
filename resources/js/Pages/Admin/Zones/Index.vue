@@ -371,48 +371,59 @@ const deleteBarangay = (id) => {
                     <div class="relative">
                         <InputLabel>Add Coverage (Barangay) <span class="text-red-500">*</span></InputLabel>
                         
-                        <div class="mt-1 relative w-full z-10">
-                            <input 
-                                type="text" 
-                                class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
-                                placeholder="Search or select a barangay..."
-                                v-model="dropdownSearch"
-                                @focus="isDropdownOpen = true"
-                                @click="isDropdownOpen = true" 
-                                @input="isDropdownOpen = true"
-                                @blur="closeDropdownDelayed"
-                                @keydown.enter.prevent="handleDropdownEnter('add')"
-                            />
-                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400 m-2 transition-transform duration-200 mr-2" :class="{'rotate-180': isDropdownOpen}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                                </svg>
-                            </div>
+                        <template v-if="props.adminAddress">
+                            <div class="mt-1 relative w-full z-10">
+                                <input 
+                                    type="text" 
+                                    class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
+                                    placeholder="Search or select a barangay..."
+                                    v-model="dropdownSearch"
+                                    @focus="isDropdownOpen = true"
+                                    @click="isDropdownOpen = true" 
+                                    @input="isDropdownOpen = true"
+                                    @blur="closeDropdownDelayed"
+                                    @keydown.enter.prevent="handleDropdownEnter('add')"
+                                />
+                                <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                                    <svg class="h-5 w-5 text-gray-400 m-2 transition-transform duration-200 mr-2" :class="{'rotate-180': isDropdownOpen}" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                </div>
 
-                            <div v-if="isDropdownOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
-                                <ul>
-                                    <li 
-                                        v-for="brgy in filteredDropdownOptions" 
-                                        :key="brgy.id"
-                                        @mousedown.prevent="selectDropdownItem(brgy.name, 'add')"
-                                        class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 transition-colors"
-                                    >
-                                        {{ brgy.name }}
-                                    </li>
-                                    <li v-if="filteredDropdownOptions.length === 0" class="px-4 py-3 text-sm text-gray-500 italic text-center">
-                                        No available barangays match.
-                                    </li>
-                                </ul>
+                                <div v-if="isDropdownOpen" class="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+                                    <ul>
+                                        <li 
+                                            v-for="brgy in filteredDropdownOptions" 
+                                            :key="brgy.id"
+                                            @mousedown.prevent="selectDropdownItem(brgy.name, 'add')"
+                                            class="px-4 py-2 hover:bg-blue-50 cursor-pointer text-sm text-gray-700 transition-colors"
+                                        >
+                                            {{ brgy.name }}
+                                        </li>
+                                        <li v-if="filteredDropdownOptions.length === 0" class="px-4 py-3 text-sm text-gray-500 italic text-center">
+                                            No available barangays match.
+                                        </li>
+                                    </ul>
+                                </div>
                             </div>
-                        </div>
-                        
-                        <div class="mt-3 flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 min-h-[60px] max-h-32 overflow-y-auto items-center relative z-0">
-                            <span v-if="addForm.coverage.length === 0" class="text-gray-400 text-sm italic w-full text-center">Add Barangay</span>
-                            <span v-else v-for="(item, index) in addForm.coverage" :key="index" class="inline-flex items-center px-2 py-1 rounded bg-white border border-gray-300 text-sm shadow-sm">
-                                {{ item }}
-                                <button type="button" @click="removeCoverageItem('add', index)" class="ml-2 text-red-500 hover:text-red-700 font-bold">&times;</button>
-                            </span>
-                        </div>
+                            
+                            <div class="mt-3 flex flex-wrap gap-2 p-3 bg-gray-50 rounded-md border border-gray-200 min-h-[60px] max-h-32 overflow-y-auto items-center relative z-0">
+                                <span v-if="addForm.coverage.length === 0" class="text-gray-400 text-sm italic w-full text-center">Add Barangay</span>
+                                <span v-else v-for="(item, index) in addForm.coverage" :key="index" class="inline-flex items-center px-2 py-1 rounded bg-white border border-gray-300 text-sm shadow-sm">
+                                    {{ item }}
+                                    <button type="button" @click="removeCoverageItem('add', index)" class="ml-2 text-red-500 hover:text-red-700 font-bold">&times;</button>
+                                </span>
+                            </div>
+                        </template>
+
+                        <template v-else>
+                            <div class="mt-2 p-3 bg-red-50 border border-red-200 rounded-md flex items-center text-sm text-red-700">
+                                <svg class="h-5 w-5 mr-2 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                                <span><strong>Missing Data:</strong> Please add a system address in your settings first to load the available barangays.</span>
+                            </div>
+                        </template>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3 border-t pt-4">
