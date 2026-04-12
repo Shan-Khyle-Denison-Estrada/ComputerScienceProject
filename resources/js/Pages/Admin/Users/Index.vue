@@ -904,6 +904,7 @@ const hideSmartTooltip = () => {
                                 <option value="collector">Collector</option>
                                 <option value="reviewer">Reviewer</option>
                                 <!-- <option value="sp_approver">SP Approver</option> -->
+                                <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
                                 <option value="tab_approver">TAB Approver</option>
                                 <option value="releaser">Releaser</option>
                                 <option value="encoder">Encoder</option>
