@@ -432,8 +432,8 @@ const clearFilters = () => {
                             </div>
                              <div class="flex justify-between text-xs" v-if="driver.city || driver.barangay">
                                 <span class="text-gray-500">Location:</span>
-                                <span class="text-gray-700 truncate max-w-[120px] text-right" :title="`${driver.barangay || ''}, ${driver.city || ''}`">
-                                    {{ driver.barangay ? driver.barangay + ',' : '' }} {{ driver.city }}
+                                <span class="text-gray-700 max-w-[120px] text-right" :title="`${driver.barangay || ''}, ${driver.city || ''}`">
+                                    {{ driver.street }}, {{ driver.barangay }}, {{ driver.city }}, {{ driver.province }}
                                 </span>
                             </div>
                         </div>
