@@ -561,16 +561,16 @@ const printReceipt = async (payment) => {
                                         </h4>
                                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                             <div class="col-span-12 md:col-span-4">
-                                                <InputLabel>Last Name <span class="text-red-500">*</span></InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_last_name" placeholder="Dela Cruz" required />
-                                            </div>
-                                            <div class="col-span-12 md:col-span-4">
                                                 <InputLabel>First Name <span class="text-red-500">*</span></InputLabel>
                                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_first_name" placeholder="Juan" required />
                                             </div>
                                             <div class="col-span-12 md:col-span-4">
                                                 <InputLabel>Middle Name</InputLabel>
                                                 <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_middle_name" />
+                                            </div>
+                                            <div class="col-span-12 md:col-span-4">
+                                                <InputLabel>Last Name <span class="text-red-500">*</span></InputLabel>
+                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_last_name" placeholder="Dela Cruz" required />
                                             </div>
                                             <div class="col-span-12 md:col-span-6">
                                                 <InputLabel>Contact Number</InputLabel>

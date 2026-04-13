@@ -39,6 +39,10 @@ class AssessmentController extends Controller
                     // FIX: Explicitly target the assessments table to prevent ambiguous column errors during joins
                     $q->where('assessments.id', 'like', "%{$parsedId}%")
                       ->orWhere('assessments.remarks', 'like', "%{$search}%")
+                      // Query the attached application's reference_number
+                      ->orWhereHas('application', function ($aq) use ($search) {
+                          $aq->where('reference_number', 'like', "%{$search}%");
+                      })
                       ->orWhereHas('franchise', function ($fq) use ($search) {
                           $fq->where('franchise_number', 'like', "%{$search}%")
                              // FIX: Properly search deeply into the users table for the owner name
