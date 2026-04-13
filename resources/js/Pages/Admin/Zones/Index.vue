@@ -374,6 +374,7 @@ const deleteBarangay = (id) => {
                         <template v-if="props.adminAddress">
                             <div class="mt-1 relative w-full z-10">
                                 <input 
+                                    required
                                     type="text" 
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
                                     placeholder="Search or select a barangay..."
@@ -458,6 +459,7 @@ const deleteBarangay = (id) => {
                         
                         <div class="mt-1 relative w-full z-10">
                             <input 
+                                required
                                 type="text" 
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
                                 placeholder="Search or select a barangay..."
