@@ -34,13 +34,16 @@ const unitViews = [
 
 const application = computed(() => {
     const app = props.application || {};
-    const franchise = app.franchise || {};
-    const currentOwnership = franchise.current_ownership || {};
-    const currentOperator = currentOwnership.new_owner || {};
-    const currentUser = currentOperator.user || {};
-    const currentActiveUnit = franchise.current_active_unit || {};
-    const currentUnitData = currentActiveUnit.new_unit || {};
-    const currentMake = currentUnitData.make || {};
+    
+    // For a New Franchise, there is no existing franchise data yet. 
+    // Data comes directly from the Application and ProposedUnit.
+    const appUser = app.user || {};
+    
+    // Get the latest proposed unit
+    const proposedUnits = app.proposed_units || [];
+    const proposedUnit = proposedUnits.length > 0 ? proposedUnits[proposedUnits.length - 1] : {};
+    const proposedMake = proposedUnit.make || {};
+    const proposedZone = proposedUnit.zone || {};
 
     const mappedAssessment = app.assessment ? {
         id: app.assessment.id,
@@ -73,32 +76,32 @@ const application = computed(() => {
         capo_status: app.capo_status || 'Pending',
         
         franchise_details: {
-            id: franchise.id,
-            zone: franchise.zone?.description || app.zone?.description || 'N/A',
-            date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
-            mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
+            id: 'N/A',
+            zone: proposedZone.description || 'N/A',
+            date_issued: 'Pending',
+            mtfrb_case_no: 'Pending',
         },
         
         current_owner: {
-            first_name: currentUser.first_name || 'Not specified',
-            last_name: currentUser.last_name || 'Not specified',
-            contact: currentUser.contact_number || 'N/A',
-            email: currentUser.email || 'N/A',
-            tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            first_name: app.first_name || appUser.first_name || 'Not specified',
+            last_name: app.last_name || appUser.last_name || 'Not specified',
+            contact: app.contact_number || appUser.contact_number || 'N/A',
+            email: app.email || appUser.email || 'N/A',
+            tin_number: app.tin_number || 'N/A',
+            address: `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}, ${app.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
         current_unit: {
-            make: currentMake.name || 'Not specified',
-            motor_no: currentUnitData.motor_number || 'Not specified',
-            chassis_no: currentUnitData.chassis_number || 'Not specified',
-            plate_no: currentUnitData.plate_number || franchise.plate_number || 'N/A',
-            cr_no: currentUnitData.cr_number || 'Not specified',
-            year: currentUnitData.model_year || 'Not specified',
-            front_photo: currentUnitData.unit_front_photo ? `/storage/${currentUnitData.unit_front_photo}` : null,
-            back_photo: currentUnitData.unit_back_photo ? `/storage/${currentUnitData.unit_back_photo}` : null,
-            left_photo: currentUnitData.unit_left_photo ? `/storage/${currentUnitData.unit_left_photo}` : null,
-            right_photo: currentUnitData.unit_right_photo ? `/storage/${currentUnitData.unit_right_photo}` : null
+            make: proposedMake.name || 'Not specified',
+            motor_no: proposedUnit.motor_number || 'Not specified',
+            chassis_no: proposedUnit.chassis_number || 'Not specified',
+            plate_no: proposedUnit.plate_number || 'N/A',
+            cr_no: proposedUnit.cr_number || 'Not specified',
+            year: proposedUnit.model_year || 'Not specified',
+            front_photo: proposedUnit.unit_front_photo ? `/storage/${proposedUnit.unit_front_photo}` : null,
+            back_photo: proposedUnit.unit_back_photo ? `/storage/${proposedUnit.unit_back_photo}` : null,
+            left_photo: proposedUnit.unit_left_photo ? `/storage/${proposedUnit.unit_left_photo}` : null,
+            right_photo: proposedUnit.unit_right_photo ? `/storage/${proposedUnit.unit_right_photo}` : null
         },
 
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
@@ -221,7 +224,7 @@ const isImageUrl = (url) => {
                                 <div><p class="text-sm text-gray-500">Plate Number</p><p class="font-medium text-gray-900">{{ application.current_unit.plate_no }}</p></div>
                                 <div><p class="text-sm text-gray-500">Motor Number</p><p class="font-medium text-gray-900">{{ application.current_unit.motor_no }}</p></div>
                                 <div><p class="text-sm text-gray-500">Chassis Number</p><p class="font-medium text-gray-900">{{ application.current_unit.chassis_no }}</p></div>
-                                <div><p class="text-sm text-gray-500">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div>
+                                <!-- <div><p class="text-sm text-gray-500">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div> -->
                             </div>
 
                             <h3 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Unit Photos</h3>

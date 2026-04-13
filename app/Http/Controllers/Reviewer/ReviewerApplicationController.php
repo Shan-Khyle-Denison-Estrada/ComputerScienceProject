@@ -20,11 +20,11 @@ class ReviewerApplicationController extends Controller
             ->where(function ($q) {
                 $q->where(function ($subQuery) {
                     // Include New Franchise here
-                    $subQuery->whereIn('application_type', ['Renewal', 'Change of Unit', 'Change of Owner', 'New Franchise'])
+                    $subQuery->whereIn('application_type', ['Renewal', 'Change of Unit', 'New Franchise'])
                              ->where('inspector_status', 'Approved')
                              ->where('capo_status', 'Approved');
                 })
-                ->orWhere('application_type', 'Change of Owner'); 
+                ->orWhereIn('application_type', ['Change of Owner', 'Change of Owner (Deceased)']);
             })
             // THE FIX: Allow applications with Paid assessments OR no assessments at all
             ->where(function($q) {
@@ -148,7 +148,7 @@ class ReviewerApplicationController extends Controller
 
     public function showChangeOfOwner(Application $application)
     {
-        abort_if($application->application_type !== 'Change of Owner', 404);
+        abort_if($application->application_type !== 'Change of Owner' && $application->application_type !== 'Change of Owner (Deceased)', 404);
 
         $application->load([
             'user',
@@ -208,7 +208,8 @@ class ReviewerApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
-            'proposedUnits'
+            'proposedUnits.make',   // <-- Updated to load Make
+            'proposedUnits.zone'    // <-- Updated to load Zone
         ]);
 
         $inspectionItems = InspectionItem::all();

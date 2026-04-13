@@ -33,8 +33,8 @@ const application = computed(() => {
     const currentUser = currentOperator.user || {};
     
     // PROPOSED OWNER DATA (The Applicant)
-    // We map this from the application's user since they are the ones applying to become the new owner
-    const proposedUser = app.user || {};
+    // We map this directly from the application entity since the form details are saved there
+    const proposedUser = app || {};
 
     const mappedAssessment = app.assessment ? {
         id: app.assessment.id,
@@ -55,6 +55,7 @@ const application = computed(() => {
         
         franchise_details: {
             mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
+            franchise_number: franchise.franchise_number || 'N/A',
             plate_number: franchise.plate_number || 'N/A',
             zone: franchise.zone?.description || app.zone?.description || 'N/A',
         },
@@ -65,7 +66,7 @@ const application = computed(() => {
             contact: currentUser.contact_number || 'N/A',
             email: currentUser.email || 'N/A',
             tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}, ${currentUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
 
         proposed_owner: {
@@ -73,8 +74,8 @@ const application = computed(() => {
             last_name: proposedUser.last_name || 'Not specified',
             contact: proposedUser.contact_number || 'N/A',
             email: proposedUser.email || 'N/A',
-            tin_number: 'Pending Registration', // Will be finalized after approval
-            address: `${proposedUser.street_address || ''}, ${proposedUser.barangay || ''}, ${proposedUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            tin_number: proposedUser.tin_number || 'Pending Registration',
+            address: `${proposedUser.street_address || ''}, ${proposedUser.barangay || ''}, ${proposedUser.city || ''}, ${proposedUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
 
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
@@ -155,7 +156,7 @@ const isImageUrl = (url) => {
                         <div v-if="activeTab === 'operator_comparison'" class="space-y-6">
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4 mb-2">
                                 <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">FRANCHISE TARGET</span>
-                                <p class="text-sm text-gray-600">MTFRB: <span class="font-bold text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</span></p>
+                                <p class="text-sm text-gray-600">Franchise Number: <span class="font-bold text-gray-900">{{ application.franchise_details.franchise_number }}</span></p>
                                 <p class="text-sm text-gray-600">Zone: <span class="font-bold text-gray-900">{{ application.franchise_details.zone }}</span></p>
                             </div>
 
