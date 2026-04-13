@@ -143,7 +143,8 @@ class SpApproverApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
-            'proposedUnits'
+            'proposedUnits.make', // <-- Added .make
+            'proposedUnits.zone'  // <-- Added .zone
         ]);
 
         $inspectionItems = InspectionItem::all();

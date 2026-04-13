@@ -34,15 +34,24 @@ const unitViews = [
 
 const application = computed(() => {
     const app = props.application || {};
-    const franchise = app.franchise || {};
-    const currentOwnership = franchise.current_ownership || {};
-    const currentOperator = currentOwnership.new_owner || {};
-    const currentUser = currentOperator.user || {};
-    const currentActiveUnit = franchise.current_active_unit || {};
-    const currentUnitData = currentActiveUnit.new_unit || {};
-    const currentMake = currentUnitData.make || {};
+        const franchise = app.franchise || {};
+        
+        // Fix: Use the applicant directly for New Franchises, fallback to franchise owner
+        const currentUser = app.user || franchise.current_ownership?.new_owner?.user || {};
+        const currentOperator = franchise.current_ownership?.new_owner || {};
+        
+        // Fix: Prioritize proposed_units since this is a New Franchise
+        const proposedUnits = app.proposed_units || app.proposedUnits || [];
+        const proposedUnit = proposedUnits.length > 0 ? proposedUnits[proposedUnits.length - 1] : null;
+        
+        const currentActiveUnit = franchise.current_active_unit || {};
+        const fallbackUnit = currentActiveUnit.new_unit || {};
+        
+        const currentUnitData = proposedUnit || fallbackUnit;
+        const currentMake = proposedUnit?.make || fallbackUnit.make || {};
+        const currentZone = proposedUnit?.zone || app.zone || franchise.zone || {};
 
-    const mappedAssessment = app.assessment ? {
+        const mappedAssessment = app.assessment ? {
         id: app.assessment.id,
         status: app.assessment.assessment_status || 'Pending',
         total_due: app.assessment.total_amount_due || 0,
@@ -75,19 +84,20 @@ const application = computed(() => {
         
         franchise_details: {
             id: franchise.id,
-            zone: franchise.zone?.description || app.zone?.description || 'N/A',
-            date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
+            franchise_number: franchise.franchise_number || 'Pending',
+            zone: currentZone.description || 'N/A',
+            date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'Pending',
             mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
         },
         
         current_owner: {
-            first_name: currentUser.first_name || 'Not specified',
-            last_name: currentUser.last_name || 'Not specified',
-            contact: currentUser.contact_number || 'N/A',
-            email: currentUser.email || 'N/A',
-            tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
-        },
+                first_name: app.first_name || currentUser.first_name || 'Not specified',
+                last_name: app.last_name || currentUser.last_name || 'Not specified',
+                contact: app.contact_number || currentUser.contact_number || 'N/A',
+                email: app.email || currentUser.email || 'N/A',
+                tin_number: app.tin_number || currentUser.tin_number || currentOperator.tin_number || 'N/A',
+                address: app.address || `${app.street_address || ''}, ${app.barangay || ''}, ${app.city || ''}, ${app.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            },
         
         current_unit: {
             make: currentMake.name || 'Not specified',
@@ -208,8 +218,10 @@ const isImageUrl = (url) => {
                             <section>
                                 <h3 class="font-bold text-gray-800 text-lg mb-4 flex items-center gap-2">Franchise Details</h3>
                                 <div class="grid grid-cols-2 gap-y-4 gap-x-6">
+                                    <div><p class="text-sm text-gray-500">Franchise Number</p><p class="font-medium text-gray-900">{{ application.franchise_details.franchise_number }}</p></div>
                                     <div><p class="text-sm text-gray-500">Zone</p><p class="font-medium text-gray-900">{{ application.franchise_details.zone }}</p></div>
                                     <div><p class="text-sm text-gray-500">Date Issued</p><p class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</p></div>
+                                    
                                     <!-- <div><p class="text-sm text-gray-500">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div> -->
                                 </div>
                             </section>
@@ -222,7 +234,7 @@ const isImageUrl = (url) => {
                                 <div><p class="text-sm text-gray-500">Plate Number</p><p class="font-medium text-gray-900">{{ application.current_unit.plate_no }}</p></div>
                                 <div><p class="text-sm text-gray-500">Motor Number</p><p class="font-medium text-gray-900">{{ application.current_unit.motor_no }}</p></div>
                                 <div><p class="text-sm text-gray-500">Chassis Number</p><p class="font-medium text-gray-900">{{ application.current_unit.chassis_no }}</p></div>
-                                <div><p class="text-sm text-gray-500">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div>
+                                <!-- <div><p class="text-sm text-gray-500">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div> -->
                             </div>
 
                             <h3 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Unit Photos</h3>

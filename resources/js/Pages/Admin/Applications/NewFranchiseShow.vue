@@ -328,9 +328,12 @@ const saveInspectionStatus = () => {
                             <div>
                                 <h4 class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Applicant Profile</h4>
                                 <div class="text-sm space-y-1.5">
-                                    <p class="flex justify-between"><span class="text-gray-500">Contact:</span> <span class="font-medium text-gray-900">{{ application.applicant.contact }}</span></p>
-                                    <p class="flex justify-between"><span class="text-gray-500">Email:</span> <span class="font-medium text-gray-900 truncate max-w-[120px]" :title="application.applicant.email">{{ application.applicant.email }}</span></p>
-                                    <p class="flex justify-between"><span class="text-gray-500">TIN Number:</span> <span class="font-medium text-gray-900">{{ application.applicant.tin_number }}</span></p>
+                                    <p class="text-gray-500 mt-2">Contact:</p>
+                                    <p class="font-medium text-gray-900 leading-snug">{{ application.applicant.contact }}</p>
+                                    <p class="text-gray-500 mt-2">TIN Number:</p>
+                                    <p class="font-medium text-gray-900 leading-snug">{{ application.applicant.tin_number }}</p>
+                                    <p class="text-gray-500 mt-2">Email:</p>
+                                    <p class="font-medium text-gray-900 leading-snug">{{ application.applicant.email }}</p>
                                     <p class="text-gray-500 mt-2">Address:</p>
                                     <p class="font-medium text-gray-900 leading-snug">{{ application.applicant.address }} <span v-if="application.applicant.province">, {{ application.applicant.province }}</span></p>
                                 </div>
