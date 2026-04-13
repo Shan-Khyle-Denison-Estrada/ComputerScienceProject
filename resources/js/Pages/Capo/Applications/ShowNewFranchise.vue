@@ -71,7 +71,7 @@ const application = computed(() => {
             contact: app.contact_number || currentUser.contact_number || 'N/A',
             email: app.email || currentUser.email || 'N/A',
             tin_number: app.tin_number || currentUser.tin_number || currentOperator.tin_number || 'N/A',
-            address: `${app.street_address || currentUser.street_address || ''}, ${app.barangay || currentUser.barangay || ''}, ${app.city || currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${app.street_address || currentUser.street_address || ''}, ${app.barangay || currentUser.barangay || ''}, ${app.city || currentUser.city || ''}, ${app.province || currentUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
         current_unit: {
