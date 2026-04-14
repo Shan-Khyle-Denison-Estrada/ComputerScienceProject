@@ -27,6 +27,7 @@ const rejectForm = reactive({ remarks: '', processing: false });
 
 const showApproveModal = ref(false);
 const approveProcessing = ref(false);
+const approveError = ref('');
 
 const showDocumentModal = ref(false);
 const currentDocumentUrl = ref(null);
@@ -183,7 +184,18 @@ const saveRequirementStatus = (status) => {
 
 const submitApproval = () => {
     approveProcessing.value = true;
+    approveError.value = ''; // Reset error on new attempt
+    
     router.post(route('evaluator.applications.approve', application.value.id), {}, {
+        onError: (errors) => {
+            // Catch the backend error and display it
+            if (errors.error) {
+                approveError.value = errors.error;
+            }
+        },
+        onSuccess: () => {
+            showApproveModal.value = false;
+        },
         onFinish: () => approveProcessing.value = false
     });
 };
@@ -509,7 +521,13 @@ const isImageUrl = (url) => {
         <Modal :show="showApproveModal" @close="showApproveModal = false" maxWidth="sm">
             <div class="p-6 text-center">
                 <h3 class="text-lg font-bold text-gray-900 mb-2">Approve Evaluation?</h3>
-                <p class="text-sm text-gray-500 mb-6">Are you sure you want to approve this renewal evaluation?</p>
+                <p class="text-sm text-gray-500 mb-4">Are you sure you want to approve this renewal evaluation?</p>
+                
+                <div v-if="approveError" class="mb-5 p-3 bg-red-50 text-red-700 text-sm rounded-lg border border-red-200 text-left flex items-start gap-2">
+                    <svg class="w-5 h-5 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                    <span>{{ approveError }}</span>
+                </div>
+
                 <div class="flex justify-center gap-3">
                     <SecondaryButton @click="showApproveModal = false" class="w-1/2 justify-center" :disabled="approveProcessing">Cancel</SecondaryButton>
                     <PrimaryButton @click="submitApproval" class="w-1/2 justify-center bg-green-600 hover:bg-green-700" :disabled="approveProcessing">

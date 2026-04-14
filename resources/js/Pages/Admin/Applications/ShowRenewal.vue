@@ -995,14 +995,14 @@ const saveInspectionStatus = () => {
                         <div class="space-y-5">
                             <div class="bg-blue-50 border border-blue-100 rounded-lg p-4">
                                 <p class="text-sm font-medium text-blue-800 mb-2">Update Validity</p>
-                                <p class="text-xs text-blue-600">Finalizing this application will update the franchise record's issuance date, officially renewing it in the master list.</p>
+                                <p class="text-xs text-blue-600">Finalizing this application will update the franchise and officially renewing it in the master list.</p>
                             </div>
 
                             <form @submit.prevent="submitFinalize">
-                                <div>
+                                <!-- <div>
                                     <InputLabel value="New Date of Issuance" class="text-xs mb-0" />
                                     <TextInput type="date" v-model="finalizeForm.new_date_issued" class="block w-full text-sm py-1.5 mt-1" required />
-                                </div>
+                                </div> -->
                                 <div class="mt-4">
                                     <InputLabel value="Remarks / Notes" class="text-xs mb-0" />
                                     <TextInput v-model="finalizeForm.remarks" class="block w-full text-sm py-1.5 mt-1" placeholder="Add any final notes..." />

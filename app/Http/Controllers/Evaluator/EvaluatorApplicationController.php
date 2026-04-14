@@ -237,6 +237,11 @@ class EvaluatorApplicationController extends Controller
 
     public function approve(Application $application)
     {
+        // FIX: Only count unresolved complaints for renewals
+        if ($application->application_type === 'Renewal' && $application->franchise && $application->franchise->complaints()->where('status', '!=', 'resolved')->count() > 3) {
+            return redirect()->back()->withErrors(['error' => 'Cannot approve renewal: Franchise has more than 3 unresolved complaints.']);
+        }
+
         $updateData = [
             'evaluator_status' => 'Approved',
         ];

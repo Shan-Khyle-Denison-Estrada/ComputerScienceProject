@@ -109,7 +109,7 @@ class ApplicationRenewalShowController extends Controller
             return redirect()->back()->withErrors(['error' => 'Cannot approve renewal: Franchise has more than 3 unresolved complaints.']);
         }
 
-        $application->update(['status' => 'Approved']);
+        $application->update(['status' => 'Approved', 'evaluator_status' => 'Approved', 'inspector_status' => 'Approved', 'capo_status' => 'Approved', 'reviewer_status' => 'Approved', 'sp_status' => 'Approved', 'tab_status' => 'Approved']);
         return redirect()->back()->with('success', 'Application approved. You can now finalize the renewal.');
     }
 
@@ -149,16 +149,16 @@ class ApplicationRenewalShowController extends Controller
         }
 
         $request->validate([
-            'new_date_issued' => 'required|date',
+            // 'new_date_issued' => 'required|date',
             'remarks' => 'nullable|string',
         ]);
 
         DB::transaction(function () use ($request, $application) {
             $franchise = $application->franchise;
 
-            $franchise->update([
-                'date_issued' => $request->new_date_issued,
-            ]);
+            // $franchise->update([
+            //     'date_issued' => $request->new_date_issued,
+            // ]);
 
             $application->update([
                 'status' => 'Completed',

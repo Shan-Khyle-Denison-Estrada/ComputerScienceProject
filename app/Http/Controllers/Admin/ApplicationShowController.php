@@ -216,7 +216,6 @@ class ApplicationShowController extends Controller
         return back()->with('success', 'Application has been rejected.');
     }
 
-    // [!code ++] Add this method to the controller
     public function approveApplication(Request $request, $id)
     {
         $application = Application::findOrFail($id);
@@ -224,10 +223,38 @@ class ApplicationShowController extends Controller
         // Optional: Add validation to ensure it has required inspections/evaluations
         // if ($application->evaluations()->where('is_compliant', false)->exists()) { ... }
 
-        $application->update([
-            'status' => 'Approved',
-            'reviewed_at' => now()
-        ]);
+        if ($application->application_type === 'Franchise Owner Account') {
+            
+            $application->update([
+                'status' => 'Approved',
+                'reviewed_at' => now(),
+                // Add any additional fields specific to 'Franchise Owner Account' here
+            ]);
+
+        } elseif ($application->application_type === 'New Franchise') {
+            
+            $application->update([
+                'status' => 'Approved',
+                'evaluator_status' => 'Approved',
+                'inspector_status' => 'Approved',
+                'capo_status' => 'Approved',
+                'reviewer_status' => 'Approved',
+                'sp_status' => 'Approved',
+                'tab_status' => 'Approved',
+                'reviewed_at' => now(),
+                // Add any additional fields specific to 'New Franchise' here
+            ]);
+
+        } elseif ($application->application_type === 'New Driver') {
+            
+            $application->update([
+                'status' => 'Approved',
+                'evaluator_status' => 'Approved',
+                'reviewed_at' => now(),
+                // Add any additional fields specific to 'New Franchise' here
+            ]);
+
+        }
 
         return back()->with('success', 'Application approved. You can now finalize the franchise account.');
     }

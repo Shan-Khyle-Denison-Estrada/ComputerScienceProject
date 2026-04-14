@@ -260,6 +260,7 @@ const resubmitForInspection = () => {
                                         <span class="px-2.5 py-1 inline-flex text-xs leading-4 font-bold rounded border"
                                             :class="{
                                                 'bg-yellow-50 text-yellow-700 border-yellow-200': app.status === 'Pending',
+                                                'bg-green-50 text-green-700 border-green-200': app.status === 'Approved',
                                                 'bg-blue-50 text-blue-700 border-blue-200': ['Under Review', 'Inspection', 'Processing', 'For Payment'].includes(app.status),
                                                 'bg-red-100 text-red-700 border-red-200 animate-pulse': app.status === 'Returned'
                                             }">

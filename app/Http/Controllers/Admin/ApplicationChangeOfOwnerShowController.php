@@ -67,7 +67,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
 
     public function approveApplication(Application $application)
     {
-        $application->update(['status' => 'Approved']);
+        $application->update(['status' => 'Approved', 'evaluator_status' => 'Approved', 'reviewer_status' => 'Approved', 'tab_status' => 'Approved']);
         return redirect()->back()->with('success', 'Application approved. You can now finalize the ownership change.');
     }
 
