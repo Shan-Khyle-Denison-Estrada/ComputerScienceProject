@@ -835,7 +835,7 @@ const formatTime = (timeString) => {
                         </div>
 
                         <div class="p-4 md:p-6 overflow-y-auto custom-scrollbar">
-                            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 md:gap-4 mb-5 md:mb-6">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mb-5 md:mb-6">
                                 <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
                                     <div class="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Motor Number</div>
                                     <div class="font-mono font-bold text-gray-800 text-xs md:text-sm break-all">{{ unit?.motor_number || 'N/A' }}</div>
@@ -844,10 +844,10 @@ const formatTime = (timeString) => {
                                     <div class="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">Chassis Number</div>
                                     <div class="font-mono font-bold text-gray-800 text-xs md:text-sm break-all">{{ unit?.chassis_number || 'N/A' }}</div>
                                 </div>
-                                <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
+                                <!-- <div class="p-3 bg-gray-50 rounded-xl border border-gray-100">
                                     <div class="text-[9px] md:text-[10px] uppercase font-bold text-gray-400 tracking-wider mb-1">CR Number</div>
                                     <div class="font-mono font-bold text-gray-800 text-xs md:text-sm break-all">{{ unit?.cr_number || 'N/A' }}</div>
-                                </div>
+                                </div> -->
                             </div>
 
                             <h4 class="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Unit Photos</h4>
