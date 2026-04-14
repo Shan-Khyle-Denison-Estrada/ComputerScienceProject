@@ -33,11 +33,24 @@ class HandleInertiaRequests extends Middleware
         return [
             ...parent::share($request),
             'auth' => [
-                'user' => $request->user(), // This shares the whole user model, including new columns
-                'notifications' => $request->user() ? $request->user()->unreadNotifications : [],
+                'user' => $request->user() ? $request->user()->only(
+                    'id', 'first_name', 'last_name', 'role', 'user_photo'
+                ) : null,
+                // FIX: Restored the 'data' wrapper and 'created_at' so the Vue template doesn't crash
+                'notifications' => $request->user() ? $request->user()->unreadNotifications->map(fn ($n) => [
+                    'id' => $n->id,
+                    'created_at' => $n->created_at, 
+                    'data' => [
+                        'title' => $n->data['title'] ?? 'Notification',
+                        'message' => $n->data['message'] ?? '',
+                        'url' => $n->data['url'] ?? '#',
+                    ],
+                ]) : [],
             ],
             // This shares the settings globally to $page.props.settings in Vue
-            'settings' => SystemSetting::first() ?? new SystemSetting(),
+            'settings' => SystemSetting::select(
+                'theme_color', 'lgu_name', 'lgu_logo_path', 'office_name', 'office_logo_path'
+            )->first() ?? new SystemSetting(),
             'flash' => [
             'success' => fn () => $request->session()->get('success'),
             'error' => fn () => $request->session()->get('error'),
