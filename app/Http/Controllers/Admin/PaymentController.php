@@ -126,13 +126,13 @@ class PaymentController extends Controller
 public function store(Request $request)
     {
         $validated = $request->validate([
-            'assessment_id' => 'nullable|exists:assessments,id',
+            'assessment_id' => 'required|exists:assessments,id',
             'amount_paid' => 'required|numeric|min:0',
             'payee_first_name' => 'required|string|max:255',
             'payee_middle_name' => 'nullable|string|max:255',
             'payee_last_name' => 'required|string|max:255',
-            'payee_contact_number' => 'nullable|string|max:20',
-            'payee_street_address' => 'nullable|string|max:255',
+            'payee_contact_number' => 'required|string|max:20',
+            'payee_street_address' => 'required|string|max:255',
             'payee_province' => 'required|string|max:255', // <-- ADDED
             'payee_city' => 'required|string|max:255',
             'payee_barangay' => 'required|string|max:255',

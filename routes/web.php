@@ -438,11 +438,12 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,encoder'])->group
 // --- PAYMENTS ROUTES (Admin & Collector) ---
 Route::middleware(['auth', 'prevent-back-history', 'role:admin,collector'])->group(function () {
     Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
-});
-
-Route::middleware(['auth', 'prevent-back-history', 'role:collector'])->group(function () {
     Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
 });
+
+// Route::middleware(['auth', 'prevent-back-history', 'role:collector'])->group(function () {
+    
+// });
 
 // --- ASSESSMENTS ROUTES (Admin, Evaluator, Encoder) ---
 Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder'])->group(function () {

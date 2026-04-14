@@ -522,16 +522,18 @@ const printReceipt = async (payment) => {
                                             Search Assessment / Application
                                         </h4>
                                         <div class="relative">
-                                            <InputLabel>Reference Number</InputLabel>
+                                            <InputLabel>Reference Number <span class="text-red-500">*</span></InputLabel>
                                             <TextInput 
                                                 type="text" 
                                                 class="mt-1 block w-full bg-white" 
                                                 v-model="assessmentQuery" 
                                                 @focus="showAssessmentDropdown = true"
-                                                @input="showAssessmentDropdown = true"
+                                                @input="showAssessmentDropdown = true; addForm.clearErrors('assessment_id')"
                                                 placeholder="e.g. APP-2023-001 or ASM-000012..." 
                                                 autocomplete="off"
                                             />
+                                            <div v-if="addForm.errors.assessment_id" class="text-sm text-red-600 mt-1">The reference number is required.</div>
+                                            
                                             <div v-if="showAssessmentDropdown && filteredAssessments.length > 0" class="absolute z-30 w-full bg-white border border-gray-200 mt-1 rounded-lg shadow-xl max-h-56 overflow-y-auto">
                                                 <div 
                                                     v-for="assessment in filteredAssessments" 
@@ -562,26 +564,30 @@ const printReceipt = async (payment) => {
                                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                             <div class="col-span-12 md:col-span-4">
                                                 <InputLabel>First Name <span class="text-red-500">*</span></InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_first_name" placeholder="Juan" required />
+                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_first_name" @input="addForm.clearErrors('payee_first_name')" placeholder="Juan" required />
+                                                <div v-if="addForm.errors.payee_first_name" class="text-sm text-red-600 mt-1">{{ addForm.errors.payee_first_name }}</div>
                                             </div>
                                             <div class="col-span-12 md:col-span-4">
                                                 <InputLabel>Middle Name</InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_middle_name" />
+                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_middle_name" @input="addForm.clearErrors('payee_middle_name')" />
+                                                <div v-if="addForm.errors.payee_middle_name" class="text-sm text-red-600 mt-1">{{ addForm.errors.payee_middle_name }}</div>
                                             </div>
                                             <div class="col-span-12 md:col-span-4">
                                                 <InputLabel>Last Name <span class="text-red-500">*</span></InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_last_name" placeholder="Dela Cruz" required />
+                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_last_name" @input="addForm.clearErrors('payee_last_name')" placeholder="Dela Cruz" required />
+                                                <div v-if="addForm.errors.payee_last_name" class="text-sm text-red-600 mt-1">{{ addForm.errors.payee_last_name }}</div>
                                             </div>
                                             <div class="col-span-12 md:col-span-6">
-                                                <InputLabel>Contact Number</InputLabel>
+                                                <InputLabel>Contact Number <span class="text-red-500">*</span></InputLabel>
                                                 <TextInput 
                                                     type="text" 
                                                     class="mt-1 block w-full" 
                                                     v-model="addForm.payee_contact_number" 
-                                                    @input="addForm.payee_contact_number = formatContactNumber($event.target.value)" 
+                                                    @input="addForm.payee_contact_number = formatContactNumber($event.target.value); addForm.clearErrors('payee_contact_number')" 
                                                     maxlength="13" 
                                                     placeholder="09XX-XXX-XXXX" 
                                                 />
+                                                <div v-if="addForm.errors.payee_contact_number" class="text-sm text-red-600 mt-1 font-medium">{{ addForm.errors.payee_contact_number }}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -596,7 +602,14 @@ const printReceipt = async (payment) => {
                                         <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
                                             <div class="col-span-12">
                                                 <InputLabel>Street Address <span class="text-red-500">*</span></InputLabel>
-                                                <TextInput type="text" class="mt-1 block w-full" v-model="addForm.payee_street_address" placeholder="House No., Street Name" required />
+                                                <TextInput 
+                                                    type="text" 
+                                                    class="mt-1 block w-full" 
+                                                    v-model="addForm.payee_street_address" 
+                                                    @input="addForm.clearErrors('payee_street_address')" 
+                                                    placeholder="House No., Street Name" 
+                                                />
+                                                <div v-if="addForm.errors.payee_street_address" class="text-sm text-red-600 mt-1 font-medium">{{ addForm.errors.payee_street_address }}</div>
                                             </div>
                                             
                                             <div class="col-span-12 md:col-span-4 relative">
@@ -620,6 +633,7 @@ const printReceipt = async (payment) => {
                                                         </ul>
                                                     </div>
                                                 </div>
+                                                <div v-if="addForm.errors.payee_province" class="text-sm text-red-600 mt-1">{{ addForm.errors.payee_province }}</div>
                                             </div>
 
                                             <div class="col-span-12 md:col-span-4 relative">
@@ -644,6 +658,7 @@ const printReceipt = async (payment) => {
                                                         </ul>
                                                     </div>
                                                 </div>
+                                                <div v-if="addForm.errors.payee_city" class="text-sm text-red-600 mt-1">{{ addForm.errors.payee_city }}</div>
                                             </div>
 
                                             <div class="col-span-12 md:col-span-4 relative">
@@ -668,6 +683,7 @@ const printReceipt = async (payment) => {
                                                         </ul>
                                                     </div>
                                                 </div>
+                                                <div v-if="addForm.errors.payee_barangay" class="text-sm text-red-600 mt-1">{{ addForm.errors.payee_barangay }}</div>
                                             </div>
                                         </div>
                                     </div>
@@ -684,10 +700,12 @@ const printReceipt = async (payment) => {
                                                     step="0.01" 
                                                     class="block w-full pl-7 font-mono text-lg font-bold text-gray-900 border-gray-300 focus:ring-green-500 focus:border-green-500" 
                                                     v-model="addForm.amount_paid" 
+                                                    @input="addForm.clearErrors('amount_paid')"
                                                     placeholder="0.00" 
                                                     required 
                                                 />
                                             </div>
+                                            <div v-if="addForm.errors.amount_paid" class="text-sm text-red-600 mt-1">{{ addForm.errors.amount_paid }}</div>
                                         </div>
                                     </div>
                                 </form>
