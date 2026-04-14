@@ -41,8 +41,11 @@ const openSubmitRenewalModal = (app) => {
     showSubmitRenewalModal.value = true;
 };
 
-const activeApplications = computed(() => props.applications.filter(app => app.is_active));
-const pastApplications = computed(() => props.applications.filter(app => !app.is_active));
+// Define the terminal statuses that should move an application to the History tab
+const terminalStatuses = ['Completed', 'Rejected', 'Cancelled'];
+
+const activeApplications = computed(() => props.applications.filter(app => !terminalStatuses.includes(app.status)));
+const pastApplications = computed(() => props.applications.filter(app => terminalStatuses.includes(app.status)));
 
 // --- PAGINATION STATE & LOGIC ---
 const itemsPerPage = 6;
@@ -136,7 +139,7 @@ const closeInspectionFailedModal = () => {
 const approvalStages = [
     { key: 'evaluator_status', label: 'EVL', tooltip: 'Evaluator' },
     { key: 'inspector_status', label: 'INS', tooltip: 'Inspector' },
-    { key: 'capo_status', label: 'CPO', tooltip: 'CAPO' },
+    { key: 'capo_status', label: 'CPO', tooltip: 'City Anti-Pollution Officer' },
     { key: 'reviewer_status', label: 'REV', tooltip: 'Reviewer' },
     { key: 'sp_status', label: 'SP', tooltip: 'Sanggunian Panlungsod' },
     { key: 'tab_status', label: 'TAB', tooltip: 'Tricycle Adjudication Board' }
@@ -153,6 +156,11 @@ const getApprovalStages = (app) => {
 
     // Filter out stages based on the application type
     return approvalStages.filter(stage => {
+        // NEW RULE: New Driver only displays Evaluator
+        if (appType === 'New Driver') {
+            return stage.key === 'evaluator_status';
+        }
+
         // Rule 1: Change of Unit and Change of Owner both skip 'sp_status'
         if ((appType === 'Change of Unit' || appType === 'Change of Owner') && stage.key === 'sp_status') {
             return false;
@@ -160,7 +168,7 @@ const getApprovalStages = (app) => {
 
         // Rule 2: Change of Owner specifically skips inspector and capo
         if (appType === 'Change of Owner') {
-            const excludeForOwner = ['inspector_status', 'capo_status']; // Adjust these keys to match your actual stage keys
+            const excludeForOwner = ['inspector_status', 'capo_status']; 
             if (excludeForOwner.includes(stage.key)) {
                 return false;
             }
