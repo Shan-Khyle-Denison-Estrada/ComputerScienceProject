@@ -525,7 +525,7 @@ const selectExistingOwner = (operator) => {
                             <select v-model="form.selected_franchise_id" @change="validateFranchiseSelection" :class="form.errors.selected_franchise_id ? 'border-red-500 ring-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 focus:border-blue-500 focus:ring-blue-500'" class="w-full rounded-lg shadow-sm text-sm py-2 mt-1">
                                 <option value="" disabled>-- Choose Unit --</option>
                                 <option v-for="fran in franchises" :key="fran.id" :value="fran.id">
-                                    {{ fran.mtfrb_case_no || `Franchise #${fran.id}` }} 
+                                    {{ fran.mtfrb_case_no || `Franchise #${fran.franchise_number}` }} 
                                     - {{ fran.current_active_unit?.new_unit?.make?.name || 'Unknown Make' }} 
                                     (Plate: {{ fran.current_active_unit?.new_unit?.plate_number || 'N/A' }})
                                 </option>
