@@ -33,14 +33,25 @@ const unitViews = [
 ];
 
 const application = computed(() => {
-    const app = props.application || {};
-    const franchise = app.franchise || {};
-    const currentOwnership = franchise.current_ownership || {};
-    const currentOperator = currentOwnership.new_owner || {};
-    const currentUser = currentOperator.user || {};
-    const currentActiveUnit = franchise.current_active_unit || {};
-    const currentUnitData = currentActiveUnit.new_unit || {};
-    const currentMake = currentUnitData.make || {};
+        const app = props.application || {};
+        const appUser = app.user || {};
+        const franchise = app.franchise || {};
+        const currentOwnership = franchise.current_ownership || {};
+        const currentOperator = currentOwnership.new_owner || {};
+        
+        // FIX 1: For a New Franchise, the owner is usually the applicant (app.user)
+        const currentUser = Object.keys(currentOperator.user || {}).length > 0 ? currentOperator.user : appUser;
+        
+        // FIX 2: For a New Franchise, the unit is stored in proposed_units
+        const proposedUnits = app.proposed_units || [];
+        const proposedUnit = proposedUnits.length > 0 ? proposedUnits[proposedUnits.length - 1] : {};
+        
+        const currentActiveUnit = franchise.current_active_unit || {};
+        const activeUnitData = currentActiveUnit.new_unit || {};
+        
+        // Prioritize proposed unit, fallback to active unit just in case
+        const currentUnitData = proposedUnit.id ? proposedUnit : activeUnitData;
+        const currentMake = currentUnitData.make || {};
 
     const mappedAssessment = app.assessment ? {
         id: app.assessment.id,
@@ -75,19 +86,24 @@ const application = computed(() => {
         sp_status: app.sp_status || 'Pending',
         
         franchise_details: {
-            id: franchise.id,
-            zone: franchise.zone?.description || app.zone?.description || 'N/A',
-            date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
-            mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
+            id: franchise.id || 'N/A',
+            zone: proposedUnit.zone?.description || app.zone?.description || franchise.zone?.description || 'N/A',
+            date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'Pending issuance',
+            mtfrb_case_no: franchise.mtfrb_case_no || 'Pending issuance',
         },
         
         current_owner: {
-            first_name: currentUser.first_name || 'Not specified',
-            last_name: currentUser.last_name || 'Not specified',
-            contact: currentUser.contact_number || 'N/A',
-            email: currentUser.email || 'N/A',
-            tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            first_name: app.first_name || currentUser.first_name || 'Not specified',
+            last_name: app.last_name || currentUser.last_name || 'Not specified',
+            contact: app.contact_number || currentUser.contact_number || 'N/A',
+            email: app.email || currentUser.email || 'N/A',
+            tin_number: app.tin_number || currentOperator.tin_number || 'N/A',
+            address: [
+                app.street_address || currentUser.street_address, 
+                app.barangay || currentUser.barangay, 
+                app.city || currentUser.city, 
+                app.province || currentUser.province
+            ].filter(Boolean).join(', ') || 'N/A',
         },
         
         current_unit: {
@@ -223,7 +239,7 @@ const isImageUrl = (url) => {
                                 <div><p class="text-sm text-gray-500">Plate Number</p><p class="font-medium text-gray-900">{{ application.current_unit.plate_no }}</p></div>
                                 <div><p class="text-sm text-gray-500">Motor Number</p><p class="font-medium text-gray-900">{{ application.current_unit.motor_no }}</p></div>
                                 <div><p class="text-sm text-gray-500">Chassis Number</p><p class="font-medium text-gray-900">{{ application.current_unit.chassis_no }}</p></div>
-                                <div><p class="text-sm text-gray-500">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div>
+                                <!-- <div><p class="text-sm text-gray-500">CR Number</p><p class="font-medium text-gray-900">{{ application.current_unit.cr_no }}</p></div> -->
                             </div>
 
                             <h3 class="text-lg font-medium text-gray-900 mb-4 border-b pb-2">Unit Photos</h3>

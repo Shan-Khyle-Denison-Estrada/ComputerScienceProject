@@ -66,6 +66,7 @@ const application = computed(() => {
         
         franchise_details: {
             id: franchise.id,
+            franchise_number: franchise.franchise_number || 'N/A',
             zone: franchise.zone?.description || app.zone?.description || 'N/A',
             date_issued: franchise.date_issued ? new Date(franchise.date_issued).toLocaleDateString() : 'N/A',
             mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
@@ -77,7 +78,7 @@ const application = computed(() => {
             contact: currentUser.contact_number || 'N/A',
             email: currentUser.email || 'N/A',
             tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}, ${currentUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
         },
         
         current_unit: {
@@ -225,6 +226,7 @@ const isImageUrl = (url) => {
                                     Processing Details
                                 </h3>
                                 <div class="grid grid-cols-2 gap-y-4 gap-x-6 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                                    <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Franchise Number</p><p class="font-medium text-gray-900">{{ application.franchise_details.franchise_number }}</p></div>
                                     <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Zone Assigned</p><p class="font-medium text-gray-900">{{ application.franchise_details.zone }}</p></div>
                                     <!-- <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">MTFRB Case No.</p><p class="font-medium text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</p></div> -->
                                     <div><p class="text-xs text-gray-500 uppercase tracking-wider mb-1">Previous Issue Date</p><p class="font-medium text-gray-900">{{ application.franchise_details.date_issued }}</p></div>

@@ -171,7 +171,7 @@ const resetFilters = () => {
                                 <td class="p-4 text-sm">
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('tab_approver.applications.showRenewal', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('tab_approver.applications.showChangeOfUnit', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
-                                    <Link v-else-if="app.application_type === 'Change of Owner'" :href="route('tab_approver.applications.showChangeOfOwner', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
+                                    <Link v-else-if="app.application_type === 'Change of Owner' || app.application_type === 'Change of Owner (Deceased)'" :href="route('tab_approver.applications.showChangeOfOwner', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'New Franchise'" :href="route('tab_approver.applications.show-new-franchise', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
                                 </td>
                             </tr>

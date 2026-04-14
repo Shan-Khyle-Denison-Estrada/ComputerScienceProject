@@ -19,7 +19,7 @@ class TabApproverApplicationController extends Controller
         // 3. For Renewal -> SP Approved. For Change of Unit/Owner -> Reviewer Approved (Ignore SP Status).
         // 4. Tab Status is Pending or Null
         $query = Application::with(['user', 'franchise.currentActiveUnit.newUnit'])
-            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'Change of Owner', 'New Franchise'])
+            ->whereIn('application_type', ['Renewal', 'Change of Unit', 'Change of Owner', 'Change of Owner (Deceased)', 'New Franchise'])
             ->where('status', 'Pending')
             ->where(function ($q) {
                 // Rule 1: Renewal & New Franchise requires SP Approval
@@ -146,7 +146,7 @@ class TabApproverApplicationController extends Controller
 
     public function showChangeOfOwner(Application $application)
     {
-        abort_if($application->application_type !== 'Change of Owner', 404);
+        abort_if($application->application_type !== 'Change of Owner' && $application->application_type !== 'Change of Owner (Deceased)', 404);
 
         $application->load([
             'user',
@@ -217,7 +217,8 @@ class TabApproverApplicationController extends Controller
             'evaluations.requirement',
             'assessment.particulars',
             'assessment.payments',
-            'proposedUnits'
+            'proposedUnits.make',
+            'proposedUnits.zone'
         ]);
 
         $inspectionItems = InspectionItem::all();

@@ -31,49 +31,50 @@ const application = computed(() => {
     const currentOperator = currentOwnership.new_owner || {};
     const currentUser = currentOperator.user || {};
     
-    // PROPOSED OWNER DATA (The Applicant)
-    const proposedUser = app.user || {};
+    // PROPOSED OWNER DATA (The Applicant details stored in the application)
+        const proposedUser = app || {};
 
-    const mappedAssessment = app.assessment ? {
-        id: app.assessment.id,
-        status: app.assessment.assessment_status || 'Pending',
-        total_due: app.assessment.total_amount_due || 0,
-        assessment_date: app.assessment.assessment_date ? new Date(app.assessment.assessment_date).toLocaleDateString() : 'N/A',
-        particulars: (app.assessment.particulars || []).map(p => ({
-            name: p.name,
-            amount: p.pivot ? p.pivot.subtotal : p.amount
-        }))
-    } : null;
+        const mappedAssessment = app.assessment ? {
+            id: app.assessment.id,
+            status: app.assessment.assessment_status || 'Pending',
+            total_due: app.assessment.total_amount_due || 0,
+            assessment_date: app.assessment.assessment_date ? new Date(app.assessment.assessment_date).toLocaleDateString() : 'N/A',
+            particulars: (app.assessment.particulars || []).map(p => ({
+                name: p.name,
+                amount: p.pivot ? p.pivot.subtotal : p.amount
+            }))
+        } : null;
 
-    return {
-        id: app.id,
-        type: app.application_type || 'Change of Owner',
-        status: app.status || 'Pending', 
-        reference_no: app.reference_number || 'N/A',
-        
-        franchise_details: {
-            mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
-            plate_number: franchise.plate_number || 'N/A',
-            zone: franchise.zone?.description || app.zone?.description || 'N/A',
-        },
-        
-        current_owner: {
-            first_name: currentUser.first_name || 'Not specified',
-            last_name: currentUser.last_name || 'Not specified',
-            contact: currentUser.contact_number || 'N/A',
-            email: currentUser.email || 'N/A',
-            tin_number: currentOperator.tin_number || 'N/A',
-            address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
-        },
+        return {
+            id: app.id,
+            type: app.application_type || 'Change of Owner',
+            status: app.status || 'Pending', 
+            reference_no: app.reference_number || 'N/A',
+            
+            franchise_details: {
+                mtfrb_case_no: franchise.mtfrb_case_no || 'N/A',
+                franchise_number: franchise.franchise_number || 'N/A',
+                plate_number: franchise.plate_number || 'N/A',
+                zone: franchise.zone?.description || app.zone?.description || 'N/A',
+            },
+            
+            current_owner: {
+                first_name: currentUser.first_name || 'Not specified',
+                last_name: currentUser.last_name || 'Not specified',
+                contact: currentUser.contact_number || 'N/A',
+                email: currentUser.email || 'N/A',
+                tin_number: currentOperator.tin_number || 'N/A',
+                address: `${currentUser.street_address || ''}, ${currentUser.barangay || ''}, ${currentUser.city || ''}, ${currentUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            },
 
-        proposed_owner: {
-            first_name: proposedUser.first_name || 'Not specified',
-            last_name: proposedUser.last_name || 'Not specified',
-            contact: proposedUser.contact_number || 'N/A',
-            email: proposedUser.email || 'N/A',
-            tin_number: 'Pending Registration', // Will be finalized after approval
-            address: `${proposedUser.street_address || ''}, ${proposedUser.barangay || ''}, ${proposedUser.city || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
-        },
+            proposed_owner: {
+                first_name: proposedUser.first_name || 'Not specified',
+                last_name: proposedUser.last_name || 'Not specified',
+                contact: proposedUser.contact_number || 'N/A',
+                email: proposedUser.email || 'N/A',
+                tin_number: proposedUser.tin_number || 'Pending Registration', 
+                address: `${proposedUser.street_address || ''}, ${proposedUser.barangay || ''}, ${proposedUser.city || ''}, ${proposedUser.province || ''}`.replace(/^[,\s]+|[,\s]+$/g, '') || 'N/A',
+            },
 
         evaluation_requirements: (app.evaluations || []).map(evalDoc => ({
             id: evalDoc.id,
@@ -153,7 +154,8 @@ const isImageUrl = (url) => {
                         <div v-if="activeTab === 'operator_comparison'" class="space-y-6">
                             <div class="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4 mb-2">
                                 <span class="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded">FRANCHISE TARGET</span>
-                                <p class="text-sm text-gray-600">MTFRB: <span class="font-bold text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</span></p>
+                                <!-- <p class="text-sm text-gray-600">MTFRB: <span class="font-bold text-gray-900">{{ application.franchise_details.mtfrb_case_no }}</span></p> -->
+                                <p class="text-sm text-gray-600">Franchise Number: <span class="font-bold text-gray-900">{{ application.franchise_details.franchise_number }}</span></p>
                                 <p class="text-sm text-gray-600">Zone: <span class="font-bold text-gray-900">{{ application.franchise_details.zone }}</span></p>
                             </div>
 
