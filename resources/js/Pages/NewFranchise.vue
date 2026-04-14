@@ -105,7 +105,7 @@ const form = useForm({
     first_name: '', middle_name: '', last_name: '', email: '', contact_number: '', tin_number: '',
     street_address: '', province: '', city: '', barangay: '',
     units: [{
-        make_id: '', zone_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
+        make_name: '', zone_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
         unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
         cr_photo: null, or_photo: null
     }],
@@ -181,7 +181,7 @@ const validateStep2 = () => {
 
     let unit = form.units[index];
     if (!unit.zone_id) { form.setError(`units.${index}.zone_id`, 'Target Zone is required.'); isValid = false; unitHasError = true; }
-    if (!unit.make_id) { form.setError(`units.${index}.make_id`, 'Make is required.'); isValid = false; unitHasError = true; }
+    if (!unit.make_name) { form.setError(`units.${index}.make_name`, 'Make is required.'); isValid = false; unitHasError = true; }
     if (!unit.model_year) { form.setError(`units.${index}.model_year`, 'Model Year is required.'); isValid = false; unitHasError = true; }
     if (!unit.plate_number?.toString().trim()) { form.setError(`units.${index}.plate_number`, 'Plate No. is required.'); isValid = false; unitHasError = true; }
     if (!unit.motor_number?.toString().trim()) { form.setError(`units.${index}.motor_number`, 'Motor No. is required.'); isValid = false; unitHasError = true; }
@@ -416,7 +416,7 @@ const formatTinNumber = (val) => {
                                     <div class="flex items-center gap-4">
                                         <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm bg-blue-600 text-white">1</div>
                                         <div>
-                                            <h3 class="font-bold text-gray-700">{{ unit.make_id ? unitMakes.find(m => m.id === unit.make_id)?.name : 'New Unit Details' }}</h3>
+                                            <h3 class="font-bold text-gray-700">{{ unit.make_name || 'New Unit' }}</h3>
                                             <p class="text-xs text-gray-400">{{ unit.plate_number || 'Plate number pending' }}</p>
                                         </div>
                                     </div>
@@ -434,13 +434,29 @@ const formatTinNumber = (val) => {
                                         </div>
                                         
                                         <div>
-                                            <InputLabel>Make <span class="text-red-600 font-bold">*</span></InputLabel>
-                                            <select v-model="unit.make_id" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm text-sm">
-                                                <option value="" disabled>Select Make</option>
-                                                <option v-for="make in unitMakes" :key="make.id" :value="make.id">{{ make.name }}</option>
-                                            </select>
-                                            <InputError :message="form.errors[`units.${index}.make_id`]" class="mt-1" />
-                                        </div>
+    <div class="flex items-start gap-1">
+        <InputLabel value="Make" />
+        <span class="text-red-600 font-bold">*</span>
+    </div>
+    <div class="relative">
+        <TextInput 
+            v-model="unit.make_name" 
+            @input="form.clearErrors(`units.${index}.make_name`)" 
+            :list="`make-options-${index}`"
+            placeholder="Type or select a make/model" 
+            class="block w-full pr-10 datalist-input" 
+        />
+        <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+            <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+            </svg>
+        </div>
+    </div>
+    <datalist :id="`make-options-${index}`">
+        <option v-for="make in unitMakes" :key="make.id" :value="make.name"></option>
+    </datalist>
+    <InputError :message="form.errors[`units.${index}.make_name`]" class="mt-2" />
+</div>
                                         <div>
                                             <InputLabel>Model Year <span class="text-red-600 font-bold">*</span></InputLabel>
                                             <TextInput type="number" v-model="unit.model_year" placeholder="e.g. 2024" class="mt-1 block w-full" />
@@ -456,11 +472,11 @@ const formatTinNumber = (val) => {
                                             <TextInput v-model="unit.motor_number" placeholder="e.g. M-123456" class="mt-1 block w-full" />
                                             <InputError :message="form.errors[`units.${index}.motor_number`]" class="mt-1" />
                                         </div>
-                                        <div>
+                                        <!-- <div>
                                             <InputLabel>CR Number <span class="text-red-600 font-bold">*</span></InputLabel>
                                             <TextInput v-model="unit.cr_number" placeholder="e.g. CR-987654" class="mt-1 block w-full" />
                                             <InputError :message="form.errors[`units.${index}.cr_number`]" class="mt-1" />
-                                        </div>
+                                        </div> -->
                                         <div>
                                             <InputLabel>Chassis No. <span class="text-red-600 font-bold">*</span></InputLabel>
                                             <TextInput v-model="unit.chassis_number" placeholder="e.g. C-123456" class="mt-1 block w-full" />
@@ -718,4 +734,11 @@ ul::-webkit-scrollbar-thumb, div::-webkit-scrollbar-thumb { background-color: #c
 ul:hover::-webkit-scrollbar-thumb, div:hover::-webkit-scrollbar-thumb { background-color: #94a3b8; }
 .custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
+/* Hide default datalist arrow but keep it clickable beneath the custom SVG */
+.datalist-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    width: 20px; 
+    height: 100%;
+}
 </style>

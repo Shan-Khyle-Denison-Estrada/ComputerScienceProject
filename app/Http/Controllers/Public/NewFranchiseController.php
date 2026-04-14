@@ -77,10 +77,10 @@ public function store(Request $request)
             
             'units' => 'required|array|min:1',
             'units.*.zone_id' => 'required|exists:zones,id',
-            'units.*.make_id' => 'required|exists:unit_makes,id',
+            'units.*.make_name' => 'required|string|max:255',
             'units.*.model_year' => 'required|integer',
             'units.*.plate_number' => 'required|string',
-            'units.*.cr_number' => 'required|string',
+            'units.*.cr_number' => 'nullable|string',
             'units.*.motor_number' => 'required|string',
             'units.*.chassis_number' => 'required|string',
             'units.*.unit_front_photo' => 'required|file|mimes:jpg,jpeg,png',
@@ -120,11 +120,14 @@ public function store(Request $request)
             ]);
 
             foreach ($validated['units'] as $index => $unitData) {
+                $unitMake = UnitMake::firstOrCreate(
+                    ['name' => trim($unitData['make_name'])]
+                );
                 // Map the file uploads to match the ProposedUnit model exactly
                 ProposedUnit::create([
                     'application_id' => $application->id,
                     'zone_id' => $unitData['zone_id'],
-                    'make_id' => $unitData['make_id'],
+                    'make_id' => $unitMake->id, // Use the dynamically fetched/created ID
                     'model_year' => $unitData['model_year'],
                     'plate_number' => $unitData['plate_number'],
                     'cr_number' => $unitData['cr_number'],

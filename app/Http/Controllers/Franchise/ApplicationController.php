@@ -288,19 +288,25 @@ class ApplicationController extends Controller
         } else {
             // Require photos upload only if unit is completely new
             $request->validate([
-                'make_id'               => 'required', 
-                'model_year'            => 'required|numeric',
-                'plate_number'          => 'required|string',
-                'motor_number'          => 'required|string',
-                'chassis_number'        => 'required|string',
-                'cr_number'             => 'required|string',
-                'unit_front_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
-                'unit_back_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
-                'unit_left_photo'       => 'required|image|mimes:jpeg,png,jpg|max:5120',
-                'unit_right_photo'      => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'make_name'        => 'required|string|max:255',
+                'model_year'       => 'required|numeric',
+                'plate_number'     => 'required|string',
+                'motor_number'     => 'required|string',
+                'chassis_number'   => 'required|string',
+                'cr_number'        => 'nullable|string',
+                'unit_front_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'unit_back_photo'  => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'unit_left_photo'  => 'required|image|mimes:jpeg,png,jpg|max:5120',
+                'unit_right_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            ]);
+
+            // Auto-create or fetch the Make
+            $unitMake = \App\Models\UnitMake::firstOrCreate([
+                'name' => trim($request->make_name)
             ]);
             
-            $makeId = $request->make_id;
+            // Assign the variables correctly (ONCE!)
+            $makeId = $unitMake->id; 
             $modelYear = $request->model_year;
             $plateNumber = $request->plate_number;
             $motorNumber = $request->motor_number;

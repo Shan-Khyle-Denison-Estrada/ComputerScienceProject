@@ -576,7 +576,7 @@ const formatCurrency = (value) => {
                                         <div><span class="block text-xs text-gray-500">Make</span><span class="font-medium text-gray-900">{{ selectedFranchise.make_name }}</span></div>
                                         <div><span class="block text-xs text-gray-500">Model Year</span><span class="font-medium text-gray-900">{{ selectedFranchise.model_year }}</span></div>
                                         <div><span class="block text-xs text-gray-500">Date Issued</span><span class="font-medium text-gray-900">{{ selectedFranchise.date_issued }}</span></div>
-                                        <div><span class="block text-xs text-gray-500">CR Number</span><span class="font-medium text-gray-900">{{ selectedFranchise.cr_number }}</span></div>
+                                        <!-- <div><span class="block text-xs text-gray-500">CR Number</span><span class="font-medium text-gray-900">{{ selectedFranchise.cr_number }}</span></div> -->
                                     </div>
                                 </div>
                                 

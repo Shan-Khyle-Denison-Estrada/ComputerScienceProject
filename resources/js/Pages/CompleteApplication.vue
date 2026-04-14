@@ -17,7 +17,7 @@ const settings = computed(() => page.props.settings || {});
 const currentThemeColor = computed(() => settings.value.theme_color || '#2563eb');
 
 const getEmptyUnit = () => ({
-    make_id: '', zone_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
+    make_name: '', zone_id: '', model_year: '', plate_number: '', cr_number: '', motor_number: '', chassis_number: '',
     unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
     cr_photo: null, or_photo: null
 });
@@ -57,7 +57,7 @@ const toggleUnit = (index) => { expandedUnitIndex.value = expandedUnitIndex.valu
 const areAllRequirementsMet = computed(() => {
     const docsMet = props.requirements.length === 0 || props.requirements.every(req => form.documents[req.id]);
     const unitsMet = props.application.application_type !== 'New Franchise' || form.units.every(u => 
-        u.make_id && u.zone_id && u.model_year && u.plate_number && u.motor_number && u.chassis_number && u.cr_number && 
+        u.make_name && u.zone_id && u.model_year && u.plate_number && u.motor_number && u.chassis_number && 
         u.unit_front_photo && u.cr_photo && u.or_photo
     );
     return docsMet && unitsMet;
@@ -97,7 +97,7 @@ const submit = () => {
                         <div v-if="application.application_type === 'New Franchise'" class="mb-12">
                             <div class="flex items-center justify-between border-b border-slate-100 pb-4 mb-6">
                                 <h3 class="text-xl font-bold text-slate-900">Proposed Tricycle Units</h3>
-                                <button type="button" @click="addUnit" class="text-sm theme-bg opacity-90 px-4 py-2 rounded-lg text-white font-medium hover:opacity-100 transition-opacity">+ Add Unit</button>
+                                <!-- <button type="button" @click="addUnit" class="text-sm theme-bg opacity-90 px-4 py-2 rounded-lg text-white font-medium hover:opacity-100 transition-opacity">+ Add Unit</button> -->
                             </div>
 
                             <div class="space-y-4">
@@ -105,7 +105,7 @@ const submit = () => {
                                     <div @click="toggleUnit(index)" class="flex items-center justify-between p-4 cursor-pointer hover:bg-slate-50 transition-colors bg-slate-50">
                                         <div class="flex items-center gap-4">
                                             <div class="flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm bg-blue-100 text-blue-700">{{ index + 1 }}</div>
-                                            <div><h3 class="font-bold text-slate-700">{{ unit.make_id ? unitMakes.find(m => m.id === unit.make_id)?.name : 'New Unit Details' }}</h3><p class="text-xs text-slate-500">{{ unit.plate_number || 'Provide plate info' }}</p></div>
+                                            <div><h3 class="font-bold text-slate-700">{{ unit.make_name || 'New Unit Details' }}</h3><p class="text-xs text-slate-500">{{ unit.plate_number || 'Provide plate info' }}</p></div>
                                         </div>
                                         <div class="flex items-center gap-3">
                                             <button v-if="form.units.length > 1" type="button" @click.stop="removeUnit(index)" class="text-red-500 text-sm font-medium hover:underline">Remove</button>
@@ -123,12 +123,32 @@ const submit = () => {
                                         </div>
 
                                         <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-                                            <div><div class="flex items-start gap-1"><InputLabel value="Make" /><span class="text-red-600 font-bold">*</span></div><select v-model="unit.make_id" class="mt-1 block w-full border-slate-300 rounded-lg"><option value="" disabled>Select</option><option v-for="make in unitMakes" :key="make.id" :value="make.id">{{ make.name }}</option></select><InputError :message="form.errors[`units.${index}.make_id`]" class="mt-2" /></div>
+                                            <div>
+                                                <div class="flex items-start gap-1"><InputLabel value="Make" /><span class="text-red-600 font-bold">*</span></div>
+                                                <div class="relative mt-1">
+                                                    <TextInput 
+                                                        v-model="unit.make_name" 
+                                                        @input="form.clearErrors(`units.${index}.make_name`)" 
+                                                        :list="`make-options-${index}`"
+                                                        placeholder="Type or select" 
+                                                        class="block w-full pr-10 datalist-input" 
+                                                    />
+                                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-slate-500">
+                                                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                            <path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+                                                        </svg>
+                                                    </div>
+                                                </div>
+                                                <datalist :id="`make-options-${index}`">
+                                                    <option v-for="make in unitMakes" :key="make.id" :value="make.name"></option>
+                                                </datalist>
+                                                <InputError :message="form.errors[`units.${index}.make_name`]" class="mt-2" />
+                                            </div>
                                             <div><div class="flex items-start gap-1"><InputLabel value="Model Year" /><span class="text-red-600 font-bold">*</span></div><TextInput type="number" v-model="unit.model_year" placeholder="e.g. 2024" class="mt-1 block w-full" /><InputError :message="form.errors[`units.${index}.model_year`]" class="mt-2" /></div>
                                             <div><div class="flex items-start gap-1"><InputLabel value="Plate No." /><span class="text-red-600 font-bold">*</span></div><TextInput v-model="unit.plate_number" class="mt-1 block w-full uppercase" /><InputError :message="form.errors[`units.${index}.plate_number`]" class="mt-2" /></div>
                                             <div><div class="flex items-start gap-1"><InputLabel value="Motor No." /><span class="text-red-600 font-bold">*</span></div><TextInput v-model="unit.motor_number" class="mt-1 block w-full uppercase" /><InputError :message="form.errors[`units.${index}.motor_number`]" class="mt-2" /></div>
                                             <div><div class="flex items-start gap-1"><InputLabel value="Chassis No." /><span class="text-red-600 font-bold">*</span></div><TextInput v-model="unit.chassis_number" class="mt-1 block w-full uppercase" /><InputError :message="form.errors[`units.${index}.chassis_number`]" class="mt-2" /></div>
-                                            <div><div class="flex items-start gap-1"><InputLabel value="CR Number" /><span class="text-red-600 font-bold">*</span></div><TextInput v-model="unit.cr_number" class="mt-1 block w-full uppercase" /><InputError :message="form.errors[`units.${index}.cr_number`]" class="mt-2" /></div>
+                                            <!-- <div><div class="flex items-start gap-1"><InputLabel value="CR Number" /><span class="text-red-600 font-bold">*</span></div><TextInput v-model="unit.cr_number" class="mt-1 block w-full uppercase" /><InputError :message="form.errors[`units.${index}.cr_number`]" class="mt-2" /></div> -->
                                         </div>
 
                                         <div class="pt-6 border-t border-slate-200">
@@ -214,4 +234,11 @@ const submit = () => {
 .theme-text { color: v-bind(currentThemeColor); }
 .theme-btn { background-color: v-bind(currentThemeColor); }
 .theme-btn:hover:not(:disabled) { filter: brightness(0.90); box-shadow: 0 10px 20px -5px v-bind('currentThemeColor + "60"'); transform: translateY(-1px); }
+/* Hide default datalist arrow but keep it clickable beneath the custom SVG */
+.datalist-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    width: 20px; 
+    height: 100%;
+}
 </style>

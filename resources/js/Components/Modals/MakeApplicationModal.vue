@@ -72,7 +72,7 @@ const form = useForm({
     new_owner_barangay: '', 
     
     // Unit Fields
-    existing_unit_id: '', make_id: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
+    existing_unit_id: '', make_name: '', model_year: '', plate_number: '', motor_number: '', chassis_number: '', cr_number: '',
     unit_front_photo: null, unit_back_photo: null, unit_left_photo: null, unit_right_photo: null,
     
     // New Driver Fields
@@ -312,12 +312,12 @@ const goToNextStep = () => {
                 isValid = false;
             }
         } else if (unitMode.value === 'new') {
-            if (!form.make_id) { form.setError('make_id', 'Required.'); isValid = false; }
+            if (!form.make_name) { form.setError('make_name', 'Required.'); isValid = false; }
             if (!form.model_year) { form.setError('model_year', 'Required.'); isValid = false; }
             if (!form.plate_number) { form.setError('plate_number', 'Required.'); isValid = false; }
             if (!form.motor_number) { form.setError('motor_number', 'Required.'); isValid = false; }
             if (!form.chassis_number) { form.setError('chassis_number', 'Required.'); isValid = false; }
-            if (!form.cr_number) { form.setError('cr_number', 'Required.'); isValid = false; }
+            // if (!form.cr_number) { form.setError('cr_number', 'Required.'); isValid = false; }
             if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) {
                 form.setError('unit_photos', 'Please upload all 4 photos (front, back, left, right) of the proposed unit.');
                 isValid = false;
@@ -654,11 +654,25 @@ const selectExistingOwner = (operator) => {
                                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div>
                                         <InputLabel>Make <span class="text-red-500">*</span></InputLabel>
-                                        <select v-model="form.make_id" :class="{'border-red-500': form.errors.make_id}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm py-1.5 mt-1">
-                                            <option value="">-- Select Make --</option>
-                                            <option v-for="m in unitMakes" :key="m.id" :value="m.id">{{ m.name }}</option>
-                                        </select>
-                                        <p v-if="form.errors.make_id" class="text-red-500 text-xs mt-1">{{ form.errors.make_id }}</p>
+                                        <div class="relative mt-1">
+                                            <TextInput 
+                                                v-model="form.make_name" 
+                                                @input="form.clearErrors('make_name')" 
+                                                list="modal-make-options"
+                                                placeholder="Type or select" 
+                                                class="block w-full pr-10 text-sm py-1.5 datalist-input" 
+                                                :class="{'border-red-500': form.errors.make_name}"
+                                            />
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none text-gray-500">
+                                                <svg class="w-4 h-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M10 3a.75.75 0 01.55.24l3.25 3.5a.75.75 0 11-1.1 1.02L10 4.852 7.3 7.76a.75.75 0 01-1.1-1.02l3.25-3.5A.75.75 0 0110 3zm-3.76 9.2a.75.75 0 011.06.04l2.7 2.908 2.7-2.908a.75.75 0 111.1 1.02l-3.25 3.5a.75.75 0 01-1.1 0l-3.25-3.5a.75.75 0 01.04-1.06z" clip-rule="evenodd" />
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <datalist id="modal-make-options">
+                                            <option v-for="make in unitMakes" :key="make.id" :value="make.name"></option>
+                                        </datalist>
+                                        <p v-if="form.errors.make_name" class="text-red-500 text-xs mt-1">{{ form.errors.make_name }}</p>
                                     </div>
                                     <div><InputLabel>Model Year <span class="text-red-500">*</span></InputLabel><TextInput type="number" v-model="form.model_year" :class="{'border-red-500': form.errors.model_year}" class="w-full text-sm py-1.5 mt-1" placeholder="YYYY" />
                                         <p v-if="form.errors.model_year" class="text-red-500 text-xs mt-1">{{ form.errors.model_year }}</p>
@@ -672,9 +686,9 @@ const selectExistingOwner = (operator) => {
                                     <div><InputLabel>Chassis No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.chassis_number" :class="{'border-red-500': form.errors.chassis_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.chassis_number" class="text-red-500 text-xs mt-1">{{ form.errors.chassis_number }}</p>
                                     </div>
-                                    <div><InputLabel>CR No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.cr_number" :class="{'border-red-500': form.errors.cr_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
+                                    <!-- <div><InputLabel>CR No. <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.cr_number" :class="{'border-red-500': form.errors.cr_number}" class="w-full text-sm py-1.5 mt-1 uppercase" />
                                         <p v-if="form.errors.cr_number" class="text-red-500 text-xs mt-1">{{ form.errors.cr_number }}</p>
-                                    </div>
+                                    </div> -->
                                 </div>
 
                                 <div class="mt-2">
@@ -847,4 +861,11 @@ const selectExistingOwner = (operator) => {
 .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 20px; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #94a3b8; }
+/* Hide default datalist arrow but keep it clickable beneath the custom SVG */
+.datalist-input::-webkit-calendar-picker-indicator {
+    opacity: 0;
+    cursor: pointer;
+    width: 20px; 
+    height: 100%;
+}
 </style>

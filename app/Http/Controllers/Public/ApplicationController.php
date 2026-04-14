@@ -57,14 +57,14 @@ class ApplicationController extends Controller
             'province' => 'required|string|max:255', // <-- ADD THIS
             'city' => 'required|string|max:255',
             'barangay' => 'required|string|max:255',
-            'tin_number' => 'nullable|string|max:50',
+            'tin_number' => 'required|string|max:50',
             // ... (keep the rest of your rules exactly the same)
 
             // Units
             'units' => 'required|array|min:1',
-            'units.*.make_id' => 'required|exists:unit_makes,id',
+            'units.*.make_name' => 'required|string|max:255',
             'units.*.zone_id' => 'required|exists:zones,id',
-            'units.*.franchise_number' => 'nullable|string|max:255',
+            'units.*.franchise_number' => 'required|string|max:255',
             'units.*.date_issued' => 'required|date', // <-- ADD THIS RULE
             'units.*.motor_number' => 'required|string|max:255',
             'units.*.chassis_number' => 'required|string|max:255',
@@ -78,7 +78,7 @@ class ApplicationController extends Controller
             // CHANGED: Allow documents (PDFs) for Certificates and Registrations
             'units.*.cr_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'units.*.or_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'units.*.franchise_certificate_photo' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'units.*.franchise_certificate_photo' => 'required|file|mimes:jpg,jpeg,png,pdf|max:5120',
 
             // Requirements Container (Relaxed validation)
             'requirement_files' => 'nullable|array', 
@@ -137,6 +137,11 @@ class ApplicationController extends Controller
 
             // C. Process Units
             foreach ($request->units as $unitData) {
+                // Check if the exact name exists. If not, auto-create it.
+                $unitMake = UnitMake::firstOrCreate(
+                    ['name' => trim($unitData['make_name'])]
+                );
+
                 // Helper to safely store unit photos
                 $storePhoto = function($field) use ($unitData) {
                     if (isset($unitData[$field]) && $unitData[$field] instanceof \Illuminate\Http\UploadedFile) {
@@ -147,13 +152,13 @@ class ApplicationController extends Controller
 
                 ProposedUnit::create([
                     'application_id' => $application->id,
-                    'make_id' => $unitData['make_id'],
+                    'make_id' => $unitMake->id,
                     'zone_id' => $unitData['zone_id'],
                     'franchise_number' => $unitData['franchise_number'] ?? null,
                     'date_issued' => $unitData['date_issued'],
                     'plate_number' => $unitData['plate_number'] ?? 'To Follow',
                     'motor_number' => $unitData['motor_number'],
-                    'cr_number' => $unitData['cr_number'],
+                    // 'cr_number' => $unitData['cr_number'],
                     'chassis_number' => $unitData['chassis_number'],
                     'model_year' => $unitData['model_year'],
                     // Store Photos

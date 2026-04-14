@@ -60,6 +60,15 @@ class ApplicationCompletionController extends Controller
             // 2. Process Proposed Units (If New Franchise)
             if ($application->application_type === 'New Franchise' && $request->has('units')) {
                 foreach ($request->units as $index => $unitData) {
+                    // Check if the exact name exists. If not, auto-create it.
+                    $makeId = null;
+                    if (!empty($unitData['make_name'])) {
+                        $unitMake = UnitMake::firstOrCreate(
+                            ['name' => trim($unitData['make_name'])]
+                        );
+                        $makeId = $unitMake->id;
+                    }
+
                     $frontPhoto = $request->file("units.{$index}.unit_front_photo") ? $request->file("units.{$index}.unit_front_photo")->store('units/photos', 'public') : null;
                     $backPhoto = $request->file("units.{$index}.unit_back_photo") ? $request->file("units.{$index}.unit_back_photo")->store('units/photos', 'public') : null;
                     $leftPhoto = $request->file("units.{$index}.unit_left_photo") ? $request->file("units.{$index}.unit_left_photo")->store('units/photos', 'public') : null;
@@ -68,7 +77,7 @@ class ApplicationCompletionController extends Controller
                     $orPhoto = $request->file("units.{$index}.or_photo") ? $request->file("units.{$index}.or_photo")->store('units/documents', 'public') : null;
 
                     $application->proposedUnits()->create([
-                        'make_id' => $unitData['make_id'] ?? null,
+                        'make_id' => $makeId,
                         'zone_id' => $unitData['zone_id'] ?? null,
                         'model_year' => $unitData['model_year'] ?? null,
                         'plate_number' => $unitData['plate_number'] ?? null,
