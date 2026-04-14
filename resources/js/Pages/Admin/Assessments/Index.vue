@@ -651,7 +651,7 @@ onUnmounted(() => {
                         <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
                             <span class="block text-xs font-medium text-gray-500 uppercase">Franchise & Operator</span>
                             <span class="font-semibold text-gray-900 text-lg block">
-                                {{ selectedAssessment.franchise_id ? `#${selectedAssessment.franchise_id}` : 'N/A' }}
+                                {{ selectedAssessment.franchise.franchise_number ? `#${selectedAssessment.franchise.franchise_number}` : 'N/A' }}
                             </span>
                             <span class="text-gray-600">{{ getOperatorName(selectedAssessment) }}</span>
                         </div>
@@ -661,7 +661,7 @@ onUnmounted(() => {
                                 <span class="text-gray-600">Issued: {{ selectedAssessment.assessment_date }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-red-600 font-medium">Due: {{ selectedAssessment.assessment_due }}</span>
+                                <span class="text-red-600 font-medium">Due: {{ selectedAssessment.assessment_due || 'N/A' }}</span>
                             </div>
                         </div>
                         <div class="col-span-2">
