@@ -772,7 +772,7 @@ const selectExistingOwner = (operator) => {
                                         </div>
                                     </div>
                                     <div>
-                                        <label class="px-4 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-md shadow-sm cursor-pointer hover:bg-gray-50 hover:text-blue-600 transition-all focus-within:ring-2 focus-within:ring-blue-500 whitespace-nowrap">
+                                        <label class="relative px-4 py-1.5 bg-white border border-gray-300 text-gray-700 text-xs font-bold rounded-md shadow-sm cursor-pointer hover:bg-gray-50 hover:text-blue-600 transition-all focus-within:ring-2 focus-within:ring-blue-500 whitespace-nowrap">
                                             {{ docPreviews[req.id] ? 'Change' : 'Upload' }}
                                             <input type="file" class="sr-only" @change="e => handleDocChange(e, req.id)" accept="image/*,.pdf" />
                                         </label>
