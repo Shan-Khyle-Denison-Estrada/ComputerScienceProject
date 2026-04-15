@@ -327,7 +327,10 @@ const formatTime = (timeString) => {
                                 </div>
                             </button>
 
-                            <div class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-3 md:gap-4 hover:shadow-md transition-shadow">
+                            <div 
+                                @click="activeTab = 'payments'"
+                                class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200 flex items-start gap-3 md:gap-4 hover:shadow-md transition-shadow cursor-pointer"
+                            >
                                 <div class="p-2 md:p-3 bg-emerald-50 text-emerald-600 rounded-xl shrink-0">
                                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -403,7 +406,7 @@ const formatTime = (timeString) => {
                                                         Schedule
                                                     </button>
 
-                                                    <button 
+                                                    <!-- <button 
                                                         v-if="!assign.is_active"
                                                         @click="openActivateDriverModal(assign)"
                                                         :disabled="processingDriverId === assign.driver_id"
@@ -413,7 +416,7 @@ const formatTime = (timeString) => {
                                                     </button>
                                                     <span v-else class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wide px-2">
                                                         Active
-                                                    </span>
+                                                    </span> -->
                                                 </div>
                                             </td>
                                         </tr>

@@ -227,6 +227,13 @@ class DashboardController extends Controller
             $newStart = strtotime($newDay['start']);
             $newEnd = strtotime($newDay['end']);
 
+            // Prevent overnight/invalid scheduling for a single day
+            if ($newEnd <= $newStart) {
+                return back()->withErrors([
+                    'schedule' => "Invalid schedule on {$newDay['day']}. The end time must be later than the start time."
+                ]);
+            }
+
             foreach ($assignmentsToCheck as $other) {
                 $otherSchedule = $other->schedule;
                 if (!$otherSchedule) continue;
