@@ -197,7 +197,7 @@ class UserController extends Controller
     {
         $request->validate([
             'role' => ['required', 'string'],
-            'expires_at' => ['required', 'date', 'after:now']
+            'expires_at' => ['nullable', 'date', 'after:now']
         ]);
 
         \App\Models\TemporaryRole::updateOrCreate(

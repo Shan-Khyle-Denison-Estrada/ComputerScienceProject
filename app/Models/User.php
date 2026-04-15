@@ -40,7 +40,11 @@ class User extends Authenticatable
     // Relationship to active temporary roles
     public function temporaryRoles()
     {
-        return $this->hasMany(TemporaryRole::class)->where('expires_at', '>', now());
+        return $this->hasMany(TemporaryRole::class)
+                    ->where(function ($query) {
+                        $query->whereNull('expires_at')
+                              ->orWhere('expires_at', '>', now());
+                    });
     }
 
     // Accessor that merges the base role with temporary roles into a single array

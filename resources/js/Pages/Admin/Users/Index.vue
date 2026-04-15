@@ -884,7 +884,10 @@ const hideSmartTooltip = () => {
                         <li v-for="temp in selectedUserForRoles.temporary_roles" :key="temp.id" class="flex justify-between items-center bg-purple-50 p-3 rounded-md border border-purple-100 shadow-sm">
                             <div>
                                 <span class="font-bold text-sm uppercase text-purple-800">{{ temp.role }}</span>
-                                <div class="text-xs text-purple-600 mt-1">Expires: {{ new Date(temp.expires_at).toLocaleString() }}</div>
+                                <div class="text-xs text-purple-600 mt-1">
+                                    <span v-if="temp.expires_at">Expires: {{ new Date(temp.expires_at).toLocaleString() }}</span>
+                                    <span v-else>Expires: Never</span>
+                                </div>
                             </div>
                             <button @click="revokeTempRole(temp.role)" class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition">Revoke</button>
                         </li>
@@ -905,14 +908,15 @@ const hideSmartTooltip = () => {
                                 <option value="reviewer">Reviewer</option>
                                 <!-- <option value="sp_approver">SP Approver</option> -->
                                 <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
-                                <option value="tab_approver">TAB Approver</option>
+                                <!-- <option value="tab_approver">TAB Approver</option> -->
                                 <option value="releaser">Releaser</option>
                                 <option value="encoder">Encoder</option>
                             </select>
                         </div>
                         <div>
-                            <InputLabel>Expiration Date & Time</InputLabel>
-                            <TextInput type="datetime-local" class="mt-1 block w-full" v-model="tempRoleForm.expires_at" required />
+                            <InputLabel>Expiration Date & Time (Optional)</InputLabel>
+                            <TextInput type="datetime-local" class="mt-1 block w-full" v-model="tempRoleForm.expires_at" />
+                            <p class="text-xs text-gray-500 mt-1">Leave blank for no expiration.</p>
                         </div>
                         <div class="flex justify-end gap-2 pt-4">
                             <SecondaryButton @click="closeTempRolesModal" type="button">Cancel</SecondaryButton>
@@ -940,7 +944,7 @@ const hideSmartTooltip = () => {
                         <li v-for="temp in activeTooltipUser.temporary_roles" :key="temp.id" class="text-xs bg-purple-50 p-2 rounded border border-purple-100">
                             <span class="block font-bold text-purple-800 uppercase">{{ temp.role.replace(/_/g, ' ') }}</span>
                             <span class="block text-gray-500 mt-1">
-                                Exp: {{ new Date(temp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) }}
+                                Exp: {{ temp.expires_at ? new Date(temp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Never' }}
                             </span>
                         </li>
                     </ul>
