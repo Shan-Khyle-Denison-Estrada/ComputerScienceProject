@@ -542,7 +542,7 @@ const saveInspectionStatus = () => {
                             </div>
 
                             <div v-for="(req, index) in application.evaluation_requirements" :key="index" 
-                                @click="!isEncoder && openRequirementModal(index)"
+                                @click="openRequirementModal(index)"
                                 class="bg-white border border-gray-200 rounded-lg p-4 flex justify-between items-center cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
                                 
                                 <div class="flex items-start gap-3">
@@ -762,7 +762,7 @@ const saveInspectionStatus = () => {
                             </div>
                             <div class="flex justify-between items-center">
                                 <SecondaryButton @click="closeRequirementModal">Close</SecondaryButton>
-                                <div class="flex gap-2">
+                                <div v-if="!isEncoder" class="flex gap-2">
                                     <PrimaryButton @click="saveRequirementStatus('Rejected')" class="bg-red-600 hover:bg-red-700 focus:ring-red-500">
                                         Reject
                                     </PrimaryButton>
