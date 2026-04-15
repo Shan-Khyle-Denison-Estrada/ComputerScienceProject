@@ -6,7 +6,7 @@ import Modal from '@/Components/Modal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import FranchiseCertificate from '@/Components/FranchiseCertificate.vue'; // New Import
-import { Head, useForm, Link, router } from '@inertiajs/vue3';
+import { Head, useForm, Link, router, usePage } from '@inertiajs/vue3';
 import { ref, computed, nextTick } from 'vue'; // Added nextTick
 
 const props = defineProps({
@@ -171,6 +171,16 @@ const getDriverName = (driver) => {
     if (driver.first_name && driver.last_name) return `${driver.last_name}, ${driver.first_name}`;
     return 'Unknown Name';
 };
+
+const canManageComplaints = computed(() => {
+    const roles = usePage().props.auth.user.active_roles;
+    // If they are an admin, they can always see it
+    if (roles.includes('admin')) return true;
+    // If they are a releaser (and NOT an admin), hide it
+    if (roles.includes('releaser')) return false;
+    // Default for other roles (like encoder) if applicable
+    return true; 
+});
 </script>
 
 <template>
@@ -198,13 +208,13 @@ const getDriverName = (driver) => {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                    <SecondaryButton @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
+                    <SecondaryButton v-if="canManageComplaints" @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
                         </svg>
                         Add Red Flag
                     </SecondaryButton>
-                    <SecondaryButton @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
+                    <SecondaryButton v-if="canManageComplaints" @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         Make Complaint
                     </SecondaryButton>
@@ -542,7 +552,7 @@ const getDriverName = (driver) => {
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Complainant</th>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Details</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                                            <th v-if="canManageComplaints" scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
@@ -573,7 +583,7 @@ const getDriverName = (driver) => {
                                                     Fare: ₱{{ complaint.fare_collected }}
                                                 </div>
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <td v-if="canManageComplaints" class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <button 
                                                     v-if="complaint.status !== 'Resolved'"
                                                     @click="resolveComplaint(complaint.id)" 
@@ -610,7 +620,7 @@ const getDriverName = (driver) => {
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Remarks</th>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                             <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Recorded</th>
-                                            <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                            <th v-if="canManageComplaints" scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
@@ -629,7 +639,7 @@ const getDriverName = (driver) => {
                                             <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                                 {{ new Date(flag.created_at).toLocaleDateString() }}
                                             </td>
-                                            <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                            <td v-if="canManageComplaints" class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                 <button 
                                                     v-if="flag.status !== 'resolved'" 
                                                     @click="resolveRedFlag(flag.id)" 
