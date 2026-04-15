@@ -529,7 +529,7 @@ const printReceipt = async (payment) => {
                                                 v-model="assessmentQuery" 
                                                 @focus="showAssessmentDropdown = true"
                                                 @input="showAssessmentDropdown = true; addForm.clearErrors('assessment_id')"
-                                                placeholder="e.g. APP-2023-001 or ASM-000012..." 
+                                                placeholder="e.g. APP-2023-001 or ASM-12..." 
                                                 autocomplete="off"
                                             />
                                             <div v-if="addForm.errors.assessment_id" class="text-sm text-red-600 mt-1">The reference number is required.</div>

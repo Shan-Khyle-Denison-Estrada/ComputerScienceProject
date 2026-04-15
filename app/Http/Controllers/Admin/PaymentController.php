@@ -97,7 +97,7 @@ class PaymentController extends Controller
                     // Provide a fallback reference if it's a standalone assessment
                     'reference_number' => $assessment->application 
                         ? $assessment->application->reference_number 
-                        : 'ASM-' . str_pad($assessment->id, 6, '0', STR_PAD_LEFT),
+                        : 'ASM-' . $assessment->id,
                     // Keep this for backward compatibility if needed by other components, or remove it
                     'application_reference_id' => $assessment->application ? $assessment->application->reference_number : null,
                     'label' => $assessment->remarks ?? 'Application Assessment',
