@@ -185,7 +185,7 @@ const validateStep2 = () => {
     if (!unit.model_year) { form.setError(`units.${index}.model_year`, 'Model Year is required.'); isValid = false; unitHasError = true; }
     if (!unit.plate_number?.toString().trim()) { form.setError(`units.${index}.plate_number`, 'Plate No. is required.'); isValid = false; unitHasError = true; }
     if (!unit.motor_number?.toString().trim()) { form.setError(`units.${index}.motor_number`, 'Motor No. is required.'); isValid = false; unitHasError = true; }
-    if (!unit.cr_number?.toString().trim()) { form.setError(`units.${index}.cr_number`, 'CR Number is required.'); isValid = false; unitHasError = true; }
+    // if (!unit.cr_number?.toString().trim()) { form.setError(`units.${index}.cr_number`, 'CR Number is required.'); isValid = false; unitHasError = true; }
     if (!unit.chassis_number?.toString().trim()) { form.setError(`units.${index}.chassis_number`, 'Chassis No. is required.'); isValid = false; unitHasError = true; }
     if (!unit.unit_front_photo) { form.setError(`units.${index}.unit_front_photo`, 'Front photo required.'); isValid = false; unitHasError = true; }
     if (!unit.unit_back_photo) { form.setError(`units.${index}.unit_back_photo`, 'Back photo required.'); isValid = false; unitHasError = true; }
