@@ -30,12 +30,15 @@ class ApplicationNewFranchiseShowController extends Controller
         $user = auth()->user();
         $isEncoder = strtolower($user->role->value) === 'encoder';
 
+        $operatorExists = \App\Models\Operator::where('tin_number', $application->tin_number)->exists();
+
         return Inertia::render('Admin/Applications/NewFranchiseShow', [
             'application' => $application,
             'inspectionItems' => InspectionItem::all(),
             'zones' => Zone::orderBy('description')->get(),
             'unitMakes' => UnitMake::orderBy('name')->get(),
-            'isEncoder' => $isEncoder
+            'isEncoder' => $isEncoder,
+            'operatorExists' => $operatorExists,
         ]);
     }
 

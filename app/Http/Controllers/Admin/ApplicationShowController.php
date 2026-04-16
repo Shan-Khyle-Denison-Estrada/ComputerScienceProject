@@ -269,7 +269,7 @@ class ApplicationShowController extends Controller
             'first_name' => 'required|string|max:255',
             'middle_name' => 'nullable|string|max:255',
             'last_name' => 'required|string|max:255',
-            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')],
+            'email' => ['required', 'email', 'max:255'],
             'contact_number' => 'required|string|max:20',
             'street_address' => 'required|string|max:255',
             
@@ -319,36 +319,55 @@ class ApplicationShowController extends Controller
                     }
                 }
 
-                // Generate a random 10-character password
-                $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
+                // A. Attempt to find existing Operator directly by TIN Number
+                $operator = Operator::where('tin_number', $validated['tin_number'])->first();
+                $isNewUser = false;
+                $generatedPassword = null;
 
-                // A. Create User (Franchise Owner)
-                $user = User::create([
-                    'user_photo' => $userPhotoPath, // Save the NEW path
-                    'first_name' => $validated['first_name'],
-                    'middle_name' => $validated['middle_name'],
-                    'last_name' => $validated['last_name'],
-                    'email' => $validated['email'],
-                    'password' => Hash::make($generatedPassword),
-                    'force_password_change' => true, // Flag to trigger change on first login
-                    'contact_number' => $validated['contact_number'],
-                    'street_address' => $validated['street_address'],
+                if ($operator) {
+                    // Operator already exists, just fetch their associated user
+                    $user = $operator->user;
                     
-                    // [!code focus] SAVE THE NAME STRING
-                    'barangay' => $validated['barangay'],
-                    
-                    'city' => $validated['city'],
-                    'province' => $validated['province'],
-                    'role' => 'franchise_owner', 
-                    'status' => 'active',
-                ]);
+                    // Optional: Update photo if the existing user didn't have one on file
+                    if ($userPhotoPath && !$user->user_photo) {
+                        $user->update(['user_photo' => $userPhotoPath]);
+                    }
+                } else {
+                    // Operator does NOT exist. We need to create User and Operator.
+                    // Fallback check: Does a user with this email exist without an operator profile?
+                    $user = User::where('email', $validated['email'])->first();
 
-                // B. Create Operator Record
-                $operator = Operator::create([
-                    'user_id' => $user->id,
-                    'tin_number' => $validated['tin_number'],
+                    if (!$user) {
+                        $isNewUser = true;
+                        // Generate a random 10-character password
+                        $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
 
-                ]);
+                        $user = User::create([
+                            'user_photo' => $userPhotoPath, // Save the NEW path
+                            'first_name' => $validated['first_name'],
+                            'middle_name' => $validated['middle_name'],
+                            'last_name' => $validated['last_name'],
+                            'email' => $validated['email'],
+                            'password' => Hash::make($generatedPassword),
+                            'force_password_change' => true, // Flag to trigger change on first login
+                            'contact_number' => $validated['contact_number'],
+                            'street_address' => $validated['street_address'],
+                            'barangay' => $validated['barangay'],
+                            'city' => $validated['city'],
+                            'province' => $validated['province'],
+                            'role' => 'franchise_owner', 
+                            'status' => 'active',
+                        ]);
+                    } elseif ($userPhotoPath && !$user->user_photo) {
+                        $user->update(['user_photo' => $userPhotoPath]);
+                    }
+
+                    // Create the brand new Operator record
+                    $operator = Operator::create([
+                        'user_id' => $user->id,
+                        'tin_number' => $validated['tin_number'],
+                    ]);
+                }
 
                 // C. Loop through Franchises
                 foreach ($validated['franchises'] as $franchiseData) {
@@ -431,8 +450,10 @@ class ApplicationShowController extends Controller
                     'status' => 'Completed', 
                     'franchise_id' => isset($franchise) ? $franchise->id : null,
                 ]);
-                // E. Send Email to the User
-                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
+                // E. Send Email to the User (Only if it's a completely new account)
+                if ($isNewUser && $generatedPassword) {
+                    \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
+                }
 
             });
 

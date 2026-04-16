@@ -12,7 +12,8 @@ const props = defineProps({
     barangays: { type: Array, default: () => [] }, 
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
-    application: { type: Object, default: null } 
+    application: { type: Object, default: null },
+    operatorExists: { type: Boolean, default: false } // <-- ADD THIS
 });
 
 const emit = defineEmits(['close']);
@@ -415,7 +416,7 @@ if (sourceUnits.length > 0) {
                                 <div><InputLabel value="Model Year" class="text-[10px]" /><TextInput type="number" v-model="franchise.model_year" placeholder="YYYY" class="w-full text-xs py-1.5" /></div>
 
                                 <div><InputLabel value="Plate Number" class="text-[10px]" /><TextInput v-model="franchise.plate_number" placeholder="ABC 123" class="w-full text-xs py-1.5 uppercase font-mono" /></div>
-                                <div><InputLabel value="CR Number" class="text-[10px]" /><TextInput v-model="franchise.cr_number" placeholder="Cert. Reg" class="w-full text-xs py-1.5 uppercase" /></div>
+                                <!-- <div><InputLabel value="CR Number" class="text-[10px]" /><TextInput v-model="franchise.cr_number" placeholder="Cert. Reg" class="w-full text-xs py-1.5 uppercase" /></div> -->
                                 <div><InputLabel value="Motor Number" class="text-[10px]" /><TextInput v-model="franchise.motor_number" class="w-full text-xs py-1.5 uppercase" /></div>
                                 <div><InputLabel value="Chassis Number" class="text-[10px]" /><TextInput v-model="franchise.chassis_number" class="w-full text-xs py-1.5 uppercase" /></div>
                             </div>
@@ -478,10 +479,19 @@ if (sourceUnits.length > 0) {
                             <p class="text-[10px] text-gray-400 mt-1">Username is auto-filled from email.</p>
                         </div>
                         <div class="bg-green-50 p-4 rounded-md border border-green-200 mt-3">
-                            <p class="text-xs text-green-700 font-medium flex items-start gap-2">
-                                <svg class="w-4 h-4 mt-0.5 flex-none" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                                A secure, system-generated password will be automatically emailed to the applicant. They will be required to change it upon their first login.
-                            </p>
+                            <div v-if="operatorExists" class="p-3 mt-2 bg-blue-50 border border-blue-100 rounded-md">
+                                <p class="text-sm text-blue-700 flex items-start">
+                                    <svg class="w-4 h-4 mr-2 text-blue-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    This applicant already has an existing operator account. The new franchise will be safely added to their existing profile. No new password will be generated or emailed.
+                                </p>
+                            </div>
+
+                            <div v-else class="p-3 mt-2 bg-green-50 border border-green-100 rounded-md">
+                                <p class="text-sm text-green-700 flex items-start">
+                                    <svg class="w-4 h-4 mr-2 text-green-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                    A completely new account will be created. A secure, system-generated password will be automatically emailed to the applicant.
+                                </p>
+                            </div>
                         </div>
                     </div>
                 </div>

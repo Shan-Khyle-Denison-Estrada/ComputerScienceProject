@@ -15,6 +15,7 @@ const props = defineProps({
     zones: { type: Array, default: () => [] },
     unitMakes: { type: Array, default: () => [] },
     isEncoder: { type: Boolean, default: false },
+    operatorExists: { type: Boolean, default: false }, // <-- ADD THIS
 });
 
 // --- STATE ---
@@ -711,7 +712,7 @@ const saveInspectionStatus = () => {
                 :application="props.application" 
                 :zones="zones"
                 :unitMakes="unitMakes"
-                @close="showCreateFranchiseModal = false" 
+                :operatorExists="props.operatorExists" @close="showCreateFranchiseModal = false" 
             />
     </AuthenticatedLayout>
 </template>
