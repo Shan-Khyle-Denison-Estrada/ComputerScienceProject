@@ -418,12 +418,22 @@ class ApplicationController extends Controller
 
     public function destroyRequirement($type, $id)
     {
-        if ($type === 'evaluation') {
-            EvaluationRequirement::destroy($id);
-        } else {
-            InspectionItem::destroy($id);
+        try {
+            if ($type === 'evaluation') {
+                EvaluationRequirement::destroy($id);
+            } else {
+                InspectionItem::destroy($id);
+            }
+            return back()->with('success', 'Requirement deleted.');
+
+        } catch (\Illuminate\Database\QueryException $e) {
+            // Check for Integrity constraint violation (SQLSTATE 23000)
+            if ($e->getCode() == 23000) {
+                return back()->with('error', 'Cannot delete this requirement. It is currently linked to existing application records.');
+            }
+            
+            return back()->with('error', 'An error occurred while trying to delete the requirement.');
         }
-        return back()->with('success', 'Requirement deleted.');
     }
 
     public function store(Request $request)
