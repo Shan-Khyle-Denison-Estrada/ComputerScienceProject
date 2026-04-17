@@ -454,7 +454,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder
 // --- PARTICULARS ROUTES (Admin Only) ---
 Route::middleware(['auth', 'prevent-back-history', 'role:admin'])->group(function () {
     Route::post('/particulars', [ParticularController::class, 'store'])->name('admin.particulars.store');
-    Route::put('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
+    Route::post('/particulars/{particular}', [ParticularController::class, 'update'])->name('admin.particulars.update');
     Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
 });
 

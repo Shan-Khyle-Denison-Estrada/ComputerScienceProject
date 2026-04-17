@@ -199,9 +199,9 @@ const editParticular = (p) => {
 };
 
 const submitParticular = () => {
-    const routeName = isEditingParticular.value ? 'admin.particulars.store' : 'admin.particulars.store';
+    const routeName = isEditingParticular.value ? 'admin.particulars.update' : 'admin.particulars.store';
     const params = isEditingParticular.value ? particularForm.id : undefined;
-    const method = isEditingParticular.value ? 'put' : 'post';
+    const method = isEditingParticular.value ? 'post' : 'post';
     particularForm[method](route(routeName, params), { onSuccess: () => resetParticularForm(), preserveScroll: true });
 };
 
