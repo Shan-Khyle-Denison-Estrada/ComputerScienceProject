@@ -29,8 +29,13 @@ const parsedContent = computed(() => {
         return '<div style="text-align: center; padding: 2rem; color: #6b7280; font-family: sans-serif;">No certificate template configured. Please set it up in the settings.</div>';
     }
 
+    // CRITICAL FIX: Strip raw HTML source-code line breaks. 
+    // Since the print view uses `white-space: pre-wrap`, any hidden database formatting 
+    // newlines will forcefully push inline variables down to the next line.
+    const cleanHTML = props.template.content.replace(/\r?\n|\r/g, '');
+
     const parser = new DOMParser();
-    const doc = parser.parseFromString(props.template.content, 'text/html');
+    const doc = parser.parseFromString(cleanHTML, 'text/html');
 
     // 1. Process Text Variables
     const textVars = doc.querySelectorAll('span[data-text-variable]');
@@ -50,12 +55,11 @@ const parsedContent = computed(() => {
         if (varName === 'tab_approver_name') replacementText = props.tabApprover ? `${props.tabApprover.first_name} ${props.tabApprover.last_name}` : 'N/A';
         if (varName === 'sp_approver_name') replacementText = props.spApprover ? `${props.spApprover.first_name} ${props.spApprover.last_name}` : 'N/A';
 
-        // Clean up editor-only attributes
-        // NOTE: We do NOT touch el.style or el.className anymore. The database now holds the pure CSS inline styles!
-        el.removeAttribute('data-text-variable');
-        
-        // Inject the real text
-        el.textContent = replacementText;
+        // THE SILVER BULLET: Destroy the <span> wrapper entirely and inject pure text.
+        // This permanently prevents the browser from applying block-level CSS to the variable,
+        // physically locking it to the exact same line as the text immediately next to it.
+        const textNode = doc.createTextNode(replacementText);
+        el.parentNode.replaceChild(textNode, el);
     });
 
     // 2. Process Dynamic Images & Signatures
@@ -79,15 +83,14 @@ const parsedContent = computed(() => {
         }
     });
 
-    // 3. CRITICAL FIX: Inject physical space into empty lines! 
-    // This stops elements (like the signature line) from shooting upwards during print parsing.
+    // 3. CRITICAL FIX: Inject exact TipTap blank line behavior
     doc.querySelectorAll('p').forEach(p => {
-        if (!p.textContent.trim() && p.children.length === 0) {
-            p.innerHTML = '&nbsp;'; 
+        if (!p.textContent.trim() && (p.children.length === 0 || (p.children.length === 1 && p.children[0].tagName === 'BR'))) {
+            p.innerHTML = '<br class="ProseMirror-trailingBreak">'; 
         }
     });
 
-    // 4. CRITICAL FIX: Force List Styles via inline CSS to bypass Tailwind print stripping
+    // 4. Force List Styles via inline CSS to bypass Tailwind print stripping
     doc.querySelectorAll('ol').forEach(ol => {
         ol.style.cssText = 'display: block !important; list-style-type: decimal !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
     });
@@ -101,10 +104,11 @@ const parsedContent = computed(() => {
     return doc.body.innerHTML;
 });
 
+// CRITICAL FIX: Exact physical dimensions mapping (bypasses browser pixel scaling)
 const paperDimensions = {
-    'A4': { width: 794, height: 1123 },
-    'Letter': { width: 816, height: 1056 },
-    'Legal': { width: 816, height: 1344 }
+    'A4': { width: '210mm', minHeight: '297mm' },
+    'Letter': { width: '8.5in', minHeight: '11in' },
+    'Legal': { width: '8.5in', minHeight: '14in' }
 };
 
 const paperStyle = computed(() => {
@@ -113,15 +117,10 @@ const paperStyle = computed(() => {
     const size = paperDimensions[props.template.paper_size] || paperDimensions['A4'];
     const margins = props.template.margins || { top: 1, bottom: 1, left: 1, right: 1 };
     
-    const pTop = margins.top * 96;
-    const pRight = margins.right * 96;
-    const pBottom = margins.bottom * 96;
-    const pLeft = margins.left * 96;
-
     return {
-        width: `${size.width}px`,
-        minHeight: `${size.height}px`,
-        padding: `${pTop}px ${pRight}px ${pBottom}px ${pLeft}px`,
+        width: size.width,
+        minHeight: size.minHeight,
+        padding: `${margins.top || 0}in ${margins.right || 0}in ${margins.bottom || 0}in ${margins.left || 0}in`,
         margin: '0 auto',
         backgroundColor: 'white',
         position: 'relative',
@@ -146,9 +145,17 @@ const paperStyle = computed(() => {
     justify-content: center;
 }
 
+/* Kills the Browser Headers and Footers (Date, URL, Page Number) permanently */
+@page {
+    margin: 0 !important;
+    size: auto;
+}
+
 .certificate-content {
-    font-family: inherit;
-    line-height: 1.5;
+    /* Lock the exact screen typography so the printer cannot shrink it */
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    -webkit-text-size-adjust: 100% !important;
+    text-size-adjust: 100% !important;
     color: black;
 }
 
@@ -157,18 +164,31 @@ const paperStyle = computed(() => {
 }
 
 /* === EXACT CLONE OF TIPTAP EDITOR CSS === */
-.editor-paper .ProseMirror { outline: none; min-height: 100%; position: relative; }
+.editor-paper .ProseMirror { 
+    outline: none; 
+    min-height: 100%; 
+    position: relative; 
+    white-space: pre-wrap !important; 
+    word-wrap: break-word;
+    /* FIX: Force print to inherit exactly what is on the screen without hardcoding decimals */
+    line-height: inherit !important; 
+}
 .editor-paper .ProseMirror::after { content: ""; display: table; clear: both; }
 
-.editor-paper .ProseMirror h1 { font-weight: bold; margin: 0; padding: 0; line-height: inherit;}
-.editor-paper .ProseMirror h2 { font-weight: bold; margin: 0; padding: 0; line-height: inherit;}
+.editor-paper .ProseMirror h1, 
+.editor-paper .ProseMirror h2 { font-weight: bold; margin: 0; padding: 0; }
 .editor-paper .ProseMirror ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
 .editor-paper .ProseMirror ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
 
-/* Strictly match editor tightness */
-.editor-paper .ProseMirror p { margin: 0; padding: 0; line-height: inherit; text-align: inherit;} 
+/* Let paragraph spacing be completely determined by the TipTap Engine's inline styles */
+.editor-paper .ProseMirror p { 
+    margin: 0 !important; 
+    padding: 0 !important; 
+    text-align: inherit;
+    line-height: inherit !important;
+} 
 
-/* === NUCLEAR TABLE OVERRIDE (Forces Multi-Column Rendering) === */
+/* === NUCLEAR TABLE OVERRIDE === */
 .editor-paper .ProseMirror table {
     display: table !important; 
     border-collapse: collapse !important; 
@@ -185,7 +205,7 @@ const paperStyle = computed(() => {
 .editor-paper .ProseMirror table tr { 
     display: table-row !important; 
     width: auto !important; 
-    flex-direction: row !important; /* Defeats Tailwind flex resets */
+    flex-direction: row !important; 
 }
 .editor-paper .ProseMirror table td, .editor-paper .ProseMirror table th {
     display: table-cell !important; 
@@ -212,14 +232,37 @@ const paperStyle = computed(() => {
 
 /* Print Specific Overrides */
 @media print {
-    @page { margin: 0; size: auto; }
+    @page { margin: 0 !important; size: auto; }
     
-    .print-container { padding: 0; background-color: transparent; align-items: flex-start !important; }
-    .certificate-content { box-shadow: none !important; border: none !important; page-break-after: avoid; page-break-inside: avoid; }
+    body * { visibility: hidden; }
+    .print-container, .print-container * { visibility: visible; }
+
+    .editor-paper {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important; 
+        min-height: 100% !important;
+        transform: none !important; 
+        box-shadow: none !important;
+        margin: 0 !important;
+        border: none !important;
+    }
     
-    * {
+    /* * THE SILVER BULLET: 
+     * This absolutely stops Chrome/Edge from modifying your text rendering and spacing during print.
+     */
+    .editor-paper, .editor-paper * {
         -webkit-print-color-adjust: exact !important;
         print-color-adjust: exact !important;
+        text-size-adjust: none !important;
+        -webkit-text-size-adjust: none !important;
     }
+}
+
+/* Strictly enforce inline rendering for variables so they never break to a new line */
+.editor-paper .ProseMirror .inline-variable {
+    display: inline !important;
+    vertical-align: baseline !important;
 }
 </style>
