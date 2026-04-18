@@ -1,6 +1,6 @@
 <script setup>
-import { onBeforeUnmount, computed, ref } from 'vue';
-import { Head, useForm, Link } from '@inertiajs/vue3';
+import { onBeforeUnmount, computed, ref, watch } from 'vue';
+import { Head, useForm, Link, usePage } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 
 // TipTap Core & Extensions
@@ -36,6 +36,24 @@ const form = useForm({
     paper_size: props.template.paper_size || 'A4',
     margins: props.template.margins || { top: 1, bottom: 1, left: 1, right: 1 },
 });
+
+// --- FLASH MESSAGE AUTO-HIDE ---
+const page = usePage();
+const showFlashMessage = ref(false);
+let flashTimeout = null;
+
+watch(() => page.props.flash?.success, (newVal) => {
+    if (newVal) {
+        showFlashMessage.value = true;
+        if (flashTimeout) clearTimeout(flashTimeout);
+        
+        flashTimeout = setTimeout(() => {
+            showFlashMessage.value = false;
+            // Clear the flash prop so it triggers again on subsequent saves without page reload
+            page.props.flash.success = null; 
+        }, 3000);
+    }
+}, { immediate: true });
 
 // --- ZOOM & MARGINS ---
 const zoomLevel = ref(1.0); 
@@ -365,12 +383,14 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
         <div class="h-[calc(100vh-6rem)]">
             <div class="h-full relative">
                 
-                <div v-if="$page.props.flash?.success" class="fixed top-20 right-8 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg">
-                    <div class="flex items-center gap-2">
-                        <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        {{ $page.props.flash.success }}
+                <transition leave-active-class="transition ease-in duration-300" leave-from-class="opacity-100" leave-to-class="opacity-0">
+                    <div v-if="showFlashMessage && $page.props.flash?.success" class="fixed top-20 right-8 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded shadow-lg">
+                        <div class="flex items-center gap-2">
+                            <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
+                            {{ $page.props.flash.success }}
+                        </div>
                     </div>
-                </div>
+                </transition>
 
                 <div class="bg-white shadow-sm sm:rounded-lg border border-gray-200 flex h-full overflow-hidden">
                     
