@@ -139,15 +139,15 @@ const isNegativeRating = (rating) => ['fail', 'poor', 'defective', 'failed', 'no
 
 const getBadgeClass = (rating) => {
     if (rating === 'Pending') return 'bg-gray-100 text-gray-500';
-    if (isPositiveRating(rating)) return 'bg-green-100 text-green-700';
-    if (isNegativeRating(rating)) return 'bg-red-100 text-red-700';
+    // if (isPositiveRating(rating)) return 'bg-green-100 text-green-700';
+    // if (isNegativeRating(rating)) return 'bg-red-100 text-red-700';
     return 'bg-blue-100 text-blue-700';
 };
 
 const getBorderClass = (rating) => {
     if (rating === 'Pending') return 'border-gray-200 hover:border-indigo-400';
-    if (isPositiveRating(rating)) return 'border-green-200 hover:border-green-400';
-    if (isNegativeRating(rating)) return 'border-red-200 hover:border-red-400';
+    // if (isPositiveRating(rating)) return 'border-green-200 hover:border-green-400';
+    // if (isNegativeRating(rating)) return 'border-red-200 hover:border-red-400';
     return 'border-blue-200 hover:border-blue-400';
 };
 
@@ -401,8 +401,7 @@ const isImageUrl = (url) => {
                         <button v-for="option in inspectionsList[selectedInspectionIndex].rating_options" 
                                 :key="option"
                                 @click="saveInspectionStatus(option)" 
-                                :class="getButtonClass(option)"
-                                class="inline-flex items-center px-4 py-2 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest transition ease-in-out duration-150 shadow-sm">
+                                class="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 focus:ring-indigo-500 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest transition ease-in-out duration-150 shadow-sm">
                             Mark as {{ option }}
                         </button>
                     </div>

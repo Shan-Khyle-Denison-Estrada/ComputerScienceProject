@@ -164,8 +164,8 @@ const isNegativeRating = (rating) => ['fail', 'poor', 'defective', 'failed', 'no
 
 const getBadgeClass = (rating) => {
     if (rating === 'Pending') return 'bg-gray-100 text-gray-500';
-    if (isPositiveRating(rating)) return 'bg-green-100 text-green-700';
-    if (isNegativeRating(rating)) return 'bg-red-100 text-red-700';
+    // if (isPositiveRating(rating)) return 'bg-green-100 text-green-700';
+    // if (isNegativeRating(rating)) return 'bg-red-100 text-red-700';
     return 'bg-blue-100 text-blue-700';
 };
 
@@ -427,15 +427,13 @@ const isImageUrl = (url) => {
                 <div class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mb-6">
                     <div v-for="(item, index) in inspectionsList" :key="item.id" 
                          @click="openInspectionModal(index)"
-                         class="p-4 rounded-xl border-2 transition-all cursor-pointer bg-white shadow-sm"
-                         :class="getBorderClass(item.status)">
+                         class="p-4 rounded-xl border-2 border-gray-200 hover:border-indigo-400 transition-all cursor-pointer bg-white shadow-sm">
                          <div class="flex justify-between items-start mb-2">
                              <p class="text-sm font-bold text-gray-800 pr-2">{{ item.name }}</p>
                              
-                             <svg v-if="isPositiveRating(item.status)" class="w-5 h-5 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                             <svg v-else-if="isNegativeRating(item.status)" class="w-5 h-5 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
-                             <span v-else-if="item.status !== 'Pending'" class="px-2 py-0.5 text-xs font-bold rounded bg-blue-100 text-blue-700 flex-shrink-0 border border-blue-200">{{ item.status }}</span>
-                             <div v-else class="w-5 h-5 rounded-full border-2 border-gray-300 flex-shrink-0"></div>
+                             <span class="px-2 py-0.5 text-xs font-bold rounded flex-shrink-0" :class="getBadgeClass(item.status)">
+                                 {{ item.status }}
+                             </span>
                          </div>
                          <p class="text-xs text-gray-500 bg-gray-50 p-2 rounded truncate mt-1">Note: {{ item.remarks }}</p>
                     </div>
@@ -496,8 +494,7 @@ const isImageUrl = (url) => {
                         v-for="option in (selectedInspectionIndex !== null ? inspectionsList[selectedInspectionIndex].rating_options : [])" 
                         :key="option"
                         @click="saveInspectionStatus(option)" 
-                        class="flex-1 justify-center py-2.5"
-                        :class="getButtonClass(option)">
+                        class="flex-1 justify-center py-2.5">
                         {{ option }}
                     </PrimaryButton>
                 </div>
