@@ -74,6 +74,14 @@ class SpApproverApplicationController extends Controller
     {
         abort_if($application->application_type !== 'Renewal', 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $application->load([
             'user',
             'franchise.currentOwnership.newOwner.user', 
@@ -133,6 +141,14 @@ class SpApproverApplicationController extends Controller
     public function showNewFranchise(Application $application)
     {
         abort_if($application->application_type !== 'New Franchise', 404);
+
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
 
         $application->load([
             'user',

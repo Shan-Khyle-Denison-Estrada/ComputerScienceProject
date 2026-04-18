@@ -93,12 +93,29 @@ class ApplicationObserver
         // --- NEW FRANCHISE SEQUENTIAL WORKFLOW ---
         if ($application->application_type === 'New Franchise') {
             
+            // 0. GLOBAL CLEANUP: Terminal statuses (Wipes for everyone since the application is done/returned)
+            if ($application->wasChanged('status') && in_array($application->status, ['Approved', 'Completed', 'Rejected', 'Returned'])) {
+                DB::table('notifications')
+                    ->where('data->application_id', $application->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
             // 0. Applicant completes an "Initial" application -> Notify Admin, Evaluator, Inspector
             if ($application->wasChanged('status') && 
                 $application->status === 'Pending' && 
                 $application->getOriginal('status') === 'Initial') {
                 
                 $this->notifyRoles(['admin', 'evaluator', 'inspector'], $application, 'completed_initial');
+            }
+
+            // 0.1 Return or Rejection (Notify Applicant)
+            if ($application->wasChanged('status')) {
+                if ($application->status === 'Rejected' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'rejected'));
+                } elseif ($application->status === 'Returned' && $application->user) {
+                    Notification::send($application->user, new ApplicationEventNotification($application, 'returned'));
+                }
             }
 
             // 1. Inspector Approves -> Notify CAPO
@@ -111,18 +128,24 @@ class ApplicationObserver
                 $this->checkAndNotifyReviewer($application);
             }
 
+            // --- SUCCESSIVE APPROVALS GLOBAL CLEANUP ---
+            // Safely wipes old notifications since the workflow is strictly sequential from here on out.
+
             // 3. Reviewer Approves -> Notify SP Approver
             if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['sp_approver'], $application, 'reviewer_approved');
             }
 
             // 4. SP Approves -> Notify TAB Approver
             if ($application->wasChanged('sp_status') && $application->sp_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['tab_approver'], $application, 'sp_approved');
             }
 
             // 5. TAB Approves -> Notify Admin & Encoder for Finalization
             if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
             }
         }
@@ -130,6 +153,14 @@ class ApplicationObserver
         // --- CHANGE OF OWNER (Standard & Deceased) SEQUENTIAL WORKFLOW ---
         if (in_array($application->application_type, ['Change of Owner', 'Change of Owner (Deceased)'])) {
             
+            // 0. GLOBAL CLEANUP: Terminal statuses (Wipes for everyone since the application is done/returned)
+            if ($application->wasChanged('status') && in_array($application->status, ['Approved', 'Completed', 'Rejected', 'Returned'])) {
+                DB::table('notifications')
+                    ->where('data->application_id', $application->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
             // 0. Applicant completes an "Initial" Deceased application -> Notify Admin & Evaluator
             if ($application->wasChanged('status') && 
                 $application->status === 'Pending' && 
@@ -152,13 +183,18 @@ class ApplicationObserver
                 $this->checkAndNotifyReviewer($application);
             }
 
+            // --- SUCCESSIVE APPROVALS GLOBAL CLEANUP ---
+            // Safely wipes old notifications since the workflow is strictly sequential from here on out.
+
             // 2. Reviewer Approves -> Notify TAB Approver (Skips SP!)
             if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['tab_approver'], $application, 'reviewer_approved');
             }
 
             // 3. TAB Approves -> Notify Admin & Encoder for Finalization
             if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
             }
         }
@@ -166,6 +202,14 @@ class ApplicationObserver
         // --- FRANCHISE OWNER ACCOUNT SEQUENTIAL WORKFLOW ---
         if ($application->application_type === 'Franchise Owner Account') {
             
+            // 0. GLOBAL CLEANUP: Terminal statuses (Wipes for everyone since the application is done/returned)
+            if ($application->wasChanged('status') && in_array($application->status, ['Approved', 'Completed', 'Rejected', 'Returned'])) {
+                DB::table('notifications')
+                    ->where('data->application_id', $application->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
             // 0.1 Return or Rejection (Notify Applicant)
             if ($application->wasChanged('status')) {
                 if ($application->status === 'Rejected' && $application->user) {
@@ -175,8 +219,11 @@ class ApplicationObserver
                 }
             }
 
+            // --- SUCCESSIVE APPROVALS GLOBAL CLEANUP ---
+
             // 1. Evaluator Approves -> Notify Admin & Encoder for account setup/finalization
             if ($application->wasChanged('evaluator_status') && $application->evaluator_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['admin', 'encoder'], $application, 'evaluator_approved');
             }
         }
@@ -184,7 +231,15 @@ class ApplicationObserver
         // --- CHANGE OF UNIT SEQUENTIAL WORKFLOW ---
         if ($application->application_type === 'Change of Unit') {
             
-            // 0. Return or Rejection (Notify Applicant)
+            // 0. GLOBAL CLEANUP: Terminal statuses (Wipes for everyone since the application is done/returned)
+            if ($application->wasChanged('status') && in_array($application->status, ['Approved', 'Completed', 'Rejected', 'Returned'])) {
+                DB::table('notifications')
+                    ->where('data->application_id', $application->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
+            // 0.1 Return or Rejection (Notify Applicant)
             if ($application->wasChanged('status')) {
                 if ($application->status === 'Rejected' && $application->user) {
                     Notification::send($application->user, new ApplicationEventNotification($application, 'rejected'));
@@ -203,13 +258,18 @@ class ApplicationObserver
                 $this->checkAndNotifyReviewer($application);
             }
 
+            // --- SUCCESSIVE APPROVALS GLOBAL CLEANUP ---
+            // Safely wipes old notifications since the workflow is strictly sequential from here on out.
+
             // 3. Reviewer Approves -> Notify TAB Approver
             if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['tab_approver'], $application, 'reviewer_approved');
             }
 
             // 4. TAB Approves -> Notify Admin & Encoder for Finalization
             if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
             }
         }
@@ -217,6 +277,14 @@ class ApplicationObserver
         // --- RENEWAL SEQUENTIAL WORKFLOW ---
         if ($application->application_type === 'Renewal') {
             
+            // 0. GLOBAL CLEANUP: Terminal statuses (Wipes for everyone since the application is done/returned)
+            if ($application->wasChanged('status') && in_array($application->status, ['Approved', 'Completed', 'Rejected', 'Returned'])) {
+                DB::table('notifications')
+                    ->where('data->application_id', $application->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
             // 0. Applicant completes an "Initial" application
             if ($application->wasChanged('status') && 
                 $application->status === 'Pending' && 
@@ -244,18 +312,24 @@ class ApplicationObserver
                 $this->checkAndNotifyReviewer($application);
             }
 
+            // --- SUCCESSIVE APPROVALS GLOBAL CLEANUP ---
+            // Safely wipes old notifications since the workflow is strictly sequential from here on out.
+
             // 3. Reviewer Approves -> Notify SP Approver
             if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['sp_approver'], $application, 'reviewer_approved');
             }
 
             // 4. SP Approves -> Notify TAB Approver
             if ($application->wasChanged('sp_status') && $application->sp_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['tab_approver'], $application, 'sp_approved');
             }
 
             // 5. TAB Approves -> Notify Admin & Encoder for Finalization
             if ($application->wasChanged('tab_status') && $application->tab_status === 'Approved') {
+                DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
                 $this->notifyRoles(['admin', 'encoder'], $application, 'tab_approved');
             }
         }

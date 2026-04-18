@@ -71,6 +71,14 @@ class EvaluatorApplicationController extends Controller
     {
         abort_if($application->application_type !== 'Renewal', 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $application->load([
             'user',
             'franchise.currentOwnership.newOwner.user', 
@@ -110,6 +118,14 @@ class EvaluatorApplicationController extends Controller
             'Change of Owner (Deceased)'
         ]), 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $application->load([
             'user',
             'franchise',
@@ -147,6 +163,14 @@ class EvaluatorApplicationController extends Controller
     {
         abort_if($application->application_type !== 'Change of Unit', 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $application->load([
             'user',
             'franchise.currentOwnership.newOwner.user',
@@ -176,6 +200,14 @@ class EvaluatorApplicationController extends Controller
     {
         // Assuming your DB stores this type as 'New Franchise'. Adjust if it is strictly 'Franchise Owner Account'
         abort_if(!in_array($application->application_type, ['New Franchise', 'Franchise Owner Account']), 404);
+
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
 
         $application->load([
             'user',
@@ -295,6 +327,14 @@ class EvaluatorApplicationController extends Controller
     {
         // Strictly limit to New Franchise
         abort_if($application->application_type !== 'New Franchise', 404);
+
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
 
         $application->load([
             'user',

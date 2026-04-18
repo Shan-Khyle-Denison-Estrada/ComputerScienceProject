@@ -20,6 +20,14 @@ class ApplicationChangeOfUnitShowController extends Controller
     {
         abort_if($application->application_type !== 'Change of Unit', 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $user = auth()->user();
         $isEncoder = strtolower($user->role->value) === 'encoder';
 

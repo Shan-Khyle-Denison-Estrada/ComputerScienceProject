@@ -29,6 +29,14 @@ class ApplicationShowController extends Controller
     public function show($id)
     {
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $user = auth()->user();
         $isEncoder = strtolower($user->role->value) === 'encoder';
         // 1. Fetch Application with relationships

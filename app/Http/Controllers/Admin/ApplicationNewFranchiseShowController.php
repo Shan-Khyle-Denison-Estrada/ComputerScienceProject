@@ -15,6 +15,15 @@ class ApplicationNewFranchiseShowController extends Controller
 {
     public function __invoke(Application $application)
     {
+
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+        
         // Load the specific relationships required to review a new franchise,
         // specifically adding assessments, payments, and unit inspections.
         $application->load([

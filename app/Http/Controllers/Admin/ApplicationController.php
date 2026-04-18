@@ -142,6 +142,15 @@ class ApplicationController extends Controller
 
     public function show($id)
     {
+
+    // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+        
         $app = Application::with([
             'proposedUnits.make', 
             'proposedUnits.inspections', 

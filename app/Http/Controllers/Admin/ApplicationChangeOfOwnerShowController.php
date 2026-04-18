@@ -20,6 +20,14 @@ class ApplicationChangeOfOwnerShowController extends Controller
     {
         abort_if(!in_array($application->application_type, ['Change of Owner', 'Change of Owner (Deceased)']), 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         $user = auth()->user();
         $isEncoder = strtolower($user->role->value) === 'encoder';
 
