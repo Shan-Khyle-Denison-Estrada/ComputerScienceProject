@@ -295,6 +295,24 @@ const toggleUnit = (index) => {
 const handleFileChange = (event, index, field) => {
     const file = event.target.files[0];
     if (file) {
+        // Add franchise_certificate_photo to the documents list so it accepts PDF
+        const isDocument = ['cr_photo', 'or_photo', 'franchise_certificate_photo'].includes(field);
+        const validTypes = isDocument 
+            ? ['image/jpeg', 'image/png', 'application/pdf'] 
+            : ['image/jpeg', 'image/png'];
+        
+        if (!validTypes.includes(file.type)) {
+            form.setError(`units.${index}.${field}`, `Invalid file type. Allowed: ${isDocument ? 'JPG, PNG, PDF' : 'JPG, PNG'}`);
+            event.target.value = ''; // Reset the input
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            form.setError(`units.${index}.${field}`, 'File size must not exceed 5MB.');
+            event.target.value = ''; // Reset the input
+            return;
+        }
+
         form.units[index][field] = file;
         form.clearErrors(`units.${index}.${field}`);
     }
@@ -303,6 +321,20 @@ const handleFileChange = (event, index, field) => {
 const handleRequirementUpload = (event, reqId) => {
     const file = event.target.files[0];
     if (file) {
+        const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+        
+        if (!validTypes.includes(file.type)) {
+            form.setError(`requirement_files.${reqId}`, 'Invalid file type. Allowed: JPG, PNG, PDF');
+            event.target.value = ''; // Reset the input
+            return;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+            form.setError(`requirement_files.${reqId}`, 'File size must not exceed 5MB.');
+            event.target.value = ''; // Reset the input
+            return;
+        }
+
         form.requirement_files[reqId] = file;
         form.clearErrors(`requirement_files.${reqId}`);
     }
@@ -699,7 +731,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.unit_front_photo.name }}</span>
                                                     <button type="button" @click="unit.unit_front_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_front_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png" @change="e => handleFileChange(e, index, 'unit_front_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.unit_front_photo`]" class="mt-2" />
                                             </div>
 
@@ -712,7 +744,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.unit_back_photo.name }}</span>
                                                     <button type="button" @click="unit.unit_back_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_back_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png" @change="e => handleFileChange(e, index, 'unit_back_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.unit_back_photo`]" class="mt-2" />
                                             </div> 
 
@@ -725,7 +757,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.unit_left_photo.name }}</span>
                                                     <button type="button" @click="unit.unit_left_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_left_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png" @change="e => handleFileChange(e, index, 'unit_left_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.unit_left_photo`]" class="mt-2" />
                                             </div> 
 
@@ -738,7 +770,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.unit_right_photo.name }}</span>
                                                     <button type="button" @click="unit.unit_right_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'unit_right_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png" @change="e => handleFileChange(e, index, 'unit_right_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.unit_right_photo`]" class="mt-2" />
                                             </div> 
 
@@ -755,7 +787,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.cr_photo.name }}</span>
                                                     <button type="button" @click="unit.cr_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'cr_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png,.pdf" @change="e => handleFileChange(e, index, 'cr_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.cr_photo`]" class="mt-2" />
                                             </div> 
 
@@ -768,7 +800,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.or_photo.name }}</span>
                                                     <button type="button" @click="unit.or_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'or_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png,.pdf" @change="e => handleFileChange(e, index, 'or_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.or_photo`]" class="mt-2" />
                                             </div> 
 
@@ -781,7 +813,7 @@ const formatTinNumber = (val) => {
                                                     <span class="text-xs text-green-700 font-medium truncate pr-2">{{ unit.franchise_certificate_photo.name }}</span>
                                                     <button type="button" @click="unit.franchise_certificate_photo = null" class="text-gray-400 hover:text-red-500 transition"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg></button>
                                                 </div>
-                                                <input v-else type="file" @change="e => handleFileChange(e, index, 'franchise_certificate_photo')" class="block w-full text-xs mt-1"/>
+                                                <input v-else type="file" accept=".jpg,.jpeg,.png,.pdf" @change="e => handleFileChange(e, index, 'franchise_certificate_photo')" class="block w-full text-xs mt-1"/>
                                                 <InputError :message="form.errors[`units.${index}.franchise_certificate_photo`]" class="mt-2" />
                                             </div> 
                                         </div>
