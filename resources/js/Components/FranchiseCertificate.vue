@@ -110,6 +110,15 @@ const parsedContent = computed(() => {
         const img = span.querySelector('img');
         
         if (img && varName) {
+            // THE REAL FIX: TipTap saves the exact scaled width inside the `data-width` attribute 
+            // of the wrapper, NOT the img tag. We must pull it from there!
+            let editorWidth = span.getAttribute('data-width') || span.style.width || '150px';
+            let editorHeight = span.getAttribute('data-height') || span.style.height || 'auto';
+
+            // Safely add 'px' if it's missing
+            if (/^\d+(\.\d+)?$/.test(editorWidth)) editorWidth = `${editorWidth}px`;
+            if (/^\d+(\.\d+)?$/.test(editorHeight)) editorHeight = `${editorHeight}px`;
+
             const originalSrc = img.getAttribute('src');
 
             if (varName === 'lgu-logo') img.src = props.systemSetting?.lgu_logo_path ? `/storage/${props.systemSetting.lgu_logo_path}` : originalSrc;
@@ -120,15 +129,76 @@ const parsedContent = computed(() => {
             const currentSrc = img.getAttribute('src');
             if (!currentSrc || currentSrc.includes('undefined') || currentSrc.includes('null') || currentSrc === '') {
                 span.style.display = 'none';
+            } else {
+                const wrapType = span.getAttribute('data-wrap') || 'inline';
+
+                if (wrapType !== 'inline') {
+                    span.style.setProperty('display', 'block', 'important');
+                    span.style.setProperty('position', 'absolute', 'important');
+                    
+                    // Force the safe wrapper dimensions
+                    span.style.setProperty('width', editorWidth, 'important');
+                    if (editorHeight !== 'auto') span.style.setProperty('height', editorHeight, 'important');
+                    
+                    span.style.setProperty('overflow', 'visible', 'important');
+                    
+                    // Prevent ghost spacing
+                    span.style.setProperty('line-height', '0', 'important');
+                    span.style.setProperty('font-size', '0', 'important');
+                    span.style.setProperty('margin', '0', 'important');
+                    span.style.setProperty('padding', '0', 'important');
+
+                    if (wrapType === 'behind') {
+                        span.style.setProperty('z-index', '-1', 'important');
+                    } else if (wrapType === 'in-front') {
+                        span.style.setProperty('z-index', '10', 'important');
+                    }
+
+                    // THE PRINT ILLUSION FIX: 
+                    // Because the print engine shrinks the text body, we forcefully pull 
+                    // the signatures UP by using a negative top margin. 
+                    // This ONLY affects the print/view mode, so the editor stays perfect!
+                    if (varName === 'tab-signature' || varName === 'sp-signature') {
+                        // TWEAK THIS NUMBER: If they are still too low, change -30px to -40px or -50px.
+                        // If they go too high, change it to -15px or -20px!
+                        span.style.setProperty('margin-top', '-125px', 'important'); 
+                    }
+
+                    // THE PERFECT CONSTRAINT: Act like a picture frame!
+                    // By setting height to 100% and using 'object-fit: contain', 
+                    // the image is physically trapped inside your editor's bounding box 
+                    // and will never stretch or spill out vertically!
+                    img.style.setProperty('display', 'block', 'important');
+                    img.style.setProperty('width', '100%', 'important');
+                    img.style.setProperty('height', '100%', 'important');
+                    img.style.setProperty('object-fit', 'contain', 'important');
+                    img.style.setProperty('max-width', 'none', 'important');
+                    img.style.setProperty('position', 'static', 'important');
+                } else {
+                    // Apply the same strict constraints to In-Line images like the QR Code
+                    img.style.setProperty('width', editorWidth, 'important');
+                    if (editorHeight !== 'auto') img.style.setProperty('height', editorHeight, 'important');
+                    img.style.setProperty('object-fit', 'contain', 'important');
+                    
+                    span.style.setProperty('display', 'inline-block', 'important');
+                    span.style.setProperty('position', 'static', 'important');
+                    span.style.setProperty('vertical-align', 'middle', 'important'); 
+                }
             }
         }
     });
 
-    // 3. NATIVE TIPTAP EMPTY LINE FIX 
-    doc.querySelectorAll('p').forEach(p => {
-        if (!p.textContent.trim() && (p.children.length === 0 || (p.children.length === 1 && p.children[0].tagName === 'BR'))) {
+    // 3. NATIVE TIPTAP EMPTY LINE FIX & LINE SPACING LOCK
+    doc.querySelectorAll('p, h1, h2, h3, h4, h5, h6').forEach(el => {
+        if (el.tagName === 'P' && !el.textContent.trim() && (el.children.length === 0 || (el.children.length === 1 && el.children[0].tagName === 'BR'))) {
             // Uses TipTap's native break to prevent vertical baseline inflation
-            p.innerHTML = '<br class="ProseMirror-trailingBreak">'; 
+            el.innerHTML = '<br class="ProseMirror-trailingBreak">'; 
+        }
+
+        // THE SPACING FIX: We forcefully apply !important to the exact inline line-height 
+        // that TipTap saved. This guarantees the Print Engine physically cannot ignore your Double Spacing!
+        if (el.style.lineHeight) {
+            el.style.setProperty('line-height', el.style.lineHeight, 'important');
         }
     });
 
@@ -199,13 +269,17 @@ const paperStyle = computed(() => {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
     
     font-size: 16px !important; 
-    
-    /* THE FINAL FIX: 'normal' calculates to ~1.2 in print. 1.15 is the exact strict web default for sans-serif fonts. */
     line-height: 1.15 !important; 
     
     -webkit-text-size-adjust: 100% !important;
     text-size-adjust: 100% !important;
     color: black;
+
+    /* THE FIX: Create a strict stacking context. 
+       This permanently prevents "Behind Text" (z-index: -1) images 
+       from slipping underneath the white paper background! */
+    isolation: isolate !important;
+    z-index: 0 !important;
 }
 
 .certificate-content, .certificate-content * {
@@ -247,8 +321,7 @@ const paperStyle = computed(() => {
     margin: 0 !important; 
     padding: 0 !important; 
     text-align: inherit;
-    line-height: inherit !important;
-} 
+}
 
 /* === NUCLEAR TABLE OVERRIDE === */
 .editor-paper .ProseMirror table {
