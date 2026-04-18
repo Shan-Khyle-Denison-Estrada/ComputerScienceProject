@@ -55,11 +55,49 @@ const parsedContent = computed(() => {
         if (varName === 'tab_approver_name') replacementText = props.tabApprover ? `${props.tabApprover.first_name} ${props.tabApprover.last_name}` : 'N/A';
         if (varName === 'sp_approver_name') replacementText = props.spApprover ? `${props.spApprover.first_name} ${props.spApprover.last_name}` : 'N/A';
 
-        // THE SILVER BULLET: Destroy the <span> wrapper entirely and inject pure text.
-        // This permanently prevents the browser from applying block-level CSS to the variable,
-        // physically locking it to the exact same line as the text immediately next to it.
-        const textNode = doc.createTextNode(replacementText);
-        el.parentNode.replaceChild(textNode, el);
+        el.removeAttribute('data-text-variable');
+        el.classList.add('certificate-variable'); 
+        
+        el.innerHTML = '';
+        el.textContent = replacementText;
+
+        const wrapType = el.getAttribute('data-wrap') || 'inline';
+        const savedAlign = (el.getAttribute('data-text-align') || el.style.textAlign || 'left').trim();
+        let savedWidth = (el.getAttribute('data-width') || el.style.width || '').trim();
+
+        if (savedWidth && /^\d+(\.\d+)?$/.test(savedWidth)) {
+            savedWidth = `${savedWidth}px`;
+        }
+
+        if (wrapType !== 'inline') {
+            el.style.setProperty('display', 'block', 'important');
+            el.style.setProperty('position', 'absolute', 'important');
+            
+            if (savedWidth && savedWidth !== 'auto') {
+                el.style.setProperty('width', savedWidth, 'important');
+            } else {
+                // THE FINAL TWEAK: 
+                // By reducing the character width from 8.5 to 7.5, and the padding from 32 to 16,
+                // the box becomes slightly narrower. Because the left edge is anchored,
+                // narrowing the box pulls the center-point perfectly to the left!
+                const charCount = varName.replace(/_/g, ' ').length; 
+                const estimatedPillWidth = (charCount * 7.5) + 16; 
+                
+                el.style.setProperty('width', `${estimatedPillWidth}px`, 'important');
+            }
+
+            el.style.setProperty('text-align', savedAlign, 'important');
+        }
+
+        // Restore underlines and bolding
+        let parentNode = el.parentElement;
+        while (parentNode && parentNode.tagName !== 'P' && parentNode.tagName !== 'DIV') {
+            const tag = parentNode.tagName.toUpperCase();
+            if (tag === 'U') el.style.setProperty('text-decoration', 'underline', 'important');
+            if (tag === 'STRONG' || tag === 'B') el.style.setProperty('font-weight', 'bold', 'important');
+            if (tag === 'EM' || tag === 'I') el.style.setProperty('font-style', 'italic', 'important');
+            parentNode = parentNode.parentElement;
+        }
     });
 
     // 2. Process Dynamic Images & Signatures
@@ -182,12 +220,17 @@ const paperStyle = computed(() => {
 }
 
 /* Safety lock: Guarantees any span or text formatting inside a paragraph STAYS inline */
-.editor-paper .ProseMirror p span,
+.editor-paper .ProseMirror p span:not(.certificate-variable),
 .editor-paper .ProseMirror p strong,
 .editor-paper .ProseMirror p em,
 .editor-paper .ProseMirror p u {
     display: inline !important;
     white-space: normal !important;
+}
+
+/* FIX: Allow variable containers to hold their physical width and text alignment */
+.editor-paper .ProseMirror span.certificate-variable {
+    display: inline-block !important;
 }
 .editor-paper .ProseMirror::after { content: ""; display: table; clear: both; }
 
