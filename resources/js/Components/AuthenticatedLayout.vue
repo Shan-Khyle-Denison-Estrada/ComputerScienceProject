@@ -307,7 +307,7 @@ onMounted(() => {
                 </div>
 
                 <div class="flex items-center space-x-4">
-                    <div class="relative">
+                    <div class="relative" v-if="!hasRole('franchise_owner')">
                         <button 
                             @click="isNotificationDropdownOpen = !isNotificationDropdownOpen"
                             class="text-gray-400 hover:text-gray-600 p-2 rounded-md focus:outline-none relative transition-colors"
