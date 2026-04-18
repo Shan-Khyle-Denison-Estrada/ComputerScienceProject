@@ -145,7 +145,7 @@ class ApplicationController extends Controller
             // 3. Grab conflicting Change of Unit
             $franchise->conflicting_change_unit = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Change of Unit')
-                ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+                ->whereNotIn('status', ['Rejected', 'Cancelled', 'Completed'])
                 ->select('id', 'reference_number as ref_no', 'application_type as type', 'status', 'remarks')
                 ->latest()
                 ->first();
@@ -153,7 +153,7 @@ class ApplicationController extends Controller
             // 4. Grab conflicting Change of Owner
             $franchise->conflicting_change_owner = Application::where('franchise_id', $franchise->id)
                 ->where('application_type', 'Change of Owner')
-                ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+                ->whereNotIn('status', ['Rejected', 'Cancelled', 'Completed'])
                 ->select('id', 'reference_number as ref_no', 'application_type as type', 'status', 'remarks')
                 ->latest()
                 ->first();
@@ -253,7 +253,7 @@ class ApplicationController extends Controller
 
         $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
             ->where('application_type', 'Change of Unit')
-            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+            ->whereNotIn('status', ['Rejected', 'Cancelled', 'Completed'])
             ->exists();
 
         if ($existingApp) {
@@ -412,7 +412,7 @@ class ApplicationController extends Controller
 
         $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
             ->where('application_type', 'Change of Owner')
-            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
+            ->whereNotIn('status', ['Rejected', 'Cancelled', 'Completed'])
             ->exists();
 
         if ($existingApp) {
@@ -557,17 +557,6 @@ class ApplicationController extends Controller
             'documents' => 'required|array',
             'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
-
-        $existingApp = Application::where('franchise_id', $request->selected_franchise_id)
-            ->where('application_type', 'New Driver')
-            ->whereNotIn('status', ['Approved', 'Rejected', 'Cancelled', 'Completed'])
-            ->exists();
-
-        if ($existingApp) {
-            throw ValidationException::withMessages([
-                'selected_franchise_id' => 'An active New Driver application already exists for this franchise!',
-            ]);
-        }
 
         $user = Auth::user();
         $franchise = Franchise::findOrFail($request->selected_franchise_id);

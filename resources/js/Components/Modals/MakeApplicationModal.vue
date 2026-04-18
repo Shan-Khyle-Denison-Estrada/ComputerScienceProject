@@ -230,10 +230,6 @@ const duplicateApplicationError = computed(() => {
         if (selectedFranchise.conflicting_change_owner) {
             return `An active Change of Owner application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
         }
-    } else if (selectedType.value === 'new_driver') {
-        if (selectedFranchise.conflicting_new_driver) {
-            return `An active New Driver application already exists for this franchise. Please complete or cancel the existing application before submitting a new one.`;
-        }
     } else if (selectedType.value === 'renewal') {
         // Handle explicit active renewal collision
         if (selectedFranchise.conflicting_renewal) {
@@ -262,8 +258,6 @@ const validateFranchiseSelection = () => {
             conflictingApplication.value = selectedFranchise?.conflicting_change_unit || null;
         } else if (selectedType.value === 'change_owner') {
             conflictingApplication.value = selectedFranchise?.conflicting_change_owner || null;
-        } else if (selectedType.value === 'new_driver') {
-            conflictingApplication.value = selectedFranchise?.conflicting_new_driver || null;
         } else {
             conflictingApplication.value = null;
         }

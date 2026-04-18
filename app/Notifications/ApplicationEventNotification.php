@@ -197,39 +197,84 @@ class ApplicationEventNotification extends Notification
     private function determineUrl($user, $type)
     {
         $roles = $user->active_roles ?? [];
+        $id = $this->application->id;
 
-        // 1. Route Encoders
-        if (in_array('encoder', $roles)) {
+        // 1. Admin & Encoder (Shared Routes)
+        if (in_array('admin', $roles) || in_array('encoder', $roles)) {
             return match($type) {
-                'New Driver' => route('admin.applications.new-driver.show', $this->application->id), // Adjust route name as needed
-                default      => route('admin.applications.show', $this->application->id),
+                'Renewal'                    => route('admin.applications.renewal.show', $id),
+                'Change of Unit'             => route('admin.applications.change-of-unit.show', $id),
+                'Change of Owner', 
+                'Change of Owner (Deceased)' => route('admin.applications.change-of-owner.show', $id),
+                'New Franchise'              => route('admin.applications.show-new-franchise', $id),
+                'New Driver'                 => route('admin.applications.new-driver.show', $id),
+                default                      => route('admin.applications.show', $id),
             };
         }
 
-        // 2. Route Evaluators
+        // 2. Evaluator
         if (in_array('evaluator', $roles)) {
             return match($type) {
-                'New Driver'          => route('evaluator.applications.show-new-driver', $this->application->id), // Adjust route name
-                'Change of Unit'      => route('evaluator.applications.show-change-of-unit', $this->application->id), // Example
-                default               => route('evaluator.applications.show', $this->application->id),
+                'Change of Unit'             => route('evaluator.applications.show-change-of-unit', $id),
+                'Change of Owner', 
+                'Change of Owner (Deceased)' => route('evaluator.applications.show-change-of-owner', $id),
+                'New Franchise'              => route('evaluator.applications.show-new-franchise', $id),
+                'New Driver'                 => route('evaluator.applications.show-new-driver', $id),
+                'Franchise Owner Account'    => route('evaluator.applications.show-franchise-owner-account', $id),
+                default                      => route('evaluator.applications.show', $id),
             };
         }
 
-        // 3. Route Admins
-        if (in_array('admin', $roles)) {
+        // 3. Inspector
+        if (in_array('inspector', $roles)) {
             return match($type) {
-                'New Driver'          => route('admin.applications.new-driver.show', $this->application->id), // Adjust route name
-                'Change of Unit'      => route('admin.applications.change-of-unit.show', $this->application->id),
-                'Change of Owner'            => route('admin.applications.change-of-owner.show', $this->application->id),
-                'Change of Owner (Deceased)' => route('admin.applications.change-of-owner.show', $this->application->id),
-                'Renewal'             => route('admin.applications.renewal.show', $this->application->id),
-                'New Franchise' => route('admin.applications.show', $this->application->id),
-                'Franchise Owner Account' => route('admin.applications.show', $this->application->id),
-                default               => route('admin.applications.show', $this->application->id),
+                'Change of Unit'  => route('inspector.applications.show-change-of-unit', $id),
+                'New Franchise'   => route('inspector.applications.show-new-franchise', $id),
+                default           => route('inspector.applications.show', $id),
             };
         }
 
-        // Fallback
+        // 4. CAPO
+        if (in_array('capo', $roles)) {
+            return match($type) {
+                'Change of Unit'  => route('capo.applications.show-change-of-unit', $id),
+                'New Franchise'   => route('capo.applications.show-new-franchise', $id),
+                default           => route('capo.applications.show', $id),
+            };
+        }
+
+        // 5. Reviewer
+        if (in_array('reviewer', $roles)) {
+            return match($type) {
+                'Renewal'                    => route('applications.showRenewal', $id),
+                'Change of Unit'             => route('applications.showChangeOfUnit', $id),
+                'Change of Owner', 
+                'Change of Owner (Deceased)' => route('applications.showChangeOfOwner', $id),
+                'New Franchise'              => route('reviewer.applications.showNewFranchise', $id),
+                default                      => route('dashboard'),
+            };
+        }
+
+        // 6. SP Approver
+        if (in_array('sp_approver', $roles)) {
+            return match($type) {
+                'New Franchise' => route('sp_approver.applications.show-new-franchise', $id),
+                default         => route('sp_approver.applications.show', $id),
+            };
+        }
+
+        // 7. TAB Approver
+        if (in_array('tab_approver', $roles)) {
+            return match($type) {
+                'Renewal'                    => route('applications.showRenewal', $id),
+                'Change of Unit'             => route('applications.showChangeOfUnit', $id),
+                'Change of Owner', 
+                'Change of Owner (Deceased)' => route('applications.showChangeOfOwner', $id),
+                'New Franchise'              => route('applications.show-new-franchise', $id),
+                default                      => route('dashboard'),
+            };
+        }
+
         return route('dashboard');
     }
 }
