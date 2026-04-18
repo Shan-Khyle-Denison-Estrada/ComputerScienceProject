@@ -343,6 +343,14 @@ class EvaluatorApplicationController extends Controller
     {
         abort_if($application->application_type !== 'New Driver', 404);
 
+        // Clear unread notifications for this specific application for the current user
+        $notifications = auth()->user()->unreadNotifications
+            ->where('data.application_id', $application->id);
+
+        if ($notifications->isNotEmpty()) {
+            $notifications->markAsRead();
+        }
+
         // Load the evaluations, franchise, and zone definitions
         $application->load([
             'user', 

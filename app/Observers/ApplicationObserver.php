@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\User;
 use App\Notifications\ApplicationEventNotification;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\DB; // <-- Add this import
 
 class ApplicationObserver
 {
@@ -63,6 +64,14 @@ class ApplicationObserver
         // --- NEW DRIVER STATUS CHANGES ---
         if ($application->application_type === 'New Driver' && $application->wasChanged('status')) {
             
+            // Globally clear pending notifications when the application moves to a new/final stage
+            if (in_array($application->status, ['Approved', 'Completed', 'Rejected', 'Returned'])) {
+                DB::table('notifications')
+                    ->where('data->application_id', $application->id)
+                    ->whereNull('read_at')
+                    ->update(['read_at' => now()]);
+            }
+
             if ($application->status === 'Approved') {
                 $this->notifyRoles(['admin', 'encoder'], $application, 'approved');
             } 
