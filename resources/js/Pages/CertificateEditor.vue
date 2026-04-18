@@ -205,13 +205,16 @@ const CustomHR = HorizontalRule.extend({
         const w = HTMLAttributes.width || '100%';
         const t = HTMLAttributes.thickness || '1px';
         const a = HTMLAttributes.align || 'center';
-        let margin = '1rem auto';
-        if (a === 'left') margin = '1rem auto 1rem 0';
-        if (a === 'right') margin = '1rem 0 1rem auto';
+        
+        // FIX: Reduced margins from 1rem to 0.2rem to fix the "sandwich" spacing issue.
+        // We also use 'display: block' to ensure it clears any absolute/floating variables.
+        let margin = '0.2rem auto';
+        if (a === 'left') margin = '0.2rem auto 0.2rem 0';
+        if (a === 'right') margin = '0.2rem 0 0.2rem auto';
 
         return ['hr', mergeAttributes(this.options.HTMLAttributes, {
             'data-align': a,
-            style: `width: ${w}; border: none; border-top: ${t} solid black; margin: ${margin}; cursor: pointer;`
+            style: `width: ${w}; border: none; border-top: ${t} solid black; margin: ${margin}; cursor: pointer; display: block; clear: both;`
         })];
     }
 });
@@ -856,5 +859,14 @@ const saveTemplate = () => form.post(route('certificate-template.update'), { pre
     .resize-handle, .column-resize-handle {
         display: none !important;
     }
+}
+/* Ensure empty paragraphs don't collapse in the editor so what you see is what you get in print */
+.editor-paper .ProseMirror p:empty::before {
+    content: "\00a0"; /* Injects a non-breaking space */
+}
+
+.editor-paper .ProseMirror p {
+    margin: 0 !important; /* Forces 0 margin so ONLY your Enter keys create space */
+    min-height: 1em; /* Ensures the line exists even if empty */
 }
 </style>
