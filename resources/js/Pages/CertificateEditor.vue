@@ -95,7 +95,8 @@ const CustomParagraph = Paragraph.extend({
 
 const FontSize = Extension.create({
     name: 'fontSize',
-    addOptions() { return { types: ['textStyle'] } },
+    // FIX: Tell the extension to target list structures
+    addOptions() { return { types: ['textStyle', 'listItem', 'orderedList', 'bulletList'] } },
     addGlobalAttributes() {
         return [{
             types: this.options.types,
@@ -109,8 +110,55 @@ const FontSize = Extension.create({
     },
     addCommands() {
         return {
-            setFontSize: fontSize => ({ chain }) => chain().setMark('textStyle', { fontSize }).run(),
-            unsetFontSize: () => ({ chain }) => chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle().run()
+            setFontSize: fontSize => ({ chain, editor }) => {
+                let c = chain().setMark('textStyle', { fontSize });
+                // Automatically inject font sizes into active list wrappers
+                if (editor.isActive('listItem')) c = c.updateAttributes('listItem', { fontSize });
+                if (editor.isActive('orderedList')) c = c.updateAttributes('orderedList', { fontSize });
+                if (editor.isActive('bulletList')) c = c.updateAttributes('bulletList', { fontSize });
+                return c.run();
+            },
+            unsetFontSize: () => ({ chain, editor }) => {
+                let c = chain().setMark('textStyle', { fontSize: null }).removeEmptyTextStyle();
+                if (editor.isActive('listItem')) c = c.updateAttributes('listItem', { fontSize: null });
+                if (editor.isActive('orderedList')) c = c.updateAttributes('orderedList', { fontSize: null });
+                if (editor.isActive('bulletList')) c = c.updateAttributes('bulletList', { fontSize: null });
+                return c.run();
+            }
+        }
+    }
+});
+
+// CRITICAL FIX: Custom FontFamily extension to ensure numbers/bullets inherit text fonts
+const CustomFontFamily = FontFamily.extend({
+    addOptions() { return { types: ['textStyle', 'listItem', 'orderedList', 'bulletList'] } },
+    addGlobalAttributes() {
+        return [{
+            types: this.options.types,
+            attributes: {
+                fontFamily: {
+                    default: null, parseHTML: el => el.style.fontFamily?.replace(/['"]+/g, ''),
+                    renderHTML: attrs => attrs.fontFamily ? { style: `font-family: ${attrs.fontFamily}` } : {}
+                }
+            }
+        }]
+    },
+    addCommands() {
+        return {
+            setFontFamily: fontFamily => ({ chain, editor }) => {
+                let c = chain().setMark('textStyle', { fontFamily });
+                if (editor.isActive('listItem')) c = c.updateAttributes('listItem', { fontFamily });
+                if (editor.isActive('orderedList')) c = c.updateAttributes('orderedList', { fontFamily });
+                if (editor.isActive('bulletList')) c = c.updateAttributes('bulletList', { fontFamily });
+                return c.run();
+            },
+            unsetFontFamily: () => ({ chain, editor }) => {
+                let c = chain().setMark('textStyle', { fontFamily: null }).removeEmptyTextStyle();
+                if (editor.isActive('listItem')) c = c.updateAttributes('listItem', { fontFamily: null });
+                if (editor.isActive('orderedList')) c = c.updateAttributes('orderedList', { fontFamily: null });
+                if (editor.isActive('bulletList')) c = c.updateAttributes('bulletList', { fontFamily: null });
+                return c.run();
+            }
         }
     }
 });
@@ -340,7 +388,7 @@ const editor = useEditor({
     extensions: [
         StarterKit.configure({ horizontalRule: false, paragraph: false }), 
         CustomParagraph, CustomHR, Table.configure({ resizable: true }), TableRow, TableHeader, TableCell, 
-        CustomImage, TextVariable, TextStyle, FontFamily, FontSize, LineHeight, Underline, Dropcursor,
+        CustomImage, TextVariable, TextStyle, CustomFontFamily, FontSize, LineHeight, Underline, Dropcursor,
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
     ],
     editorProps: {

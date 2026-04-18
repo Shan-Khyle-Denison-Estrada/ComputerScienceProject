@@ -83,22 +83,24 @@ const parsedContent = computed(() => {
         }
     });
 
-    // 3. CRITICAL FIX: Inject exact TipTap blank line behavior
+    // 3. NATIVE TIPTAP EMPTY LINE FIX 
     doc.querySelectorAll('p').forEach(p => {
         if (!p.textContent.trim() && (p.children.length === 0 || (p.children.length === 1 && p.children[0].tagName === 'BR'))) {
+            // Uses TipTap's native break to prevent vertical baseline inflation
             p.innerHTML = '<br class="ProseMirror-trailingBreak">'; 
         }
     });
 
-    // 4. Force List Styles via inline CSS to bypass Tailwind print stripping
+    // 4. Force List Styles while PRESERVING TipTap's injected font sizes and families
+    // CRITICAL FIX: Using += appends the structural rules instead of erasing the editor's custom styles
     doc.querySelectorAll('ol').forEach(ol => {
-        ol.style.cssText = 'display: block !important; list-style-type: decimal !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
+        ol.style.cssText += ' display: block !important; list-style-type: decimal !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
     });
     doc.querySelectorAll('ul').forEach(ul => {
-        ul.style.cssText = 'display: block !important; list-style-type: disc !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
+        ul.style.cssText += ' display: block !important; list-style-type: disc !important; padding-left: 2.5rem !important; margin: 1rem 0 !important;';
     });
     doc.querySelectorAll('li').forEach(li => {
-        li.style.cssText = 'display: list-item !important; margin-bottom: 0.25rem !important;';
+        li.style.cssText += ' display: list-item !important; margin-bottom: 0.25rem !important;';
     });
 
     return doc.body.innerHTML;
@@ -154,6 +156,12 @@ const paperStyle = computed(() => {
 .certificate-content {
     /* Lock the exact screen typography so the printer cannot shrink it */
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif !important;
+    
+    font-size: 16px !important; 
+    
+    /* THE FINAL FIX: 'normal' calculates to ~1.2 in print. 1.15 is the exact strict web default for sans-serif fonts. */
+    line-height: 1.15 !important; 
+    
     -webkit-text-size-adjust: 100% !important;
     text-size-adjust: 100% !important;
     color: black;
@@ -168,10 +176,18 @@ const paperStyle = computed(() => {
     outline: none; 
     min-height: 100%; 
     position: relative; 
-    white-space: pre-wrap !important; 
+    white-space: normal !important; 
     word-wrap: break-word;
-    /* FIX: Force print to inherit exactly what is on the screen without hardcoding decimals */
     line-height: inherit !important; 
+}
+
+/* Safety lock: Guarantees any span or text formatting inside a paragraph STAYS inline */
+.editor-paper .ProseMirror p span,
+.editor-paper .ProseMirror p strong,
+.editor-paper .ProseMirror p em,
+.editor-paper .ProseMirror p u {
+    display: inline !important;
+    white-space: normal !important;
 }
 .editor-paper .ProseMirror::after { content: ""; display: table; clear: both; }
 
