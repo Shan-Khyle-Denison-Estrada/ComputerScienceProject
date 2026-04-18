@@ -40,6 +40,7 @@ const editingBarangayId = ref(null);
 
 // --- COVERAGE VIEW MODAL STATE ---
 const selectedZoneForView = ref(null);
+const showValidationWarning = ref(false);
 
 // --- DROPDOWN STATE ---
 const dropdownSearch = ref('');
@@ -188,10 +189,18 @@ const openCoverageModal = (zone) => {
 };
 
 const submitAdd = () => {
+    if (addForm.coverage.length === 0) {
+        showValidationWarning.value = true;
+        return; 
+    }
     addForm.post(route('admin.zones.store'), { onSuccess: () => showAddModal.value = false });
 };
 
 const submitEdit = () => {
+    if (editForm.coverage.length === 0) {
+        showValidationWarning.value = true;
+        return; 
+    }
     editForm.post(route('admin.zones.update', editForm.id), { onSuccess: () => showEditModal.value = false });
 };
 
@@ -374,7 +383,6 @@ const deleteBarangay = (id) => {
                         <template v-if="props.adminAddress">
                             <div class="mt-1 relative w-full z-10">
                                 <input 
-                                    required
                                     type="text" 
                                     class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
                                     placeholder="Search or select a barangay..."
@@ -459,7 +467,6 @@ const deleteBarangay = (id) => {
                         
                         <div class="mt-1 relative w-full z-10">
                             <input 
-                                required
                                 type="text" 
                                 class="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 cursor-pointer pr-10 pl-3 py-2"
                                 placeholder="Search or select a barangay..."
@@ -650,5 +657,25 @@ const deleteBarangay = (id) => {
                 </div>
             </div>
         </Modal>
+
+        <Modal :show="showValidationWarning" @close="showValidationWarning = false" maxWidth="sm">
+            <div class="p-6">
+                <div class="flex items-center justify-center mb-4">
+                    <div class="bg-red-100 rounded-full p-3">
+                        <svg class="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                </div>
+                <h2 class="text-lg font-bold text-gray-900 text-center mb-2">Coverage Required</h2>
+                <p class="text-sm text-gray-600 text-center mb-6">
+                    Please add at least one barangay to the coverage area before saving this zone.
+                </p>
+                <div class="flex justify-center">
+                    <PrimaryButton @click="showValidationWarning = false">Understood</PrimaryButton>
+                </div>
+            </div>
+        </Modal>
+
     </AuthenticatedLayout>
 </template>
