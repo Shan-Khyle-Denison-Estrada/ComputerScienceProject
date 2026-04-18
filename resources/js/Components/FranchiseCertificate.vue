@@ -76,10 +76,6 @@ const parsedContent = computed(() => {
             if (savedWidth && savedWidth !== 'auto') {
                 el.style.setProperty('width', savedWidth, 'important');
             } else {
-                // THE FINAL TWEAK: 
-                // By reducing the character width from 8.5 to 7.5, and the padding from 32 to 16,
-                // the box becomes slightly narrower. Because the left edge is anchored,
-                // narrowing the box pulls the center-point perfectly to the left!
                 const charCount = varName.replace(/_/g, ' ').length; 
                 const estimatedPillWidth = (charCount * 7.5) + 16; 
                 
@@ -87,6 +83,13 @@ const parsedContent = computed(() => {
             }
 
             el.style.setProperty('text-align', savedAlign, 'important');
+        } else {
+            // THE BASELINE FIX: 
+            // If the layout is "In Line with Text", forcefully strip the 'inline-block' 
+            // behavior and snap the baseline perfectly to the surrounding normal text!
+            el.style.setProperty('display', 'inline', 'important');
+            el.style.setProperty('vertical-align', 'baseline', 'important');
+            el.style.setProperty('position', 'static', 'important');
         }
 
         // Restore underlines and bolding
