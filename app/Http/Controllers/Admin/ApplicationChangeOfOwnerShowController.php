@@ -41,13 +41,40 @@ class ApplicationChangeOfOwnerShowController extends Controller
             'assessment.payments'
         ]);
 
-        // NEW: Automatically detect if the proposed owner already exists by TIN
+        // NEW: Fetch Old Owner explicitly to preserve state on the comparison tab after completion
+        $oldOwnerUser = null;
+        $oldOwnerOperator = null;
+
+        if ($application->status === 'Completed') {
+            // Find the ownership record that was executed by this application transfer
+            $historicalOwnership = \App\Models\Ownership::where('franchise_id', $application->franchise_id)
+                ->whereNotNull('previous_operator_id')
+                ->latest('created_at')
+                ->first();
+
+            if ($historicalOwnership) {
+                $oldOwnerOperator = \App\Models\Operator::with('user')->find($historicalOwnership->previous_operator_id);
+                $oldOwnerUser = $oldOwnerOperator->user ?? null;
+            }
+        } else {
+            // If not yet completed, the active ownership still belongs to the old owner
+            $currentOwnership = $application->franchise->currentOwnership ?? null;
+            if ($currentOwnership) {
+                $oldOwnerOperator = $currentOwnership->newOwner;
+                $oldOwnerUser = $oldOwnerOperator->user ?? null;
+            }
+        }
+
         $operatorExists = \App\Models\Operator::where('tin_number', $application->tin_number)->exists();
 
         return Inertia::render('Admin/Applications/ShowChangeOfOwner', [
             'application' => $application,
             'isEncoder' => $isEncoder,
-            'operatorExists' => $operatorExists, // <-- Pass it to the view
+            'operatorExists' => $operatorExists,
+            'oldOwnerData' => [
+                'user' => $oldOwnerUser,
+                'operator' => $oldOwnerOperator
+            ],
         ]);
     }
 

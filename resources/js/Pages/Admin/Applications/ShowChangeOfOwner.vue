@@ -12,7 +12,8 @@ import ChangeOfOwnerModal from '@/Components/Modals/ChangeOfOwnerModal.vue';
 const props = defineProps({
     application: Object,
     isEncoder: { type: Boolean, default: false },
-    operatorExists: { type: Boolean, default: false }
+    operatorExists: { type: Boolean, default: false },
+    oldOwnerData: { type: Object, default: () => ({ user: null, operator: null }) }
 });
 
 // --- STATE ---
@@ -42,9 +43,9 @@ const application = computed(() => {
     const franchise = app.franchise || {};
     const zone = app.zone || {};
     
-    const currentOwnership = franchise.current_ownership || {};
-    const currentOperator = currentOwnership.new_owner || {};
-    const currentUser = currentOperator.user || {};
+    // CHANGED: Use the explicitly passed oldOwnerData to preserve comparison state
+    const currentOperator = props.oldOwnerData?.operator || {};
+    const currentUser = props.oldOwnerData?.user || {};
 
     // Map Assessment and Payments
     const mappedAssessment = app.assessment ? {
