@@ -369,7 +369,7 @@ const deleteBarangay = (id) => {
                             class="mt-1 block w-full uppercase" 
                             v-model="addForm.description" 
                             required 
-                            placeholder="DOWNTOWN ZONE" 
+                            placeholder="IV" 
                         />
                     </div>
                     <div>
