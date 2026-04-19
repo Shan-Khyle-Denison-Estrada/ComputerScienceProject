@@ -385,7 +385,7 @@ if (sourceUnits.length > 0) {
                         
                         <div v-show="franchiseUIStates[index].isExpanded" class="p-4 border-t border-gray-100 bg-white animate-fade-in">
                             <div class="grid grid-cols-4 gap-4">
-                                <div>
+                                <div v-if="props.application?.application_type !== 'New Franchise'">
                                     <InputLabel value="Franchise Number" class="text-[10px]" />
                                     <TextInput v-model="franchise.franchise_number" placeholder="" class="w-full text-xs py-1.5 uppercase font-mono" />
                                 </div>

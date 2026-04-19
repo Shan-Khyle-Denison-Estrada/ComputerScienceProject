@@ -290,7 +290,11 @@ class ApplicationShowController extends Controller
 
             // Franchise / Unit Info
             'franchises' => 'required|array|min:1',
-            'franchises.*.franchise_number' => 'required|string|unique:franchises,franchise_number',
+            'franchises.*.franchise_number' => [
+                $application->application_type === 'New Franchise' ? 'nullable' : 'required',
+                'string',
+                'unique:franchises,franchise_number'
+            ],
             'franchises.*.zone_id' => 'required|exists:zones,id',
             'franchises.*.date_issued' => 'required|date',
             'franchises.*.make_id' => 'required|exists:unit_makes,id',
@@ -411,10 +415,34 @@ class ApplicationShowController extends Controller
                         'condition' => 'Good',
                     ], $unitPhotos)); // [!code focus] Merge photos into creation array
 
-                    // Check if the frontend provided a number, otherwise generate one
-                    $franchiseNumber = !empty($franchiseData['franchise_number']) 
-                        ? $franchiseData['franchise_number'] 
-                        : $this->generateFranchiseNumber(); // Or whatever your current auto-gen logic is
+                    // Check if the frontend provided a number, otherwise generate one automatically
+                    if (!empty($franchiseData['franchise_number'])) {
+                        $franchiseNumber = $franchiseData['franchise_number'];
+                    } else {
+                        // 1. Get the Zone Description (e.g., "II")
+                        $zone = \App\Models\Zone::find($franchiseData['zone_id']);
+                        $zoneDesc = $zone ? $zone->description : 'ZONE';
+                        
+                        // 2. Get Current Year
+                        $currentYear = now()->year;
+                        
+                        // 3. Find the latest franchise for this specific zone and year
+                        $latestFranchise = Franchise::where('franchise_number', 'like', "{$zoneDesc}-{$currentYear}-%")
+                            ->orderBy('franchise_number', 'desc')
+                            ->lockForUpdate() // Prevent duplicate numbers if multiple users submit at the exact same time
+                            ->first();
+
+                        // 4. Increment the counter (assumes 5-digit counter like 00001)
+                        if ($latestFranchise) {
+                            $lastCounter = (int) substr($latestFranchise->franchise_number, -5);
+                            $counter = str_pad($lastCounter + 1, 5, '0', STR_PAD_LEFT);
+                        } else {
+                            $counter = '00001';
+                        }
+
+                        // 5. Assemble the final string
+                        $franchiseNumber = "{$zoneDesc}-{$currentYear}-{$counter}";
+                    }
                     
                     $franchise = Franchise::create([
                         'franchise_number' => $franchiseNumber,
