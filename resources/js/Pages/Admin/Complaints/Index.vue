@@ -219,7 +219,7 @@ const deleteNature = (id) => {
                                 <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 border border-red-200">
                                     {{ complaint.nature_of_complaint }}
                                 </span>
-                                <div class="text-xs text-gray-500 mt-2 max-w-xs truncate" :title="complaint.remarks">
+                                <div class="text-xs text-gray-500 mt-2 max-w-xs" :title="complaint.remarks">
                                     {{ complaint.remarks || 'No remarks provided.' }}
                                 </div>
                             </td>

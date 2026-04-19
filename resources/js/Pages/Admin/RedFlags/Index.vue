@@ -187,7 +187,7 @@ const deleteNature = (id) => {
                                     {{ flag.nature?.name || 'Unknown' }}
                                 </span>
                             </td>
-                            <td class="px-6 py-4 text-sm text-gray-500 max-w-xs truncate">
+                            <td class="px-6 py-4 text-sm text-gray-500 max-w-xs">
                                 {{ flag.remarks || '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
