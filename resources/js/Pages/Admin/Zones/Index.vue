@@ -168,9 +168,18 @@ const removeCoverageItem = (formType, index) => {
 };
 
 // --- ACTIONS ---
+const addDescriptionError = ref('');
+const editDescriptionError = ref('');
+
+const isValidRomanNumeral = (str) => {
+    const regex = /^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i;
+    return regex.test(str);
+};
+
 const openAddModal = () => {
     addForm.reset();
     dropdownSearch.value = '';
+    addDescriptionError.value = '';
     showAddModal.value = true;
 };
 
@@ -180,6 +189,7 @@ const openEditModal = (zone) => {
     editForm.color = zone.color;
     editForm.coverage = Array.isArray(zone.coverage) ? [...zone.coverage] : [];
     dropdownSearch.value = '';
+    editDescriptionError.value = '';
     showEditModal.value = true;
 };
 
@@ -189,6 +199,12 @@ const openCoverageModal = (zone) => {
 };
 
 const submitAdd = () => {
+    addDescriptionError.value = '';
+    if (!isValidRomanNumeral(addForm.description)) {
+        addDescriptionError.value = 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).';
+        return;
+    }
+    
     if (addForm.coverage.length === 0) {
         showValidationWarning.value = true;
         return; 
@@ -197,6 +213,12 @@ const submitAdd = () => {
 };
 
 const submitEdit = () => {
+    editDescriptionError.value = '';
+    if (!isValidRomanNumeral(editForm.description)) {
+        editDescriptionError.value = 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).';
+        return;
+    }
+
     if (editForm.coverage.length === 0) {
         showValidationWarning.value = true;
         return; 
@@ -367,10 +389,14 @@ const deleteBarangay = (id) => {
                         <TextInput 
                             type="text" 
                             class="mt-1 block w-full uppercase" 
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': addDescriptionError }"
                             v-model="addForm.description" 
                             required 
                             placeholder="IV" 
                         />
+                        <p v-if="addDescriptionError" class="mt-1 text-xs text-red-600 animate-fade-in">
+                            {{ addDescriptionError }}
+                        </p>
                     </div>
                     <div>
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>
@@ -452,10 +478,14 @@ const deleteBarangay = (id) => {
                         <TextInput 
                             type="text" 
                             class="mt-1 block w-full uppercase" 
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': editDescriptionError }"
                             v-model="editForm.description" 
                             required 
-                            placeholder="DOWNTOWN ZONE" 
+                            placeholder="IV" 
                         />
+                        <p v-if="editDescriptionError" class="mt-1 text-xs text-red-600 animate-fade-in">
+                            {{ editDescriptionError }}
+                        </p>
                     </div>
                     <div>
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>

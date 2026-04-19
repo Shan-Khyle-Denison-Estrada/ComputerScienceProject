@@ -34,10 +34,17 @@ class ZoneController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'description' => 'required|string|max:255',
+            'description' => [
+                'required', 
+                'string', 
+                'max:255', 
+                'regex:/^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i'
+            ],
             'color' => 'required|string|max:50',
             'coverage' => 'array',
             'coverage.*' => 'string'
+        ], [
+            'description.regex' => 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).'
         ]);
 
         // Apply Sentence Case (e.g., "red" -> "Red", "downtown zone" -> "Downtown zone")
@@ -53,10 +60,17 @@ class ZoneController extends Controller
     public function update(Request $request, Zone $zone)
     {
         $validated = $request->validate([
-            'description' => 'required|string|max:255',
+            'description' => [
+                'required', 
+                'string', 
+                'max:255', 
+                'regex:/^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i'
+            ],
             'color' => 'required|string|max:50',
             'coverage' => 'array',
             'coverage.*' => 'string'
+        ], [
+            'description.regex' => 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).'
         ]);
 
         // Apply Sentence Case
