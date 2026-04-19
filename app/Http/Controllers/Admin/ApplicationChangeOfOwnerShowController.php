@@ -126,6 +126,10 @@ class ApplicationChangeOfOwnerShowController extends Controller
 
             // FIX: 1. Attempt to find existing Operator directly by TIN Number 
             $operator = Operator::where('tin_number', $application->tin_number)->first();
+            
+            // NEW: Track variables to determine if an email should be sent
+            $isNewUser = false;
+            $generatedPassword = null;
 
             if ($operator) {
                 // Operator already exists, just fetch their associated user
@@ -143,6 +147,7 @@ class ApplicationChangeOfOwnerShowController extends Controller
                 $user = User::where('email', $application->email)->first();
 
                 if (!$user) {
+                    $isNewUser = true;
                     $generatedPassword = \Illuminate\Support\Str::password(10, true, true, false, false);
                     // Create brand new User for the new owner
                     $user = User::create([
@@ -191,6 +196,11 @@ class ApplicationChangeOfOwnerShowController extends Controller
                 'status' => 'Completed',
                 'remarks' => 'Change of Owner finalized successfully. ' . ($request->remarks ?? ''),
             ]);
+
+            // 6. Send Email to the User (Only if it's a completely new account)
+            if ($isNewUser && $generatedPassword) {
+                \Illuminate\Support\Facades\Mail::to($user->email)->send(new \App\Mail\NewAccountCredentials($user, $generatedPassword));
+            }
         });
 
         return redirect()->back()->with('success', 'Change of Owner finalized and activated successfully!');
