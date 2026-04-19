@@ -59,9 +59,30 @@ const getBalance = (assessment) => {
 
 // --- NEW HELPER: Get Operator Name ---
 const getOperatorName = (assessment) => {
-    if (!assessment || !assessment.franchise_id) return 'N/A';
-    const franchise = props.franchises.find(f => f.id === assessment.franchise_id);
-    return franchise?.owner_name || 'N/A';
+    if (!assessment) return 'N/A';
+    
+    // 1. Try to get the name from the Franchise relation first
+    if (assessment.franchise_id) {
+        const franchise = props.franchises.find(f => f.id === assessment.franchise_id);
+        if (franchise && franchise.owner_name) {
+            return franchise.owner_name;
+        }
+    }
+    
+    // 2. Fallback to the Application entity for new franchises
+    if (assessment.application) {
+        const app = assessment.application;
+        
+        // Use the appended attribute if available, otherwise construct it manually
+        if (app.applicant_name) return app.applicant_name;
+        
+        const nameParts = [app.first_name, app.middle_name, app.last_name].filter(Boolean);
+        if (nameParts.length > 0) {
+            return nameParts.join(' ');
+        }
+    }
+    
+    return 'N/A';
 };
 
 // --- SEARCH, SORT & FILTER ACTIONS ---
