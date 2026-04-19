@@ -235,7 +235,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 4. CAPO
-        if (in_array('capo', $roles)) {
+        if (in_array('city_anti_pollution_officer', $roles)) {
             return match($type) {
                 'Change of Unit'  => route('capo.applications.show-change-of-unit', $id),
                 'New Franchise'   => route('capo.applications.show-new-franchise', $id),
@@ -246,11 +246,11 @@ class ApplicationEventNotification extends Notification
         // 5. Reviewer
         if (in_array('reviewer', $roles)) {
             return match($type) {
-                'Renewal'                    => route('applications.showRenewal', $id),
-                'Change of Unit'             => route('applications.showChangeOfUnit', $id),
+                'Renewal'                    => route('reviewer.applications.showRenewal', $id),
+                'Change of Unit'             => route('reviewer.applications.showChangeOfUnit', $id),
                 'Change of Owner', 
-                'Change of Owner (Deceased)' => route('applications.showChangeOfOwner', $id),
-                'New Franchise'              => route('reviewer.applications.showNewFranchise', $id),
+                'Change of Owner (Deceased)' => route('reviewer.applications.showChangeOfOwner', $id),
+                'New Franchise'              => route('reviewer.reviewer.applications.showNewFranchise', $id),
                 default                      => route('dashboard'),
             };
         }
@@ -266,11 +266,11 @@ class ApplicationEventNotification extends Notification
         // 7. TAB Approver
         if (in_array('tab_approver', $roles)) {
             return match($type) {
-                'Renewal'                    => route('applications.showRenewal', $id),
-                'Change of Unit'             => route('applications.showChangeOfUnit', $id),
+                'Renewal'                    => route('tab_approver.applications.showRenewal', $id),
+                'Change of Unit'             => route('tab_approver.applications.showChangeOfUnit', $id),
                 'Change of Owner', 
-                'Change of Owner (Deceased)' => route('applications.showChangeOfOwner', $id),
-                'New Franchise'              => route('applications.show-new-franchise', $id),
+                'Change of Owner (Deceased)' => route('tab_approver.applications.showChangeOfOwner', $id),
+                'New Franchise'              => route('tab_approver.applications.show-new-franchise', $id),
                 default                      => route('dashboard'),
             };
         }

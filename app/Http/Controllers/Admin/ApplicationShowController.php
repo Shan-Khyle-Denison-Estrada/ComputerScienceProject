@@ -31,7 +31,7 @@ class ApplicationShowController extends Controller
 
         // Clear unread notifications for this specific application for the current user
         $notifications = auth()->user()->unreadNotifications
-            ->where('data.application_id', $application->id);
+            ->where('data.application_id', $id);
 
         if ($notifications->isNotEmpty()) {
             $notifications->markAsRead();

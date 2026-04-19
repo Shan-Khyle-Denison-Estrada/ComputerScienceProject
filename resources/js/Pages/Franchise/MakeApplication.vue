@@ -294,7 +294,7 @@ const resubmitForInspection = () => {
                                                 Upload Docs
                                             </button>
 
-                                            <button v-if="app.type !== 'Renewal' && app.application_type !== 'Renewal'" @click.stop="confirmCancelApplication(app)" class="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50" title="Cancel Application">
+                                            <button v-if="app.type !== 'Renewal' && app.application_type !== 'Renewal' && app.status !== 'Approved'" @click.stop="confirmCancelApplication(app)" class="text-red-500 hover:text-red-700 transition-colors p-1 rounded hover:bg-red-50" title="Cancel Application">
                                                 <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                                             </button>
                                         </div>
