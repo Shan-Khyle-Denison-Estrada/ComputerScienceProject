@@ -99,7 +99,45 @@ class ApplicationCompletionController extends Controller
                 'submitted_at' => now(),
             ]);
 
+            // --- AUTO-GENERATE ASSESSMENT FOR NEW FRANCHISE ---
+            $assessment = null; // Initialize variable for the email
+            
+            if ($application->application_type === 'New Franchise') {
+                // Using absolute paths so you don't have to worry about missing imports at the top
+                $particulars = \App\Models\Particular::where('group', 'new_franchise')->get();
+
+                if ($particulars->isNotEmpty()) {
+                    $totalAmountDue = $particulars->sum('amount');
+                    $deadlineDate = now()->addDays(15);
+
+                    $assessment = \App\Models\Assessment::create([
+                        'application_id'    => $application->id,
+                        'franchise_id'      => null, 
+                        'assessment_date'   => now(),
+                        'assessment_due'    => $deadlineDate, 
+                        'total_amount_due'  => $totalAmountDue,
+                        'assessment_status' => 'Pending',
+                        'remarks'           => "Auto-generated assessment for new franchise application.",
+                    ]);
+
+                    foreach ($particulars as $particular) {
+                        $assessment->particulars()->attach($particular->id, [
+                            'quantity' => 1,
+                            'subtotal' => $particular->amount
+                        ]);
+                    }
+                }
+            }
+            // ---------------------------------------------------
+
             DB::commit();
+
+            // SEND EMAIL NOTIFICATION HERE
+            if ($application->email) {
+                \Illuminate\Support\Facades\Mail::to($application->email)->send(
+                    new \App\Mail\ApplicationSubmittedMail($application->reference_number, $application->first_name, $assessment)
+                );
+            }
 
             return redirect('/')->with('success', 'Your application requirements have been submitted successfully! We will notify you once evaluation is complete.');
 
