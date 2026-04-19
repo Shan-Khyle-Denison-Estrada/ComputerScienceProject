@@ -196,11 +196,13 @@ class ApplicationEventNotification extends Notification
 
     private function determineUrl($user, $type)
     {
-        $roles = $user->active_roles ?? [];
         $id = $this->application->id;
+        
+        // Extract the role string value, handling the case where 'role' is cast to an Enum
+        $role = $user->role instanceof \BackedEnum ? $user->role->value : $user->role;
 
         // 1. Admin & Encoder (Shared Routes)
-        if (in_array('admin', $roles) || in_array('encoder', $roles)) {
+        if ($role === 'admin' || $role === 'encoder') {
             return match($type) {
                 'Renewal'                    => route('admin.applications.renewal.show', $id),
                 'Change of Unit'             => route('admin.applications.change-of-unit.show', $id),
@@ -213,7 +215,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 2. Evaluator
-        if (in_array('evaluator', $roles)) {
+        if ($role === 'evaluator') {
             return match($type) {
                 'Change of Unit'             => route('evaluator.applications.show-change-of-unit', $id),
                 'Change of Owner', 
@@ -226,7 +228,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 3. Inspector
-        if (in_array('inspector', $roles)) {
+        if ($role === 'inspector') {
             return match($type) {
                 'Change of Unit'  => route('inspector.applications.show-change-of-unit', $id),
                 'New Franchise'   => route('inspector.applications.show-new-franchise', $id),
@@ -235,7 +237,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 4. CAPO
-        if (in_array('city_anti_pollution_officer', $roles)) {
+        if ($role === 'city_anti_pollution_officer') {
             return match($type) {
                 'Change of Unit'  => route('capo.applications.show-change-of-unit', $id),
                 'New Franchise'   => route('capo.applications.show-new-franchise', $id),
@@ -244,7 +246,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 5. Reviewer
-        if (in_array('reviewer', $roles)) {
+        if ($role === 'reviewer') {
             return match($type) {
                 'Renewal'                    => route('reviewer.applications.showRenewal', $id),
                 'Change of Unit'             => route('reviewer.applications.showChangeOfUnit', $id),
@@ -256,7 +258,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 6. SP Approver
-        if (in_array('sp_approver', $roles)) {
+        if ($role === 'sp_approver') {
             return match($type) {
                 'New Franchise' => route('sp_approver.applications.show-new-franchise', $id),
                 default         => route('sp_approver.applications.show', $id),
@@ -264,7 +266,7 @@ class ApplicationEventNotification extends Notification
         }
 
         // 7. TAB Approver
-        if (in_array('tab_approver', $roles)) {
+        if ($role === 'tab_approver') {
             return match($type) {
                 'Renewal'                    => route('tab_approver.applications.showRenewal', $id),
                 'Change of Unit'             => route('tab_approver.applications.showChangeOfUnit', $id),
