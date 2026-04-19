@@ -150,6 +150,17 @@ public function store(Request $request)
             // 4. TRIGGER AUTOMATIC PENALTIES
             // This will instantly inject surcharge/interest if created past the due date
             $assessment->recalculatePenalties(); 
+
+            // 5. SEND NOTIFICATION EMAIL
+            // Load relationships needed to find the email address and populate the email template
+            $assessment->load(['application', 'franchise.currentOwnership.newOwner.user', 'particulars']);
+            
+            // Fallback: Try application email first, then operator's user email
+            $email = $assessment->application->email ?? $assessment->franchise->currentOwnership->newOwner->user->email ?? null;
+
+            if ($email) {
+                \Illuminate\Support\Facades\Mail::to($email)->send(new \App\Mail\AssessmentNotification($assessment));
+            }
         });
 
         return redirect()->back()->with('success', 'Assessment created successfully.');
