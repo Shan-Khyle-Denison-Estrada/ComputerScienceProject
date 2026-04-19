@@ -189,7 +189,7 @@ class ApplicationObserver
             // 2. Reviewer Approves -> Notify TAB Approver (Skips SP!)
             if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
                 DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
-                $this->notifyRoles(['tab_approver'], $application, 'reviewer_approved');
+                $this->notifyRoles(['tab_approver', 'admin'], $application, 'reviewer_approved');
             }
 
             // 3. TAB Approves -> Notify Admin & Encoder for Finalization
@@ -264,7 +264,7 @@ class ApplicationObserver
             // 3. Reviewer Approves -> Notify TAB Approver
             if ($application->wasChanged('reviewer_status') && $application->reviewer_status === 'Approved') {
                 DB::table('notifications')->where('data->application_id', $application->id)->update(['read_at' => now()]);
-                $this->notifyRoles(['tab_approver'], $application, 'reviewer_approved');
+                $this->notifyRoles(['tab_approver', 'admin'], $application, 'reviewer_approved');
             }
 
             // 4. TAB Approves -> Notify Admin & Encoder for Finalization
