@@ -24,10 +24,14 @@ class ZoneController extends Controller
         $settings = \App\Models\SystemSetting::first();
         $adminAddress = $settings ? $settings->address : '';
 
+        // Fetch used colors to exclude them from frontend suggestions
+        $usedColors = Zone::pluck('color')->map(fn($color) => Str::ucfirst(Str::lower($color)))->toArray();
+
         return Inertia::render('Admin/Zones/Index', [
             'zones' => $query->latest()->paginate(6)->withQueryString(),
             'filters' => $request->only(['search']),
             'adminAddress' => $adminAddress, // Pass the configured address instead
+            'usedColors' => $usedColors, // Pass the used colors array
         ]);
     }
 
@@ -38,13 +42,15 @@ class ZoneController extends Controller
                 'required', 
                 'string', 
                 'max:255', 
-                'regex:/^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i'
+                'regex:/^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i',
+                'unique:zones,description'
             ],
-            'color' => 'required|string|max:50',
+            'color' => 'required|string|max:50|unique:zones,color',
             'coverage' => 'array',
             'coverage.*' => 'string'
         ], [
-            'description.regex' => 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).'
+            'description.regex' => 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).',
+            'description.unique' => 'This Zone description is already taken. It must be unique.'
         ]);
 
         // Apply Sentence Case (e.g., "red" -> "Red", "downtown zone" -> "Downtown zone")
@@ -64,13 +70,15 @@ class ZoneController extends Controller
                 'required', 
                 'string', 
                 'max:255', 
-                'regex:/^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i'
+                'regex:/^(?=[MDCLXVI])M*(C[MD]|D?C{0,3})(X[CL]|L?X{0,3})(I[XV]|V?I{0,3})$/i',
+                'unique:zones,description,' . $zone->id
             ],
-            'color' => 'required|string|max:50',
+            'color' => 'required|string|max:50|unique:zones,color,' . $zone->id,
             'coverage' => 'array',
             'coverage.*' => 'string'
         ], [
-            'description.regex' => 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).'
+            'description.regex' => 'The zone description must be a valid Roman numeral (e.g., I, II, III, IV).',
+            'description.unique' => 'This Zone description is already taken. It must be unique.'
         ]);
 
         // Apply Sentence Case

@@ -12,7 +12,8 @@ import { ref, computed, onMounted } from 'vue';
 const props = defineProps({
     zones: Object,
     filters: Object,
-    adminAddress: String // Replaced barangays Array with adminAddress String
+    adminAddress: String, 
+    usedColors: { type: Array, default: () => [] } // Added usedColors prop
 });
 
 // --- STATE ---
@@ -20,6 +21,37 @@ const showAddModal = ref(false);
 const showEditModal = ref(false);
 const showCoverageModal = ref(false); 
 const apiBarangays = ref([]); // Holds the dynamically fetched barangays
+
+// --- SUGGESTED COLORS & GENERATOR ---
+const baseSuggestedColors = ['Red', 'Blue', 'Green', 'Yellow', 'Orange', 'Purple', 'Teal', 'Pink', 'Brown', 'Gray', 'Indigo', 'Cyan'];
+
+// Filter out colors that are already taken in the database
+const availableSuggestedColors = computed(() => {
+    return baseSuggestedColors.filter(color => !props.usedColors.includes(color));
+});
+
+// A massive dictionary of extended colors for the auto-generator
+const extendedColorDictionary = [
+    'Crimson', 'Darkred', 'Tomato', 'Coral', 'Darkorange', 'Gold', 'Khaki', 
+    'Yellowgreen', 'Darkolivegreen', 'Mediumseagreen', 'Lightseagreen', 'Darkcyan', 
+    'Cadetblue', 'Steelblue', 'Royalblue', 'Midnightblue', 'Darkslateblue', 
+    'Mediumpurple', 'Darkmagenta', 'Deeppink', 'Hotpink', 'Slategray', 'Navy', 'Maroon'
+];
+
+const generateRandomColor = (form) => {
+    // Combine base and extended, then filter out what is already used
+    const allPossible = [...baseSuggestedColors, ...extendedColorDictionary];
+    const available = allPossible.filter(c => !props.usedColors.includes(c));
+    
+    if (available.length > 0) {
+        // Pick a random available color
+        const randomColor = available[Math.floor(Math.random() * available.length)];
+        form.color = randomColor;
+        form.clearErrors('color');
+    } else {
+        alert("Wow, you've used all our preset colors! Please type a custom color hex or name.");
+    }
+};
 
 // --- SEARCH ---
 const search = ref('');
@@ -209,7 +241,14 @@ const submitAdd = () => {
         showValidationWarning.value = true;
         return; 
     }
-    addForm.post(route('admin.zones.store'), { onSuccess: () => showAddModal.value = false });
+    
+    addForm.post(route('admin.zones.store'), { 
+        onSuccess: () => {
+            showAddModal.value = false;
+            addForm.reset(); // Clears the form inputs
+            addDescriptionError.value = ''; // Clears any residual custom errors
+        } 
+    });
 };
 
 const submitEdit = () => {
@@ -389,18 +428,46 @@ const deleteBarangay = (id) => {
                         <TextInput 
                             type="text" 
                             class="mt-1 block w-full uppercase" 
-                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': addDescriptionError }"
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': addDescriptionError || addForm.errors.description }"
                             v-model="addForm.description" 
+                            @input="addForm.clearErrors('description'); addDescriptionError = ''"
                             required 
                             placeholder="IV" 
                         />
-                        <p v-if="addDescriptionError" class="mt-1 text-xs text-red-600 animate-fade-in">
-                            {{ addDescriptionError }}
+                        <p v-if="addDescriptionError || addForm.errors.description" class="mt-1 text-xs text-red-600 animate-fade-in">
+                            {{ addDescriptionError || addForm.errors.description }}
                         </p>
                     </div>
                     <div>
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>
-                        <TextInput type="text" class="mt-1 block w-full" v-model="addForm.color" @blur="applySentenceCase(addForm, 'color')" required placeholder="e.g., Red" />
+                        <TextInput 
+                            type="text" 
+                            class="mt-1 block w-full" 
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': addForm.errors.color }"
+                            v-model="addForm.color" 
+                            @blur="applySentenceCase(addForm, 'color')" 
+                            required 
+                            placeholder="e.g., Red" 
+                        />
+                        <p v-if="addForm.errors.color" class="mt-1 text-xs text-red-600 animate-fade-in">
+                            {{ addForm.errors.color }}
+                        </p>
+                        <div class="mt-2">
+                            <div class="flex flex-wrap gap-2 mb-2" v-if="availableSuggestedColors.length > 0">
+                                <button 
+                                    type="button" 
+                                    v-for="color in availableSuggestedColors" 
+                                    :key="color" 
+                                    @click="addForm.color = color; addForm.clearErrors('color')"
+                                    class="w-6 h-6 rounded shadow-sm border border-gray-200 hover:scale-110 transition-transform"
+                                    :style="{ backgroundColor: color }"
+                                    :title="color"
+                                ></button>
+                            </div>
+                            <button type="button" @click="generateRandomColor(addForm)" class="text-[11px] font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded border border-blue-100 transition-colors">
+                                ✨ Auto-pick unique color
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="relative">
@@ -478,18 +545,46 @@ const deleteBarangay = (id) => {
                         <TextInput 
                             type="text" 
                             class="mt-1 block w-full uppercase" 
-                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': editDescriptionError }"
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': editDescriptionError || editForm.errors.description }"
                             v-model="editForm.description" 
+                            @input="editForm.clearErrors('description'); editDescriptionError = ''"
                             required 
                             placeholder="IV" 
                         />
-                        <p v-if="editDescriptionError" class="mt-1 text-xs text-red-600 animate-fade-in">
-                            {{ editDescriptionError }}
+                        <p v-if="editDescriptionError || editForm.errors.description" class="mt-1 text-xs text-red-600 animate-fade-in">
+                            {{ editDescriptionError || editForm.errors.description }}
                         </p>
                     </div>
                     <div>
                         <InputLabel>Color Label <span class="text-red-500">*</span></InputLabel>
-                        <TextInput type="text" class="mt-1 block w-full" v-model="editForm.color" @blur="applySentenceCase(editForm, 'color')" required />
+                        <TextInput 
+                            type="text" 
+                            class="mt-1 block w-full" 
+                            :class="{ 'border-red-500 focus:border-red-500 focus:ring-red-500': editForm.errors.color }"
+                            v-model="editForm.color" 
+                            @blur="applySentenceCase(editForm, 'color')" 
+                            required 
+                            placeholder="e.g., Red" 
+                        />
+                        <p v-if="editForm.errors.color" class="mt-1 text-xs text-red-600 animate-fade-in">
+                            {{ editForm.errors.color }}
+                        </p>
+                        <div class="mt-2">
+                            <div class="flex flex-wrap gap-2 mb-2" v-if="availableSuggestedColors.length > 0">
+                                <button 
+                                    type="button" 
+                                    v-for="color in availableSuggestedColors" 
+                                    :key="color" 
+                                    @click="editForm.color = color; editForm.clearErrors('color')"
+                                    class="w-6 h-6 rounded shadow-sm border border-gray-200 hover:scale-110 transition-transform"
+                                    :style="{ backgroundColor: color }"
+                                    :title="color"
+                                ></button>
+                            </div>
+                            <button type="button" @click="generateRandomColor(editForm)" class="text-[11px] font-medium text-blue-600 hover:text-blue-800 bg-blue-50 px-2 py-1 rounded border border-blue-100 transition-colors">
+                                ✨ Auto-pick unique color
+                            </button>
+                        </div>
                     </div>
                     
                     <div class="relative">
