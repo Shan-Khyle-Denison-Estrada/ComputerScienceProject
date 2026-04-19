@@ -698,7 +698,7 @@ const formatTinNumber = (val) => {
                                                 <InputLabel value="Motor No." />
                                                 <span class="text-red-600 font-bold">*</span>
                                             </div>
-                                            <TextInput v-model="unit.motor_number" @input="form.clearErrors(`units.${index}.motor_number`)" placeholder="e.g. M-123456" class="mt-1 block w-full" />
+                                            <TextInput v-model="unit.motor_number" @input="form.clearErrors(`units.${index}.motor_number`)" placeholder="e.g. M123456" class="mt-1 block w-full" />
                                             <InputError :message="form.errors[`units.${index}.motor_number`]" class="mt-2" />
                                         </div>
                                         <!-- <div>
@@ -714,7 +714,7 @@ const formatTinNumber = (val) => {
                                                 <InputLabel value="Chassis No." />
                                                 <span class="text-red-600 font-bold">*</span>
                                             </div>
-                                            <TextInput v-model="unit.chassis_number" @input="form.clearErrors(`units.${index}.chassis_number`)" placeholder="e.g. C-123456" class="mt-1 block w-full" />
+                                            <TextInput v-model="unit.chassis_number" @input="form.clearErrors(`units.${index}.chassis_number`)" placeholder="e.g. C123456" class="mt-1 block w-full" />
                                             <InputError :message="form.errors[`units.${index}.chassis_number`]" class="mt-2" />
                                         </div>
                                     </div>

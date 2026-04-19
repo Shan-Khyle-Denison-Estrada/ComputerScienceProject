@@ -651,7 +651,7 @@ onUnmounted(() => {
                         <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
                             <span class="block text-xs font-medium text-gray-500 uppercase">Franchise & Operator</span>
                             <span class="font-semibold text-gray-900 text-lg block">
-                                {{ selectedAssessment.franchise.franchise_number ? `#${selectedAssessment.franchise.franchise_number}` : 'N/A' }}
+                                {{ selectedAssessment?.franchise?.franchise_number ? `#${selectedAssessment.franchise.franchise_number}` : 'Pending Approval' }}
                             </span>
                             <span class="text-gray-600">{{ getOperatorName(selectedAssessment) }}</span>
                         </div>

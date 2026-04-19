@@ -155,7 +155,7 @@ public function store(Request $request)
             }
 
             // --- AUTO-GENERATE ASSESSMENT FOR NEW FRANCHISE ---
-            $particulars = Particular::where('group', 'New Franchise')->get();
+            $particulars = Particular::where('group', 'new_franchise')->get();
 
             if ($particulars->isNotEmpty()) {
                 $totalAmountDue = $particulars->sum('amount');
@@ -184,8 +184,9 @@ public function store(Request $request)
 
             DB::commit();
 
+           // Pass the newly created $assessment as the 3rd parameter
             Mail::to($application->email)->send(
-                new ApplicationSubmittedMail($referenceNumber, $application->first_name)
+                new ApplicationSubmittedMail($referenceNumber, $application->first_name, $assessment)
             );
 
             return back()->with('success', "Application submitted successfully! Ref No: $referenceNumber");

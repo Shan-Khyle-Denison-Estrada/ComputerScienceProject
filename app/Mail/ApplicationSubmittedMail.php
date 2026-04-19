@@ -7,6 +7,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Mail\Mailables\Content;
 use Illuminate\Mail\Mailables\Envelope;
 use Illuminate\Queue\SerializesModels;
+use Carbon\Carbon;
 
 class ApplicationSubmittedMail extends Mailable
 {
@@ -14,11 +15,14 @@ class ApplicationSubmittedMail extends Mailable
 
     public $referenceNumber;
     public $applicantName;
+    public $assessment;
 
-    public function __construct($referenceNumber, $applicantName)
+    // Added $assessment as an optional parameter
+    public function __construct($referenceNumber, $applicantName, $assessment = null)
     {
         $this->referenceNumber = $referenceNumber;
         $this->applicantName = $applicantName;
+        $this->assessment = $assessment;
     }
 
     public function envelope(): Envelope
@@ -31,8 +35,26 @@ class ApplicationSubmittedMail extends Mailable
     public function content(): Content
     {
         $currentYear = date('Y');
+        
+        // Generate Assessment HTML Block if assessment exists
+        $assessmentHtml = '';
+        if ($this->assessment) {
+            $amountDue = number_format($this->assessment->total_amount_due, 2);
+            $dueDate = Carbon::parse($this->assessment->assessment_due)->format('F d, Y');
+            
+            $assessmentHtml = "
+            <div style='background-color: #eff6ff; padding: 20px; border-radius: 8px; margin-bottom: 24px; text-align: left; border-left: 4px solid #1e40af;'>
+                <h3 style='margin-top: 0; color: #1e3a8a; font-size: 16px; margin-bottom: 12px;'>Assessment Details</h3>
+                <p style='margin: 0 0 8px 0; color: #374151; font-size: 14px;'><strong>Total Amount Due:</strong> ₱{$amountDue}</p>
+                <p style='margin: 0 0 12px 0; color: #374151; font-size: 14px;'><strong>Due Date:</strong> {$dueDate}</p>
+                <p style='margin: 0; color: #dc2626; font-size: 12px; font-style: italic;'>
+                    * Please settle this assessment before the due date to proceed with your application.
+                </p>
+            </div>
+            ";
+        }
 
-        // Professional, mobile-responsive HTML with inline CSS matching the OTP mail
+        // Professional, mobile-responsive HTML with inline CSS
         $html = "
         <!DOCTYPE html>
         <html>
@@ -68,6 +90,8 @@ class ApplicationSubmittedMail extends Mailable
                                             </td>
                                         </tr>
                                     </table>
+                                    
+                                    {$assessmentHtml}
                                     
                                     <p style='color: #6b7280; font-size: 14px; margin-bottom: 0; line-height: 1.5;'>
                                         Please save this reference number. Present this when requested.
