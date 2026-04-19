@@ -37,7 +37,7 @@ const sortDirection = ref(props.filters.sortDirection || '');
 // --- COMPUTED: GROUPING ---
 const renewalParticulars = computed(() => props.particulars.filter(p => p.group === 'renewal'));
 const unitParticulars = computed(() => props.particulars.filter(p => p.group === 'change_of_unit'));
-const ownerParticulars = computed(() => props.particulars.filter(p => p.group === 'change_of_owner'));
+const ownerParticulars = computed(() => props.particulars.filter(p => p.group === 'change_of_owner' || p.group === 'change_of_owner_deceased'));
 const newFranchiseParticulars = computed(() => props.particulars.filter(p => p.group === 'new_franchise'));
 const otherParticulars = computed(() => props.particulars.filter(p => !p.group && !p.is_system));
 
@@ -235,7 +235,8 @@ const getGroupBadgeClass = (group) => {
     switch(group) {
         case 'renewal': return 'bg-blue-100 text-blue-800';
         case 'change_of_unit': return 'bg-purple-100 text-purple-800';
-        case 'change_of_owner': return 'bg-orange-100 text-orange-800';
+        case 'change_of_owner':
+        case 'change_of_owner_deceased': return 'bg-orange-100 text-orange-800';
         case 'new_franchise': return 'bg-teal-100 text-teal-800';
         case 'new_driver': return 'bg-green-100 text-green-800';
         case 'penalty': return 'bg-red-100 text-red-800';
@@ -621,6 +622,7 @@ onUnmounted(() => {
                                     <option value="renewal">Renewal Fee</option>
                                     <option value="change_of_unit">Change of Unit</option>
                                     <option value="change_of_owner">Change of Owner</option>
+                                    <option value="change_of_owner_deceased">Change of Owner (Deceased)</option>
                                     <option value="new_franchise">New Franchise</option>
                                     <option value="new_driver">New Driver</option>
                                     <option value="penalty" disabled>Penalty (System)</option>
@@ -672,7 +674,7 @@ onUnmounted(() => {
                         <div class="bg-gray-50 p-3 rounded-lg border border-gray-100">
                             <span class="block text-xs font-medium text-gray-500 uppercase">Franchise & Operator</span>
                             <span class="font-semibold text-gray-900 text-lg block">
-                                {{ selectedAssessment?.franchise?.franchise_number ? `#${selectedAssessment.franchise.franchise_number}` : 'Pending Approval' }}
+                                {{ selectedAssessment?.franchise?.franchise_number ? `#${selectedAssessment.franchise.franchise_number}` : 'N/A' }}
                             </span>
                             <span class="text-gray-600">{{ getOperatorName(selectedAssessment) }}</span>
                         </div>

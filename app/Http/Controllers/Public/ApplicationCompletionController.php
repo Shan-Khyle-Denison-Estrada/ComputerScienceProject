@@ -127,6 +127,30 @@ class ApplicationCompletionController extends Controller
                         ]);
                     }
                 }
+            } elseif ($application->application_type === 'Change of Owner (Deceased)') {
+                // Ensure 'change_of_owner_deceased' matches exactly how it's stored in your database group column
+                $particulars = \App\Models\Particular::where('group', 'change_of_owner_deceased')->get();
+
+                if ($particulars->isNotEmpty()) {
+                    $totalAmountDue = $particulars->sum('amount');
+
+                    $assessment = \App\Models\Assessment::create([
+                        'application_id'    => $application->id,
+                        'franchise_id'      => null, 
+                        'assessment_date'   => now(),
+                        'assessment_due'    => null, // No due date
+                        'total_amount_due'  => $totalAmountDue,
+                        'assessment_status' => 'Pending',
+                        'remarks'           => "Auto-generated assessment for change of owner (deceased) application.",
+                    ]);
+
+                    foreach ($particulars as $particular) {
+                        $assessment->particulars()->attach($particular->id, [
+                            'quantity' => 1,
+                            'subtotal' => $particular->amount
+                        ]);
+                    }
+                }
             }
             // ---------------------------------------------------
 
