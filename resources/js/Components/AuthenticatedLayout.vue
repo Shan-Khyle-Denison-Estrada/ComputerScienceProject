@@ -211,7 +211,7 @@ onMounted(() => {
                     </span>
                 </div>
 
-                <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto">
+                <nav class="flex-1 px-2 py-4 space-y-1 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-gray-700 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-gray-600 [scrollbar-width:thin] [scrollbar-color:#374151_transparent]">
                     
                     <template v-for="(item, index) in menuItems" :key="index">
                         
