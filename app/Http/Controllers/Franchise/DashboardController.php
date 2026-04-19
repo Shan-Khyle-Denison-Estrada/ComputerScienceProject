@@ -42,6 +42,7 @@ class DashboardController extends Controller
             'zone',                           
             'assessments.payments',           
             'assessments.particulars',
+            'assessments.application',
             'complaints',
             'redFlags.nature',
             'driverLogs.driver' // Added driverLogs to verify actual historical drivers

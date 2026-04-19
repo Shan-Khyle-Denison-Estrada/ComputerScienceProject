@@ -20,6 +20,7 @@ const selectedFranchiseId = ref(null);
 const activeTab = ref('driver'); // Default to driver tab
 const showCoverageModal = ref(false);
 const showUnitModal = ref(false);
+const showUnpaidModal = ref(false);
 
 // New Modal State for Driver Confirmation
 const showConfirmDriverModal = ref(false);
@@ -89,6 +90,33 @@ const selectedFranchise = computed(() => {
 const unit = computed(() => selectedFranchise.value?.current_active_unit?.new_unit);
 const zone = computed(() => selectedFranchise.value?.zone);
 const payments = computed(() => selectedFranchise.value?.payment_history || []);
+
+// Extract unpaid assessments belonging ONLY to the selected franchise
+const unpaidAssessments = computed(() => {
+    if (!selectedFranchise.value) return [];
+    
+    // Gather all assessments from all franchises to ensure we catch everything loaded
+    const allAssessments = props.franchises.flatMap(f => f.assessments || []);
+    
+    // Remove duplicates by ID to avoid showing the same assessment twice
+    const uniqueAssessments = Array.from(new Map(allAssessments.map(a => [a.id, a])).values());
+
+    return uniqueAssessments.filter(a => {
+        // Check if the assessment belongs to the currently selected franchise
+        // Path 1: Direct franchise_id match
+        // Path 2: Through the application's franchise_id
+        // Path 3: Fallback check if it was originally nested under this franchise object
+        const belongsToFranchise = 
+            a.franchise_id === selectedFranchise.value.id || 
+            a.application?.franchise_id === selectedFranchise.value.id ||
+            selectedFranchise.value.assessments?.some(sa => sa.id === a.id);
+
+        // Check if it is unpaid (case-insensitive)
+        const isUnpaid = a.assessment_status && ['pending', 'overdue'].includes(a.assessment_status.toLowerCase());
+
+        return belongsToFranchise && isUnpaid;
+    });
+});
 
 // --- ACTIONS ---
 const driverForm = useForm({
@@ -269,7 +297,33 @@ const formatTime = (timeString) => {
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+                        <!-- <div v-if="unpaidAssessments.length > 0" class="bg-amber-50 border border-amber-200 rounded-2xl p-4 shadow-sm flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                            <div class="flex items-start gap-3">
+                                <div class="p-2 bg-amber-100 text-amber-600 rounded-lg shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm md:text-base font-bold text-amber-800">Pending Payments</h4>
+                                    <p class="text-xs md:text-sm text-amber-700 mt-0.5">You have unpaid assessments. Present the Assessment ID to the franchising office to easily search your record.</p>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2 w-full sm:w-auto">
+                                <div v-for="assessment in unpaidAssessments" :key="assessment.id" class="bg-white border border-amber-200 px-4 py-2 rounded-xl flex items-center justify-between gap-6 shadow-sm">
+                                    <div>
+                                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Assessment ID</div>
+                                        <div class="font-bold text-gray-800">#{{ assessment.id }}</div>
+                                    </div>
+                                    <div class="text-right">
+                                        <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Amount Due</div>
+                                        <div class="font-bold text-amber-600">{{ formatCurrency(assessment.total_amount_due) }}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div> -->
+
+                        <div :class="['grid grid-cols-1 sm:grid-cols-2 gap-3', unpaidAssessments.length > 0 ? 'lg:grid-cols-4' : 'md:grid-cols-3']">
                             <button 
                                 @click="showCoverageModal = true"
                                 class="bg-white p-4 md:p-5 rounded-2xl shadow-sm border border-gray-200 relative overflow-hidden group hover:shadow-lg hover:border-gray-300 transition-all duration-300 w-full text-left cursor-pointer h-full"
@@ -342,6 +396,25 @@ const formatTime = (timeString) => {
                                     <div class="text-xs md:text-sm text-gray-500">{{ payments.length > 0 ? formatDate(payments[0].created_at) : '-' }}</div>
                                 </div>
                             </div>
+
+                            <button 
+                                v-if="unpaidAssessments.length > 0"
+                                @click="showUnpaidModal = true"
+                                class="bg-amber-50 p-4 md:p-5 rounded-2xl shadow-sm border border-amber-200 relative overflow-hidden group hover:shadow-md hover:border-amber-300 transition-all duration-300 w-full text-left cursor-pointer h-full flex items-start gap-3 md:gap-4"
+                            >
+                                <div class="p-2 md:p-3 bg-amber-100 text-amber-600 rounded-xl shrink-0">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                </div>
+                                <div class="min-w-0">
+                                    <h4 class="text-[9px] md:text-[10px] font-bold uppercase text-amber-500 mb-1 tracking-wider">Pending Payments</h4>
+                                    <div class="font-bold text-amber-700 text-sm md:text-base leading-tight truncate">{{ unpaidAssessments.length }} {{ unpaidAssessments.length > 1 ? 'Assessments' : 'Assessment' }}</div>
+                                    <div class="text-[10px] md:text-[11px] text-amber-600 mt-1">
+                                        Tap to view details
+                                    </div>
+                                </div>
+                            </button>
                         </div>
                     </div>
 
@@ -887,5 +960,42 @@ const formatTime = (timeString) => {
             </Teleport>
             
         </div>
+    <Modal :show="showUnpaidModal" @close="showUnpaidModal = false" maxWidth="md">
+            <div class="p-5 md:p-6 flex flex-col max-h-[85vh]">
+                <div class="flex items-center gap-3 md:gap-4 mb-4 shrink-0">
+                    <div class="p-2.5 md:p-3 bg-amber-100 rounded-full text-amber-600 shrink-0">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 md:h-6 md:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg md:text-xl font-black text-gray-900 leading-tight">Pending Payments</h3>
+                        <p class="text-xs md:text-sm text-gray-500 mt-0.5">Present the Assessment ID to the office</p>
+                    </div>
+                </div>
+
+                <div class="flex-1 overflow-y-auto custom-scrollbar pr-1 mb-4">
+                    <div class="flex flex-col gap-3">
+                        <div v-for="assessment in unpaidAssessments" :key="assessment.id" class="bg-white border border-gray-200 px-4 py-3 rounded-xl flex items-center justify-between gap-4 shadow-sm hover:border-amber-200 transition-colors">
+                            <div>
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Assessment ID</div>
+                                <div class="font-bold text-gray-800">ASM-{{ assessment.id }}</div>
+                                <div v-if="assessment.application?.reference_number" class="text-[10px] text-gray-500 mt-0.5 font-medium">
+                                    App Ref: {{ assessment.application.reference_number }}
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Amount Due</div>
+                                <div class="font-bold text-amber-600 text-lg">{{ formatCurrency(assessment.total_amount_due) }}</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-gray-100 shrink-0 flex justify-end">
+                    <SecondaryButton @click="showUnpaidModal = false">Close</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
     </AuthenticatedLayout>
 </template>
