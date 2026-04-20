@@ -20,13 +20,12 @@ class DatabaseSeeder extends Seeder
         ]);
 
         // 2. Safely create or update the Super Admin
-        // updateOrCreate ensures we don't get a "Duplicate Entry" SQL error on future deployments
         User::updateOrCreate(
-            ['email' => 'admin@tricycle.com'], // The unique identifier to check
+            ['email' => 'admin@tricycle.com'], 
             [
                 'first_name' => 'System',
                 'last_name' => 'Admin',
-                'password' => Hash::make('password'), // You can change this later in the UI
+                'password' => Hash::make('password'), 
                 'role' => UserRole::ADMIN,
                 'user_photo' => null,
                 'contact_number' => '12345678901',
@@ -37,5 +36,14 @@ class DatabaseSeeder extends Seeder
                 'status' => 'active',
             ]
         );
+
+        // 3. Run the Presentation Seeders in specific dependency order
+        $this->call([
+            ZoneSeeder::class,
+            UnitMakeSeeder::class,
+            ParticularSeeder::class,
+            GraduationSeeder::class,
+            PaymentSeeder::class,
+        ]);
     }
 }
