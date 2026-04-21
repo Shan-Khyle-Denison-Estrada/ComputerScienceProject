@@ -215,12 +215,19 @@ public function store(Request $request)
         $query = $this->buildReportQuery($request);
         $payments = $query->get();
 
-        $filename = "Payment_Records_" . now()->format('Ymd_His') . ".csv";
+        $filename = "Payment_Records_" . now()->format('Ymd_His') . ".xls";
         
-        $handle = fopen('php://temp', 'r+');
-        
-        $columns = ['OR Number', 'ASM ID', 'Franchise No.', 'Payee Name', 'Contact No.', 'Address', 'Amount Paid', 'Date'];
-        fputcsv($handle, $columns);
+        $html = '<table border="1">
+                    <tr style="background-color: #f3f4f6; font-weight: bold;">
+                        <th>OR Number</th>
+                        <th>ASM ID</th>
+                        <th>Franchise No.</th>
+                        <th>Payee Name</th>
+                        <th>Contact No.</th>
+                        <th>Address</th>
+                        <th>Amount Paid</th>
+                        <th>Date</th>
+                    </tr>';
 
         foreach ($payments as $payment) {
             $payeeName = trim($payment->payee_first_name . ' ' . $payment->payee_middle_name . ' ' . $payment->payee_last_name);
@@ -228,29 +235,27 @@ public function store(Request $request)
             $asmId = $payment->assessment_id ? 'ASM-' . str_pad($payment->assessment_id, 6, '0', STR_PAD_LEFT) : 'N/A';
             $franchiseNo = $payment->assessment->franchise->franchise_number ?? 'N/A';
 
-            $row = [
-                $payment->or_number,
-                $asmId,
-                $franchiseNo,
-                $payeeName,
-                $payment->payee_contact_number,
-                $address,
-                $payment->amount_paid,
-                \Carbon\Carbon::parse($payment->created_at)->format('M d, Y h:i A')
-            ];
-            fputcsv($handle, $row);
+            $html .= '<tr>
+                        <td>' . $payment->or_number . '</td>
+                        <td>' . $asmId . '</td>
+                        <td>' . $franchiseNo . '</td>
+                        <td>' . $payeeName . '</td>
+                        <td>' . $payment->payee_contact_number . '</td>
+                        <td>' . $address . '</td>
+                        <td>' . number_format($payment->amount_paid, 2) . '</td>
+                        <td>' . \Carbon\Carbon::parse($payment->created_at)->format('M d, Y h:i A') . '</td>
+                      </tr>';
         }
-
-        rewind($handle);
-        $csvContent = stream_get_contents($handle);
-        fclose($handle);
+        $html .= '</table>';
 
         $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$filename",
+            "Content-Type"        => "application/vnd.ms-excel",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma"              => "no-cache",
+            "Expires"             => "0"
         ];
 
-        return response($csvContent, 200, $headers);
+        return response($html, 200, $headers);
     }
 
     private function buildReportQuery(Request $request)

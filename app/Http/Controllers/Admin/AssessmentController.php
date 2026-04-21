@@ -223,14 +223,20 @@ public function store(Request $request)
         $query = $this->buildReportQuery($request);
         $assessments = $query->get();
 
-        $filename = "Assessment_Records_" . now()->format('Ymd_His') . ".csv";
-        
-        // Use php://temp to build the CSV in memory instead of streaming.
-        // This avoids the 'header()' method error in the PreventBackHistory middleware.
-        $handle = fopen('php://temp', 'r+');
-        
-        $columns = ['ASM ID', 'Franchise No.', 'Operator', 'Date Issued', 'Due Date', 'Status', 'Total Amount Due', 'Remarks'];
-        fputcsv($handle, $columns);
+        $filename = "Assessment_Records_" . now()->format('Ymd_His') . ".xls";
+
+        // Build an HTML table. Excel natively parses this into spreadsheet columns and rows.
+        $html = '<table border="1">
+                    <tr style="background-color: #f3f4f6; font-weight: bold;">
+                        <th>ASM ID</th>
+                        <th>Franchise No.</th>
+                        <th>Operator</th>
+                        <th>Date Issued</th>
+                        <th>Due Date</th>
+                        <th>Status</th>
+                        <th>Total Amount Due</th>
+                        <th>Remarks</th>
+                    </tr>';
 
         foreach ($assessments as $assessment) {
             $operatorName = $assessment->franchise->currentOwnership->newOwner->user->first_name ?? '';
@@ -240,30 +246,27 @@ public function store(Request $request)
                 $operatorName = trim(($assessment->application->first_name ?? '') . ' ' . ($assessment->application->last_name ?? ''));
             }
 
-            $row = [
-                'ASM-' . str_pad($assessment->id, 6, '0', STR_PAD_LEFT),
-                $assessment->franchise->franchise_number ?? 'N/A',
-                trim($operatorName) !== '' ? trim($operatorName) : 'N/A',
-                \Carbon\Carbon::parse($assessment->assessment_date)->format('M d, Y'),
-                \Carbon\Carbon::parse($assessment->assessment_due)->format('M d, Y'),
-                ucfirst($assessment->assessment_status),
-                $assessment->total_amount_due,
-                $assessment->remarks
-            ];
-            fputcsv($handle, $row);
+            $html .= '<tr>
+                        <td>ASM-' . str_pad($assessment->id, 6, '0', STR_PAD_LEFT) . '</td>
+                        <td>' . ($assessment->franchise->franchise_number ?? 'N/A') . '</td>
+                        <td>' . (trim($operatorName) !== '' ? trim($operatorName) : 'N/A') . '</td>
+                        <td>' . \Carbon\Carbon::parse($assessment->assessment_date)->format('M d, Y') . '</td>
+                        <td>' . \Carbon\Carbon::parse($assessment->assessment_due)->format('M d, Y') . '</td>
+                        <td style="text-transform: capitalize;">' . $assessment->assessment_status . '</td>
+                        <td>' . number_format($assessment->total_amount_due, 2) . '</td>
+                        <td>' . $assessment->remarks . '</td>
+                      </tr>';
         }
-
-        rewind($handle);
-        $csvContent = stream_get_contents($handle);
-        fclose($handle);
+        $html .= '</table>';
 
         $headers = [
-            "Content-type"        => "text/csv",
-            "Content-Disposition" => "attachment; filename=$filename",
+            "Content-Type"        => "application/vnd.ms-excel",
+            "Content-Disposition" => "attachment; filename=\"$filename\"",
+            "Pragma"              => "no-cache",
+            "Expires"             => "0"
         ];
 
-        // Return a standard response so middleware can attach headers properly
-        return response($csvContent, 200, $headers);
+        return response($html, 200, $headers);
     }
 
     // Helper method to keep query logic identical to the index method
