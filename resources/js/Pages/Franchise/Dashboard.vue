@@ -289,10 +289,14 @@ const formatTime = (timeString) => {
                                     {{ unit ? unit.plate_number : 'No Active Unit' }}
                                 </h1>
                             </div>
-                            <div class="flex gap-3">
+                            <div class="flex items-end gap-4 sm:gap-6">
                                 <div class="text-left sm:text-right w-full sm:w-auto mt-2 sm:mt-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-gray-100">
                                     <div class="text-[10px] md:text-xs text-gray-400 font-bold uppercase">Registration Date</div>
                                     <div class="text-gray-700 font-medium text-sm md:text-base">{{ formatDate(selectedFranchise.date_issued) }}</div>
+                                </div>
+                                
+                                <div v-if="selectedFranchise.qr_code" class="shrink-0 bg-white p-1.5 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                                    <img :src="'/storage/qrcodes/' + selectedFranchise.qr_code" alt="Franchise QR Code" class="w-16 h-16 md:w-20 md:h-20 object-contain rounded-lg" />
                                 </div>
                             </div>
                         </div>
