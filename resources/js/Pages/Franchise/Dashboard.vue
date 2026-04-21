@@ -21,6 +21,7 @@ const activeTab = ref('driver'); // Default to driver tab
 const showCoverageModal = ref(false);
 const showUnitModal = ref(false);
 const showUnpaidModal = ref(false);
+const showQrModal = ref(false); // <-- New state for the QR code modal
 
 // New Modal State for Driver Confirmation
 const showConfirmDriverModal = ref(false);
@@ -295,7 +296,7 @@ const formatTime = (timeString) => {
                                     <div class="text-gray-700 font-medium text-sm md:text-base">{{ formatDate(selectedFranchise.date_issued) }}</div>
                                 </div>
                                 
-                                <div v-if="selectedFranchise.qr_code" class="shrink-0 bg-white p-1.5 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                                <div v-if="selectedFranchise.qr_code" @click="showQrModal = true" class="shrink-0 bg-white p-1.5 border border-gray-200 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer">
                                     <img :src="'/storage/qrcodes/' + selectedFranchise.qr_code" alt="Franchise QR Code" class="w-16 h-16 md:w-20 md:h-20 object-contain rounded-lg" />
                                 </div>
                             </div>
@@ -1003,5 +1004,25 @@ const formatTime = (timeString) => {
                 </div>
             </div>
         </Modal>
+
+        <Modal :show="showQrModal" @close="showQrModal = false" maxWidth="sm">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-bold text-gray-800">Franchise QR Code</h2>
+                    <button @click="showQrModal = false" class="text-gray-400 hover:text-gray-600 transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
+                
+                <div v-if="selectedFranchise?.qr_code" class="flex justify-center items-center p-6 bg-gray-50 rounded-xl border border-gray-100">
+                    <img :src="'/storage/qrcodes/' + selectedFranchise.qr_code" alt="Franchise QR Code Enlarged" class="w-full max-w-[250px] object-contain rounded" />
+                </div>
+                
+                <div class="mt-6 flex justify-end">
+                    <SecondaryButton @click="showQrModal = false">Close</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
+
     </AuthenticatedLayout>
 </template>
