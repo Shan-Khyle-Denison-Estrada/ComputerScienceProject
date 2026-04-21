@@ -635,6 +635,7 @@ const formatTime = (timeString) => {
                                             <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Driver on Duty</th>
                                             <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Contact Number</th>
                                             <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Nature of Complaint</th>
+                                            <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Remarks</th>
                                             <th class="px-4 md:px-6 py-3 md:py-4 font-medium bg-gray-50 whitespace-nowrap">Status</th>
                                         </tr>
                                     </thead>
@@ -657,6 +658,7 @@ const formatTime = (timeString) => {
                                                 </span>
                                             </td>
                                             <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ complaint.nature_of_complaint }}</td>
+                                            <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">{{ complaint.remarks }}</td>
                                             <td class="px-4 md:px-6 py-3 md:py-4 text-gray-600 whitespace-nowrap">
                                                 <span class="px-2 md:px-3 py-1 rounded-full text-[10px] md:text-xs font-bold uppercase border"
                                                     :class="complaint.status === 'Resolved' || complaint.status === 'resolved' ? 'bg-green-100 text-green-700 border-green-200' : 'bg-amber-100 text-amber-700 border-amber-200'">
