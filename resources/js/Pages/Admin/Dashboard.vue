@@ -59,7 +59,7 @@ const initChart = () => {
         const ctx = mainChartCanvas.value.getContext('2d');
         
         const gradient = ctx.createLinearGradient(0, 0, 0, 400);
-        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.2)'); // Blue
+        gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)'); // Slightly more visible blue top
         gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
 
         chartInstance = new Chart(mainChartCanvas.value, {
@@ -74,20 +74,34 @@ const initChart = () => {
                     borderWidth: 3,
                     pointBackgroundColor: '#ffffff',
                     pointBorderColor: '#3b82f6',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    tension: 0.4, 
+                    pointBorderWidth: 2,
+                    // Hide default points if data is dense (e.g. daily view over a year) to prevent clutter
+                    pointRadius: props.chart.data.length > 40 ? 0 : 4, 
+                    pointHoverRadius: 6,
+                    pointHoverBackgroundColor: '#3b82f6',
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 2,
+                    tension: 0.3, // Slightly less rubber-band effect to better represent true data angles
                     fill: true
                 }]
             },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                interaction: {
+                    mode: 'index',
+                    intersect: false, // Huge UX win: triggers tooltips without needing to hover exactly over the tiny point
+                },
                 plugins: { 
                     legend: { display: false },
                     tooltip: {
-                        backgroundColor: '#1e293b',
+                        backgroundColor: 'rgba(15, 23, 42, 0.95)', // Slightly transparent slate-900
+                        titleColor: '#94a3b8', // slate-400
+                        titleFont: { size: 12, weight: 'normal' },
+                        bodyFont: { size: 14, weight: 'bold' },
                         padding: 12,
+                        cornerRadius: 8,
+                        displayColors: false, // Removes the redundant color box for single-dataset charts
                         callbacks: {
                             label: function(context) {
                                 return formatCurrency(context.raw);
@@ -98,12 +112,32 @@ const initChart = () => {
                 scales: {
                     y: { 
                         beginAtZero: true, 
-                        grid: { borderDash: [4, 4], color: '#e2e8f0' },
-                        ticks: { font: { size: 11 } }
+                        border: { display: false }, // Removes the solid axis line for a cleaner look
+                        grid: { borderDash: [4, 4], color: '#e2e8f0', drawTicks: false },
+                        ticks: { 
+                            font: { size: 11 },
+                            color: '#64748b',
+                            padding: 8,
+                            callback: function(value) {
+                                // Uses 10K, 1M formatting for axis to save space and reduce cognitive load
+                                return new Intl.NumberFormat('en-PH', {
+                                    style: 'currency',
+                                    currency: 'PHP',
+                                    notation: 'compact',
+                                    compactDisplay: 'short'
+                                }).format(value);
+                            }
+                        }
                     },
                     x: { 
-                        grid: { display: false },
-                        ticks: { font: { size: 12, weight: 'bold' } }
+                        grid: { display: false, drawTicks: false },
+                        ticks: { 
+                            font: { size: 12, weight: '500' },
+                            color: '#64748b',
+                            padding: 8,
+                            maxRotation: 45, // Prevents long labels from wrapping awkwardly
+                            minRotation: 0
+                        }
                     }
                 }
             }

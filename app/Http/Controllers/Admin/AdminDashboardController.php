@@ -124,6 +124,18 @@ class AdminDashboardController extends Controller
                 $chartStartDate = $fyStart;
                 $chartEndDate = $fyEnd;
             }
+        } elseif ($chartPeriod === 'annually') {
+            // Ignore selected fiscal year constraint to show all historical years
+            $chartStartDate = Carbon::parse($oldestPaymentDate)->startOfYear();
+            $chartEndDate = now()->endOfYear();
+        } elseif ($chartPeriod === 'daily') {
+            // Prevent overcrowding by limiting the daily view to 7 days.
+            // If viewing the current year, show the last 7 days leading up to today.
+            // If viewing a past year, show the last 7 days of that specific fiscal year.
+            $referenceEndDate = now()->lessThan($fyEnd) ? now() : $fyEnd;
+            
+            $chartEndDate = $referenceEndDate->copy()->endOfDay();
+            $chartStartDate = $referenceEndDate->copy()->subDays(6)->startOfDay(); // 7 days total (inclusive)
         }
 
         $revenueData = Payment::select(
