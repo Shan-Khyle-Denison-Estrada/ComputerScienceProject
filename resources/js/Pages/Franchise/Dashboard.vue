@@ -3,7 +3,7 @@ import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue'; // Ensure you have this component
 import PrimaryButton from '@/Components/PrimaryButton.vue'; // Ensure you have this component
 import SecondaryButton from '@/Components/SecondaryButton.vue'; // Ensure you have this component
-import { Head, useForm } from '@inertiajs/vue3';
+import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted, watch } from 'vue';
 
 const props = defineProps({
@@ -170,6 +170,10 @@ const saveSchedule = () => {
             driverToSchedule.value = null;
         }
     });
+};
+
+const goToNewDriver = () => {
+    router.get('/franchise/applications', { auto_open: 'new_driver' });
 };
 
 // --- HELPERS ---
@@ -441,6 +445,15 @@ const formatTime = (timeString) => {
 
                         <div class="flex-1 overflow-y-auto scroll-smooth custom-scrollbar">
                             
+                            <div v-if="activeTab === 'driver'" class="p-4 flex justify-between items-center bg-white border-b border-gray-100">
+                                <div>
+                                    <h3 class="font-bold text-gray-800 text-sm">Assigned Drivers</h3>
+                                    <p class="text-xs text-gray-500">View and manage assigned drivers for this franchise.</p>
+                                </div>
+                                <PrimaryButton @click="goToNewDriver" class="shadow-sm !text-xs !px-4 !py-2">
+                                    + New Driver
+                                </PrimaryButton>
+                            </div>
                             <div v-if="activeTab === 'driver'" class="overflow-x-auto w-full align-middle inline-block min-w-full">
                                 <table class="min-w-full text-sm text-left">
                                     <thead class="bg-gray-50 text-gray-500 border-b border-gray-100 sticky top-0">

@@ -8,6 +8,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 
 const props = defineProps({
     show: { type: Boolean, required: true },
+    initialType: { type: String, default: 'change_unit' },
     evaluationRequirements: { type: Object, default: () => ({}) },
     franchises: { type: Array, default: () => [] },
     barangays: { type: Array, default: () => [] },
@@ -32,6 +33,20 @@ const selectedCityCode = ref('');
 const currentStep = ref(1); 
 const selectedType = ref('change_unit'); 
 const ownerMode = ref('existing');
+
+watch(() => props.show, (newVal) => {
+    if (newVal) {
+        if (props.initialType) {
+            // Auto-select and skip to Step 2
+            selectType(props.initialType);
+        } else {
+            // Default normal opening behavior
+            selectedType.value = 'change_unit';
+            form.type = 'change_unit';
+            currentStep.value = 1;
+        }
+    }
+});
 const unitMode = ref('existing');
 const docPreviews = ref({}); 
 const unitPhotoPreviews = ref({ front: null, back: null, left: null, right: null }); 
@@ -51,7 +66,7 @@ const applicationTypes = [
 ];
 // --- FORMS ---
 const form = useForm({
-    type: 'change_unit', 
+    type: props.initialType || 'change_unit',
     selected_franchise_id: '', 
     remarks: '',
     

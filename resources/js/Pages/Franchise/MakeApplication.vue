@@ -5,7 +5,7 @@ import MakeApplicationModal from '@/Components/Modals/MakeApplicationModal.vue';
 import ComplyApplicationModal from '@/Components/Modals/ComplyApplicationModal.vue';
 import SubmitRenewalModal from '@/Components/Modals/SubmitRenewalModal.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 
 const props = defineProps({
     hasFranchise: Boolean,
@@ -28,6 +28,20 @@ const processSteps = [{ id: 1, label: 'Sub' }, { id: 2, label: 'Rev' }, { id: 3,
 const activeTab = ref('active'); 
 const showNewAppModal = ref(false);
 const showComplyModal = ref(false);
+const initialModalType = ref(''); // Default to empty
+
+onMounted(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('auto_open') === 'new_driver') {
+        initialModalType.value = 'new_driver';
+        showNewAppModal.value = true;
+        
+        // Remove the parameter from the URL so it doesn't reopen on refresh
+        params.delete('auto_open');
+        const newUrl = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, document.title, newUrl);
+    }
+});
 const showCancelModal = ref(false);
 const showSubmitRenewalModal = ref(false);
 const showInspectionFailedModal = ref(false);
@@ -364,15 +378,16 @@ const resubmitForInspection = () => {
 
         <MakeApplicationModal 
             :show="showNewAppModal" 
+            :initialType="initialModalType"
+            :evaluationRequirements="evaluationRequirements"
+            :franchises="franchises"
+            :barangays="barangays"
+            :unitMakes="unitMakes"
+            :operators="operators"
+            :units="units"
             :applications="applications"
-            :evaluationRequirements="evaluationRequirements" 
-            :franchises="franchises" 
-            :barangays="barangays" 
-            :unitMakes="unitMakes" 
-            :operators="operators" 
-            :units="units" 
-            @close="showNewAppModal = false" 
-            @submit="handleNewApplicationSubmit" 
+            @close="showNewAppModal = false; initialModalType = ''"
+            @submit="fetchApplications"
         />
 
         <ComplyApplicationModal 
