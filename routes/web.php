@@ -452,6 +452,9 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder
 
     Route::get('/admin/assessments-report/pdf', [AssessmentController::class, 'reportPdf'])->name('admin.assessments.report.pdf');
     Route::get('/admin/assessments-report/excel', [AssessmentController::class, 'reportExcel'])->name('admin.assessments.report.excel');
+
+    Route::get('/admin/payments-report/pdf', [PaymentController::class, 'reportPdf'])->name('admin.payments.report.pdf');
+    Route::get('/admin/payments-report/excel', [PaymentController::class, 'reportExcel'])->name('admin.payments.report.excel');
 });
 
 // --- PARTICULARS ROUTES (Admin Only) ---

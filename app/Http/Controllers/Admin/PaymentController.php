@@ -159,4 +159,136 @@ public function store(Request $request)
 
         return redirect()->back()->with('success', 'Payment recorded successfully.');
     }
+
+    public function reportPdf(Request $request)
+    {
+        $query = $this->buildReportQuery($request);
+        $payments = $query->get();
+
+        $html = '
+        <div style="font-family: sans-serif; font-size: 12px;">
+            <h2 style="text-align: center; color: #333; margin-bottom: 20px;">Payment Records Report</h2>
+            <table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+                <tr style="background-color: #f3f4f6;">
+                    <th style="text-align: left;">OR Number</th>
+                    <th style="text-align: left;">ASM ID</th>
+                    <th style="text-align: left;">Franchise No.</th>
+                    <th style="text-align: left;">Payee Name</th>
+                    <th style="text-align: left;">Address</th>
+                    <th style="text-align: left;">Contact No.</th>
+                    <th style="text-align: right;">Amount Paid</th>
+                    <th style="text-align: left;">Date</th>
+                </tr>';
+        
+        foreach ($payments as $payment) {
+            $payeeName = trim($payment->payee_first_name . ' ' . $payment->payee_middle_name . ' ' . $payment->payee_last_name);
+            $address = trim($payment->payee_street_address . ', ' . $payment->payee_barangay . ', ' . $payment->payee_city);
+            $asmId = $payment->assessment_id ? 'ASM-' . str_pad($payment->assessment_id, 6, '0', STR_PAD_LEFT) : 'N/A';
+            $franchiseNo = $payment->assessment->franchise->franchise_number ?? 'N/A';
+
+            $html .= '<tr>
+                        <td>' . $payment->or_number . '</td>
+                        <td>' . $asmId . '</td>
+                        <td>' . $franchiseNo . '</td>
+                        <td>' . $payeeName . '</td>
+                        <td>' . $address . '</td>
+                        <td>' . $payment->payee_contact_number . '</td>
+                        <td style="text-align: right;">PHP ' . number_format($payment->amount_paid, 2) . '</td>
+                        <td>' . \Carbon\Carbon::parse($payment->created_at)->format('M d, Y h:i A') . '</td>
+                      </tr>';
+        }
+        $html .= '</table></div>';
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'landscape');
+        
+        $filename = 'Payment_Records_' . now()->format('Ymd_His') . '.pdf';
+
+        if ($request->has('download') && $request->input('download') == 1) {
+            return $pdf->download($filename);
+        }
+        
+        return $pdf->stream($filename);
+    }
+
+    public function reportExcel(Request $request)
+    {
+        $query = $this->buildReportQuery($request);
+        $payments = $query->get();
+
+        $filename = "Payment_Records_" . now()->format('Ymd_His') . ".csv";
+        
+        $handle = fopen('php://temp', 'r+');
+        
+        $columns = ['OR Number', 'ASM ID', 'Franchise No.', 'Payee Name', 'Contact No.', 'Address', 'Amount Paid', 'Date'];
+        fputcsv($handle, $columns);
+
+        foreach ($payments as $payment) {
+            $payeeName = trim($payment->payee_first_name . ' ' . $payment->payee_middle_name . ' ' . $payment->payee_last_name);
+            $address = trim($payment->payee_street_address . ', ' . $payment->payee_barangay . ', ' . $payment->payee_city . ', ' . $payment->payee_province);
+            $asmId = $payment->assessment_id ? 'ASM-' . str_pad($payment->assessment_id, 6, '0', STR_PAD_LEFT) : 'N/A';
+            $franchiseNo = $payment->assessment->franchise->franchise_number ?? 'N/A';
+
+            $row = [
+                $payment->or_number,
+                $asmId,
+                $franchiseNo,
+                $payeeName,
+                $payment->payee_contact_number,
+                $address,
+                $payment->amount_paid,
+                \Carbon\Carbon::parse($payment->created_at)->format('M d, Y h:i A')
+            ];
+            fputcsv($handle, $row);
+        }
+
+        rewind($handle);
+        $csvContent = stream_get_contents($handle);
+        fclose($handle);
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+        ];
+
+        return response($csvContent, 200, $headers);
+    }
+
+    private function buildReportQuery(Request $request)
+    {
+        $search = $request->input('search');
+        $city = $request->input('city');
+        $sortField = $request->input('sortField', '');
+        $sortDirection = $request->input('sortDirection', '');
+
+        return Payment::query()
+            ->with([
+                'assessment.franchise.currentOwnership.newOwner.user',
+                'assessment.application.franchise.currentOwnership.newOwner.user'
+            ])
+            ->when($search, function ($query, $search) {
+                $query->where(function($q) use ($search) {
+                    $q->where('or_number', 'like', "%{$search}%")
+                      ->orWhere('payee_first_name', 'like', "%{$search}%")
+                      ->orWhere('payee_last_name', 'like', "%{$search}%")
+                      ->orWhereRaw("CONCAT(payee_first_name, ' ', payee_last_name) LIKE ?", ["%{$search}%"])
+                      ->orWhereRaw("CONCAT(payee_last_name, ' ', payee_first_name) LIKE ?", ["%{$search}%"]);
+                });
+            })
+            ->when($city, function ($query, $city) {
+                $query->where('payee_city', 'like', "%{$city}%");
+            })
+            ->when($sortField, function ($query) use ($sortField, $sortDirection) {
+                if ($sortField === 'payee_name') {
+                    $query->orderBy('payee_last_name', $sortDirection)
+                          ->orderBy('payee_first_name', $sortDirection);
+                } else {
+                    $allowedSorts = ['or_number', 'amount_paid', 'created_at'];
+                    if (in_array($sortField, $allowedSorts)) {
+                        $query->orderBy($sortField, $sortDirection);
+                    }
+                }
+            }, function ($query) {
+                $query->orderBy('id', 'desc');
+            });
+    }
 }

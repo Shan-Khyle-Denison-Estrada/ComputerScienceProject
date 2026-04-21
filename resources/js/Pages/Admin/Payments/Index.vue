@@ -24,8 +24,11 @@ const props = defineProps({
 const showAddModal = ref(false);
 const showFilterModal = ref(false);
 const showViewModal = ref(false); 
+const showReportModal = ref(false);
 const selectedPayment = ref(null); 
 const search = ref(props.filters.search || '');
+const reportViewerUrl = ref('');
+const pdfLoaded = ref(false);
 
 // --- DROPDOWN STATE ---
 const assessmentQuery = ref('');
@@ -286,6 +289,56 @@ const resetFilters = () => {
     fetchResults();
 };
 
+// --- REPORT ACTIONS ---
+const openReportModal = () => {
+    pdfLoaded.value = false;
+    const params = new URLSearchParams({
+        search: search.value || '',
+        city: filterCity.value || '',
+        sortField: sortField.value || '',
+        sortDirection: sortDirection.value || ''
+    }).toString();
+    
+    reportViewerUrl.value = route('admin.payments.report.pdf') + '?' + params;
+    showReportModal.value = true;
+};
+
+const closeReportModal = () => {
+    showReportModal.value = false;
+    setTimeout(() => {
+        reportViewerUrl.value = '';
+    }, 300);
+};
+
+const downloadExcelReport = () => {
+    const params = new URLSearchParams({
+        search: search.value || '',
+        city: filterCity.value || '',
+        sortField: sortField.value || '',
+        sortDirection: sortDirection.value || ''
+    }).toString();
+    window.location.href = route('admin.payments.report.excel') + '?' + params;
+};
+
+const downloadPdfReport = () => {
+    const params = new URLSearchParams({
+        search: search.value || '',
+        city: filterCity.value || '',
+        sortField: sortField.value || '',
+        sortDirection: sortDirection.value || '',
+        download: 1
+    }).toString();
+    window.location.href = route('admin.payments.report.pdf') + '?' + params;
+};
+
+const printPdfReport = () => {
+    const iframe = document.getElementById('pdf-viewer-iframe');
+    if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.focus();
+        iframe.contentWindow.print();
+    }
+};
+
 // --- PRINT / VIEW ACTIONS ---
 const openViewPaymentModal = (payment) => {
     selectedPayment.value = payment;
@@ -363,6 +416,9 @@ const printReceipt = async (payment) => {
                             <span v-if="filterCity" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-blue-500 border-2 border-white rounded-full"></span>
                         </button> -->
                     </div>
+                    <SecondaryButton @click="openReportModal" class="flex items-center gap-2">
+                        Generate Report
+                    </SecondaryButton>
                     <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
@@ -857,6 +913,48 @@ const printReceipt = async (payment) => {
                     <div class="flex justify-end gap-3 border-t pt-4">
                         <SecondaryButton @click="closeViewModal">Close</SecondaryButton>
                         <PrimaryButton @click="printReceipt(selectedPayment)">Print Receipt</PrimaryButton>
+                    </div>
+                </div>
+            </Modal>
+
+            <Modal :show="showReportModal" @close="closeReportModal" maxWidth="5xl">
+                <div class="p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-lg font-bold text-gray-900">Payment Records Report</h2>
+                        <button @click="closeReportModal" class="text-gray-500 hover:text-gray-700">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
+                        </button>
+                    </div>
+
+                    <div class="mb-4 flex flex-wrap gap-3 border-b pb-4">
+                        <PrimaryButton @click="printPdfReport" class="flex items-center gap-2">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                            Print PDF
+                        </PrimaryButton>
+                        <SecondaryButton @click="downloadPdfReport" class="flex items-center gap-2 border-red-200 text-red-700 hover:bg-red-50 focus:ring-red-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Download PDF
+                        </SecondaryButton>
+                        <SecondaryButton @click="downloadExcelReport" class="flex items-center gap-2 border-green-200 text-green-700 hover:bg-green-50 focus:ring-green-500">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+                            Download Spreadsheet (CSV)
+                        </SecondaryButton>
+                    </div>
+
+                    <div class="bg-gray-200 rounded-lg p-2 h-[70vh] w-full shadow-inner border border-gray-300 relative">
+                        <div v-if="reportViewerUrl && !pdfLoaded" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-gray-100 bg-opacity-95 rounded-lg">
+                            <svg class="animate-spin mb-4 h-10 w-10 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                            <span class="text-gray-700 font-bold text-lg">Generating PDF Document...</span>
+                        </div>
+
+                        <iframe 
+                            v-if="reportViewerUrl"
+                            id="pdf-viewer-iframe"
+                            :src="reportViewerUrl" 
+                            @load="pdfLoaded = true"
+                            class="w-full h-full border-0 bg-white rounded relative z-0"
+                            title="PDF Report Viewer"
+                        ></iframe>
                     </div>
                 </div>
             </Modal>
