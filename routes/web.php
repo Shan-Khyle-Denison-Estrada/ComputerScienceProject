@@ -449,6 +449,9 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,collector'])->gro
 Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder'])->group(function () {
     Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
     Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
+
+    Route::get('/admin/assessments-report/pdf', [AssessmentController::class, 'reportPdf'])->name('admin.assessments.report.pdf');
+    Route::get('/admin/assessments-report/excel', [AssessmentController::class, 'reportExcel'])->name('admin.assessments.report.excel');
 });
 
 // --- PARTICULARS ROUTES (Admin Only) ---

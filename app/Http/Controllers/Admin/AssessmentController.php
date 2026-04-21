@@ -165,4 +165,140 @@ public function store(Request $request)
 
         return redirect()->back()->with('success', 'Assessment created successfully.');
     }
+
+    public function reportPdf(Request $request)
+    {
+        $query = $this->buildReportQuery($request);
+        $assessments = $query->get();
+
+        // Basic HTML structure for the PDF report. 
+        $html = '
+        <div style="font-family: sans-serif; font-size: 12px;">
+            <h2 style="text-align: center; color: #333; margin-bottom: 20px;">Assessment Records Report</h2>
+            <table border="1" cellpadding="8" cellspacing="0" style="width: 100%; border-collapse: collapse;">
+                <tr style="background-color: #f3f4f6;">
+                    <th style="text-align: left;">ASM ID</th>
+                    <th style="text-align: left;">Franchise No.</th>
+                    <th style="text-align: left;">Operator</th>
+                    <th style="text-align: left;">Date Issued</th>
+                    <th style="text-align: left;">Due Date</th>
+                    <th style="text-align: left;">Status</th>
+                    <th style="text-align: right;">Total Due</th>
+                </tr>';
+        
+        foreach ($assessments as $assessment) {
+            $operatorName = $assessment->franchise->currentOwnership->newOwner->user->first_name ?? '';
+            $operatorName .= ' ' . ($assessment->franchise->currentOwnership->newOwner->user->last_name ?? '');
+            
+            if (trim($operatorName) === '' && $assessment->application) {
+                $operatorName = trim(($assessment->application->first_name ?? '') . ' ' . ($assessment->application->last_name ?? ''));
+            }
+
+            $html .= '<tr>
+                        <td>ASM-' . str_pad($assessment->id, 6, '0', STR_PAD_LEFT) . '</td>
+                        <td>' . ($assessment->franchise->franchise_number ?? 'N/A') . '</td>
+                        <td>' . (trim($operatorName) !== '' ? trim($operatorName) : 'N/A') . '</td>
+                        <td>' . \Carbon\Carbon::parse($assessment->assessment_date)->format('M d, Y') . '</td>
+                        <td>' . \Carbon\Carbon::parse($assessment->assessment_due)->format('M d, Y') . '</td>
+                        <td style="text-transform: capitalize;">' . $assessment->assessment_status . '</td>
+                        <td style="text-align: right;">PHP ' . number_format($assessment->total_amount_due, 2) . '</td>
+                      </tr>';
+        }
+        $html .= '</table></div>';
+
+        // NOTE: This relies on "barryvdh/laravel-dompdf". Run `composer require barryvdh/laravel-dompdf` if you haven't yet.
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadHTML($html)->setPaper('a4', 'landscape');
+        
+        $filename = 'Assessment_Records_' . now()->format('Ymd_His') . '.pdf';
+
+        if ($request->has('download') && $request->input('download') == 1) {
+            return $pdf->download($filename);
+        }
+        
+        return $pdf->stream($filename);
+    }
+
+    public function reportExcel(Request $request)
+    {
+        $query = $this->buildReportQuery($request);
+        $assessments = $query->get();
+
+        $filename = "Assessment_Records_" . now()->format('Ymd_His') . ".csv";
+        
+        // Use php://temp to build the CSV in memory instead of streaming.
+        // This avoids the 'header()' method error in the PreventBackHistory middleware.
+        $handle = fopen('php://temp', 'r+');
+        
+        $columns = ['ASM ID', 'Franchise No.', 'Operator', 'Date Issued', 'Due Date', 'Status', 'Total Amount Due', 'Remarks'];
+        fputcsv($handle, $columns);
+
+        foreach ($assessments as $assessment) {
+            $operatorName = $assessment->franchise->currentOwnership->newOwner->user->first_name ?? '';
+            $operatorName .= ' ' . ($assessment->franchise->currentOwnership->newOwner->user->last_name ?? '');
+            
+            if (trim($operatorName) === '' && $assessment->application) {
+                $operatorName = trim(($assessment->application->first_name ?? '') . ' ' . ($assessment->application->last_name ?? ''));
+            }
+
+            $row = [
+                'ASM-' . str_pad($assessment->id, 6, '0', STR_PAD_LEFT),
+                $assessment->franchise->franchise_number ?? 'N/A',
+                trim($operatorName) !== '' ? trim($operatorName) : 'N/A',
+                \Carbon\Carbon::parse($assessment->assessment_date)->format('M d, Y'),
+                \Carbon\Carbon::parse($assessment->assessment_due)->format('M d, Y'),
+                ucfirst($assessment->assessment_status),
+                $assessment->total_amount_due,
+                $assessment->remarks
+            ];
+            fputcsv($handle, $row);
+        }
+
+        rewind($handle);
+        $csvContent = stream_get_contents($handle);
+        fclose($handle);
+
+        $headers = [
+            "Content-type"        => "text/csv",
+            "Content-Disposition" => "attachment; filename=$filename",
+        ];
+
+        // Return a standard response so middleware can attach headers properly
+        return response($csvContent, 200, $headers);
+    }
+
+    // Helper method to keep query logic identical to the index method
+    private function buildReportQuery(Request $request)
+    {
+        $search = $request->input('search');
+        $status = $request->input('status');
+        $franchiseId = $request->input('franchise_id');
+
+        return Assessment::query()
+            ->with(['application', 'franchise.currentOwnership.newOwner.user']) 
+            ->when($search, function($query, $search) {
+                $parsedId = preg_replace('/^ASM-?0*/i', '', $search);
+                $query->where(function($q) use ($search, $parsedId) {
+                    $q->where('assessments.id', 'like', "%{$parsedId}%")
+                      ->orWhere('assessments.remarks', 'like', "%{$search}%")
+                      ->orWhereHas('application', function ($aq) use ($search) {
+                          $aq->where('reference_number', 'like', "%{$search}%");
+                      })
+                      ->orWhereHas('franchise', function ($fq) use ($search) {
+                          $fq->where('franchise_number', 'like', "%{$search}%")
+                             ->orWhereHas('currentOwnership.newOwner.user', function ($uq) use ($search) {
+                                 $uq->where('first_name', 'like', "%{$search}%")
+                                    ->orWhere('last_name', 'like', "%{$search}%")
+                                    ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                             });
+                      });
+                });
+            })
+            ->when($status, function($query, $status) {
+                $query->where('assessment_status', $status);
+            })
+            ->when($franchiseId, function($query, $franchiseId) {
+                $query->where('franchise_id', $franchiseId);
+            })
+            ->orderBy('id', 'desc');
+    }
 }
