@@ -60,7 +60,8 @@ const currentTabData = computed(() => {
     if (!selectedFranchise.value) return [];
     switch (activeTab.value) {
         case 'driver': return selectedFranchise.value.driver_assignments || [];
-        case 'payments': return selectedFranchise.value.assessments?.flatMap(a => a.payments) || []; 
+        // Use the pre-flattened and merged payment_history from the controller
+        case 'payments': return selectedFranchise.value.payment_history || []; 
         case 'units': return selectedFranchise.value.unit_history || [];
         case 'ownership': return selectedFranchise.value.ownership_history || [];
         case 'complaints': return selectedFranchise.value.complaints_history || [];

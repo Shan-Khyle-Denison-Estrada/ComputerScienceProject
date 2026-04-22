@@ -43,6 +43,9 @@ class DashboardController extends Controller
             'assessments.payments',           
             'assessments.particulars',
             'assessments.application',
+            // Load application-level assessments to catch first payments
+            'applications.assessment.payments', 
+            'applications.assessment.particulars',
             'complaints',
             'redFlags.nature',
             'driverLogs.driver' // Added driverLogs to verify actual historical drivers
@@ -54,8 +57,18 @@ class DashboardController extends Controller
             
             $franchise->current_status = $franchise->status; 
 
-            // Flatten payments
-            $franchise->payment_history = $franchise->assessments->flatMap(function($assessment) {
+            // Merge direct franchise assessments with application-level assessments
+            $allAssessments = collect($franchise->assessments);
+            if ($franchise->relationLoaded('applications')) {
+                foreach ($franchise->applications as $app) {
+                    if ($app->assessment && !$allAssessments->contains('id', $app->assessment->id)) {
+                        $allAssessments->push($app->assessment);
+                    }
+                }
+            }
+
+            // Flatten payments from all compiled assessments
+            $franchise->payment_history = $allAssessments->flatMap(function($assessment) {
                 return $assessment->payments->map(function($payment) use ($assessment) {
                     $payment->assessment_id = $assessment->id;
                     $payment->assessment_date = $assessment->assessment_date;

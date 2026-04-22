@@ -218,7 +218,14 @@ class ApplicationController extends Controller
             return $franchise;
         });
 
-        $applicationsData = Application::where('user_id', $user->id)
+        // Grab all franchise IDs owned by this operator
+        $franchiseIds = $franchises->pluck('id')->toArray();
+
+        // Fetch applications belonging to the user OR their franchises
+        $applicationsData = Application::where(function($query) use ($user, $franchiseIds) {
+                $query->where('user_id', $user->id)
+                      ->orWhereIn('franchise_id', $franchiseIds);
+            })
             ->with(['evaluations.requirement', 'unitInspections.inspectionItem'])
             ->orderBy('created_at', 'desc')
             ->get()
