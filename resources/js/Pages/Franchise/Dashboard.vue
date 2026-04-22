@@ -126,8 +126,9 @@ const driverForm = useForm({
 });
 
 // 1. Triggered when user clicks "Set Active" button
-const openActivateDriverModal = (assignment) => {
+const openActivateDriverModal = (assignment, isOverride = false) => {
     driverToActivate.value = assignment;
+    driverToActivate.value.is_override = isOverride;  // store override flag
     showConfirmDriverModal.value = true;
 };
 
@@ -136,8 +137,10 @@ const confirmActivateDriver = () => {
     if (!driverToActivate.value) return;
 
     const driverId = driverToActivate.value.driver_id;
+    const isOverride = driverToActivate.value.is_override || false;
     processingDriverId.value = driverId;
     driverForm.driver_id = driverId;
+    driverForm.is_override = isOverride;   // add to form data
 
     driverForm.post(route('franchise.set-driver', selectedFranchiseId.value), {
         preserveScroll: true,
@@ -161,6 +164,25 @@ const openScheduleModal = (assignment) => {
     showScheduleModal.value = true;
 };
 
+const applyDefaultSchedule = () => {
+    scheduleForm.schedule = JSON.parse(JSON.stringify(defaultSchedule));
+};
+
+const copyFromLastAssignment = () => {
+    // Find the most recent assignment for this driver (excluding current)
+    const assignments = selectedFranchise.value?.driver_assignments || [];
+    const currentId = driverToSchedule.value?.id;
+    const pastAssignments = assignments
+        .filter(a => a.driver_id === driverToSchedule.value?.driver_id && a.id !== currentId && a.schedule)
+        .sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+    
+    if (pastAssignments.length > 0) {
+        scheduleForm.schedule = JSON.parse(JSON.stringify(pastAssignments[0].schedule));
+    } else {
+        alert('No previous schedule found for this driver.');
+    }
+};
+
 const saveSchedule = () => {
     if (!driverToSchedule.value) return;
 
@@ -175,6 +197,16 @@ const saveSchedule = () => {
 
 const goToNewDriver = () => {
     router.get('/franchise/applications', { auto_open: 'new_driver' });
+};
+
+const deactivateDriver = () => {
+    if (!selectedFranchiseId.value) return;
+    router.post(route('franchise.deactivate-driver', selectedFranchiseId.value), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            // Success message handled by controller flash
+        }
+    });
 };
 
 // --- HELPERS ---
@@ -498,17 +530,30 @@ const formatTime = (timeString) => {
                                                         Schedule
                                                     </button>
 
-                                                    <!-- <button 
+                                                                                                        <!-- Manual Override Buttons -->
+                                                    <button 
                                                         v-if="!assign.is_active"
-                                                        @click="openActivateDriverModal(assign)"
+                                                        @click="openActivateDriverModal(assign, true)"
                                                         :disabled="processingDriverId === assign.driver_id"
-                                                        class="px-3 md:px-4 py-1.5 rounded-lg border border-blue-200 text-blue-600 font-bold text-[10px] md:text-xs uppercase hover:bg-blue-50 transition-colors disabled:opacity-50"
+                                                        class="px-3 md:px-4 py-1.5 rounded-lg border border-orange-200 text-orange-600 font-bold text-[10px] md:text-xs uppercase hover:bg-orange-50 transition-colors disabled:opacity-50 flex items-center gap-1"
+                                                        title="Activate now and ignore schedule until manually deactivated"
                                                     >
-                                                        {{ processingDriverId === assign.driver_id ? 'Switching...' : 'Set Active' }}
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                                        </svg>
+                                                        Override Activate
                                                     </button>
-                                                    <span v-else class="text-[10px] md:text-xs font-bold text-gray-400 uppercase tracking-wide px-2">
-                                                        Active
-                                                    </span> -->
+                                                    <button 
+                                                        v-if="assign.is_active"
+                                                        @click="deactivateDriver"
+                                                        class="px-3 md:px-4 py-1.5 rounded-lg border border-red-200 text-red-600 font-bold text-[10px] md:text-xs uppercase hover:bg-red-50 transition-colors flex items-center gap-1"
+                                                        title="Deactivate driver and resume normal scheduling"
+                                                    >
+                                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                                        </svg>
+                                                        Deactivate
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -813,6 +858,15 @@ const formatTime = (timeString) => {
                     </div>
 
                     <form @submit.prevent="saveSchedule">
+                        <!-- New helper buttons -->
+                        <div class="flex gap-2 mb-4">
+                            <SecondaryButton type="button" @click="applyDefaultSchedule" class="!text-xs !px-3 !py-1.5">
+                                Apply Default (6AM–6PM)
+                            </SecondaryButton>
+                            <!-- <SecondaryButton type="button" @click="copyFromLastAssignment" class="!text-xs !px-3 !py-1.5">
+                                Copy Last Week's Schedule
+                            </SecondaryButton> -->
+                        </div>
                         <div v-if="scheduleForm.errors.schedule" class="mb-4 p-3 rounded-lg bg-red-50 border border-red-200 flex items-start gap-3">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
@@ -821,6 +875,7 @@ const formatTime = (timeString) => {
                                 {{ scheduleForm.errors.schedule }}
                             </div>
                         </div>
+                        
                         <div class="space-y-3 mb-6 max-h-[50vh] overflow-y-auto px-1 custom-scrollbar">
                             <div v-for="(daySched, index) in scheduleForm.schedule" :key="index" 
                                 class="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 p-3 rounded-xl border transition-colors"

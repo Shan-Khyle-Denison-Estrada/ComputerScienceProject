@@ -239,6 +239,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin'])->group(functio
 Route::middleware(['auth', 'prevent-back-history', 'role:franchise_owner'])->group(function () {
     Route::get('/franchise/dashboard', [DashboardController::class, 'index'])->name('franchise.dashboard');
     Route::post('/franchise/{franchise}/set-driver', [DashboardController::class, 'setActiveDriver'])->name('franchise.set-driver');
+    Route::post('/franchise/{franchise}/deactivate-driver', [DashboardController::class, 'deactivateDriver'])->name('franchise.deactivate-driver');
     Route::post('/franchise/{franchise}/drivers/{assignment}/schedule', [DashboardController::class, 'updateDriverSchedule'])->name('franchise.drivers.schedule');
     
     // Applications

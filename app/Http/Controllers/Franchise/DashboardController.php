@@ -153,15 +153,17 @@ class DashboardController extends Controller
      * Set the Active Driver for a Franchise.
      * This toggles the 'is_active' flag and updates the DriverLog.
      */
-    public function setActiveDriver(Request $request, $franchiseId)
+        public function setActiveDriver(Request $request, $franchiseId)
     {
         $request->validate([
-            'driver_id' => 'required|exists:drivers,id'
+            'driver_id' => 'required|exists:drivers,id',
+            'is_override' => 'sometimes|boolean'   // NEW: override flag from frontend
         ]);
 
         $newDriverId = $request->input('driver_id');
+        $isOverride = $request->boolean('is_override', false); // default false
 
-        DB::transaction(function () use ($franchiseId, $newDriverId) {
+        DB::transaction(function () use ($franchiseId, $newDriverId, $isOverride) {
             $now = now();
 
             // 1. Find the currently active driver assignment for this franchise
@@ -174,21 +176,26 @@ class DashboardController extends Controller
                 return;
             }
 
-            // 2. Deactivate the current driver and close their log
+            // 2. Deactivate the current driver and close their log, clear override
             if ($currentActive) {
-                $currentActive->update(['is_active' => false]);
+                $currentActive->update([
+                    'is_active' => false,
+                    'manual_override' => false,   // clear override when deactivated
+                ]);
                 
-                // Update the log entry to set the end time
                 DriverLog::where('franchise_id', $franchiseId)
                     ->where('driver_id', $currentActive->driver_id)
                     ->whereNull('ended_at')
                     ->update(['ended_at' => $now]);
             }
 
-            // 3. Activate the new driver
+            // 3. Activate the new driver and set override if requested
             DriverAssignment::where('franchise_id', $franchiseId)
                 ->where('driver_id', $newDriverId)
-                ->update(['is_active' => true]);
+                ->update([
+                    'is_active' => true,
+                    'manual_override' => $isOverride,   // set override flag
+                ]);
 
             // 4. Create a new log entry for the new driver
             DriverLog::create([
@@ -198,7 +205,39 @@ class DashboardController extends Controller
             ]);
         });
 
-        return redirect()->back()->with('success', 'Active driver updated successfully.');
+        $message = $isOverride 
+            ? 'Manual override activated. Driver will stay active until manually deactivated.'
+            : 'Active driver updated successfully.';
+        return redirect()->back()->with('success', $message);
+    }
+
+
+        /**
+     * Deactivate the currently active driver (clears manual override).
+     */
+    public function deactivateDriver($franchiseId)
+    {
+        DB::transaction(function () use ($franchiseId) {
+            $now = now();
+
+            $currentActive = DriverAssignment::where('franchise_id', $franchiseId)
+                ->where('is_active', true)
+                ->first();
+
+            if ($currentActive) {
+                $currentActive->update([
+                    'is_active' => false,
+                    'manual_override' => false,
+                ]);
+
+                DriverLog::where('franchise_id', $franchiseId)
+                    ->where('driver_id', $currentActive->driver_id)
+                    ->whereNull('ended_at')
+                    ->update(['ended_at' => $now]);
+            }
+        });
+
+        return redirect()->back()->with('success', 'Driver deactivated. Auto‑scheduler will resume at the next scheduled time.');
     }
 
 /**

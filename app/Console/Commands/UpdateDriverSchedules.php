@@ -22,7 +22,30 @@ class UpdateDriverSchedules extends Command
         // Fetch all assignments that have a schedule
         $assignments = DriverAssignment::whereNotNull('schedule')->get();
 
-        foreach ($assignments as $assignment) {
+                foreach ($assignments as $assignment) {
+            // ------------------------------------------------------------------
+            // NEW: Skip any assignment where manual override is active.
+            // This prevents the scheduler from changing a driver that has been
+            // manually overridden (either as active or inactive).
+            // ------------------------------------------------------------------
+            if ($assignment->manual_override) {
+                // If this driver is the one with override, do nothing.
+                continue;
+            }
+
+            // Also, if there is an active driver on this franchise with override,
+            // skip all automatic changes for this franchise entirely.
+            $activeOverride = DriverAssignment::where('franchise_id', $assignment->franchise_id)
+                ->where('is_active', true)
+                ->where('manual_override', true)
+                ->exists();
+
+            if ($activeOverride) {
+                // A manual override is in effect for this franchise; skip any
+                // automated activation/deactivation for all assignments in it.
+                continue;
+            }
+
             $schedule = $assignment->schedule;
             $shouldBeActive = false;
 
@@ -46,6 +69,10 @@ class UpdateDriverSchedules extends Command
                     ->first();
 
                 if ($currentActive) {
+                    // Extra safety: if the current active has override, skip (shouldn't happen due to check above)
+                    if ($currentActive->manual_override) {
+                        continue;
+                    }
                     $currentActive->update(['is_active' => false]);
                     DriverLog::where('franchise_id', $assignment->franchise_id)
                         ->where('driver_id', $currentActive->driver_id)
