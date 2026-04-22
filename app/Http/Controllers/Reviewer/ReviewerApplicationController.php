@@ -8,6 +8,8 @@ use App\Models\InspectionItem;
 use App\Models\UnitInspection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdated;
 
 class ReviewerApplicationController extends Controller
 {
@@ -199,6 +201,11 @@ class ReviewerApplicationController extends Controller
     {
         $application->update(['reviewer_status' => 'Approved']);
         
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Approved', 'Reviewer'));
+        }
+
         return redirect()->route('reviewer.applications.index')
                          ->with('success', "Application has been approved by the Reviewer.");
     }
@@ -214,6 +221,11 @@ class ReviewerApplicationController extends Controller
             'status' => 'Rejected',
             'remarks' => $request->remarks
         ]);
+
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Rejected', 'Reviewer', $request->remarks));
+        }
 
         return redirect()->route('reviewer.applications.index')
                          ->with('success', "Application has been returned.");

@@ -8,6 +8,8 @@ use App\Models\InspectionItem;
 use App\Models\UnitInspection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdated;
 
 class InspectorApplicationController extends Controller
 {
@@ -189,6 +191,11 @@ class InspectorApplicationController extends Controller
     {
         $application->update(['inspector_status' => 'Approved']);
         
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Approved', 'Inspector'));
+        }
+
         return redirect()->route('inspector.applications.index')
                          ->with('success', "Unit Inspection has been approved.");
     }
@@ -204,6 +211,12 @@ class InspectorApplicationController extends Controller
             'status' => 'Returned',
             'remarks' => $request->remarks
         ]);
+
+        // Send Email Notification
+        if ($application->email) {
+            // Note: Using 'Returned' as the action since the application status goes back to Returned
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Returned', 'Inspector', $request->remarks));
+        }
 
         return redirect()->route('inspector.applications.index')
                          ->with('success', "Application has been returned for physical unit modifications.");

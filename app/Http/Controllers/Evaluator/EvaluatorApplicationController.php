@@ -11,6 +11,8 @@ use App\Models\Complaint;
 use App\Models\RedFlag;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdated;
 
 class EvaluatorApplicationController extends Controller
 {
@@ -287,6 +289,11 @@ class EvaluatorApplicationController extends Controller
         }
 
         $application->update($updateData);
+
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Approved', 'Evaluator'));
+        }
         
         return redirect()->route('evaluator.applications.index')
             ->with('success', "Evaluation has been approved successfully.");
@@ -303,6 +310,11 @@ class EvaluatorApplicationController extends Controller
             'remarks' => $request->remarks
         ]);
 
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Rejected', 'Evaluator', $request->remarks));
+        }
+
         return redirect()->route('evaluator.applications.index')
             ->with('success', "Application has been rejected.");
     }
@@ -318,6 +330,11 @@ class EvaluatorApplicationController extends Controller
             'status' => 'Returned', // Sent back for correction
             'remarks' => $request->remarks
         ]);
+
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Returned', 'Evaluator', $request->remarks));
+        }
 
         return redirect()->route('evaluator.applications.index')
             ->with('success', "Application has been returned for corrections.");

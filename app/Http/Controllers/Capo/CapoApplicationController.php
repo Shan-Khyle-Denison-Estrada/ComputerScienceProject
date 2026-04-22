@@ -8,6 +8,8 @@ use App\Models\InspectionItem;
 use App\Models\UnitInspection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdated;
 
 class CapoApplicationController extends Controller
 {
@@ -125,6 +127,11 @@ class CapoApplicationController extends Controller
     {
         $application->update(['capo_status' => 'Approved']);
         
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Approved', 'City Anti-Pollution Officer'));
+        }
+
         return redirect()->route('capo.applications.index')
                          ->with('success', "Application has been approved by the City Anti-Pollution Officer.");
     }
@@ -142,6 +149,11 @@ class CapoApplicationController extends Controller
             'capo_status' => 'Pending',      // Resets CAPO state
             'remarks' => "CAPO returned to Inspector: " . $request->remarks
         ]);
+
+        // Send Email Notification treating this rejection as a 'Returned' action
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Returned', 'City Anti-Pollution Officer', $request->remarks));
+        }
 
         return redirect()->route('capo.applications.index')
                          ->with('success', "Application has been returned to the Inspector for re-evaluation.");

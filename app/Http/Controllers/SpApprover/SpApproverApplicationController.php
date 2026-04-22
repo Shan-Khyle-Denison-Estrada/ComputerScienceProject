@@ -8,6 +8,8 @@ use App\Models\InspectionItem;
 use App\Models\UnitInspection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdated;
 
 class SpApproverApplicationController extends Controller
 {
@@ -117,6 +119,11 @@ class SpApproverApplicationController extends Controller
     public function approve(Application $application)
     {
         $application->update(['sp_status' => 'Approved']);
+
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Approved', 'SP Approver'));
+        }
         
         return redirect()->route('sp_approver.applications.index')
         ->with('success', "Application has been approved by the Sangguniang Panlungsod.");
@@ -133,6 +140,11 @@ class SpApproverApplicationController extends Controller
             'status' => 'Rejected',
             'remarks' => $request->remarks
         ]);
+
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Rejected', 'SP Approver', $request->remarks));
+        }
 
         return redirect()->route('sp_approver.applications.index')
         ->with('success', "Application has been rejected by the Sangguniang Panlungsod.");

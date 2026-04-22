@@ -8,6 +8,8 @@ use App\Models\InspectionItem;
 use App\Models\UnitInspection;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\ApplicationStatusUpdated;
 
 class TabApproverApplicationController extends Controller
 {
@@ -208,6 +210,11 @@ class TabApproverApplicationController extends Controller
             // but the status goes to 'Approved' successfully.
         }
 
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Approved', 'TAB Approver'));
+        }
+
         return redirect()->route('tab_approver.applications.index')
                          ->with('success', "Application has been approved successfully by Tabulation.");
     }
@@ -223,6 +230,11 @@ class TabApproverApplicationController extends Controller
             'status' => 'Rejected',
             'remarks' => $request->remarks
         ]);
+
+        // Send Email Notification
+        if ($application->email) {
+            Mail::to($application->email)->send(new ApplicationStatusUpdated($application, 'Rejected', 'TAB Approver', $request->remarks));
+        }
 
         return redirect()->route('tab_approver.applications.index')
                          ->with('success', "Application has been rejected.");
