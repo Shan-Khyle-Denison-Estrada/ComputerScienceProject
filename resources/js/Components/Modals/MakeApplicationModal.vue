@@ -642,11 +642,11 @@ const selectExistingOwner = (operator) => {
                                         <TextInput v-model="form.chassis_number" :class="{'border-red-500': form.errors.chassis_number}" class="w-full text-sm py-1.5 mt-1" />
                                         <p v-if="form.errors.chassis_number" class="text-red-500 text-xs mt-1">{{ form.errors.chassis_number }}</p>
                                     </div>
-                                    <div>
+                                    <!-- <div>
                                         <InputLabel>CR Number <span class="text-gray-400 text-xs font-normal">(Optional)</span></InputLabel>
                                         <TextInput v-model="form.cr_number" :class="{'border-red-500': form.errors.cr_number}" class="w-full text-sm py-1.5 mt-1" />
                                         <p v-if="form.errors.cr_number" class="text-red-500 text-xs mt-1">{{ form.errors.cr_number }}</p>
-                                    </div>
+                                    </div> -->
                                 </div>
 
                                 <div class="mt-4">
