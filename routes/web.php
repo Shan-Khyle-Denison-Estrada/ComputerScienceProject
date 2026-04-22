@@ -257,6 +257,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:franchise_owner'])->gro
     Route::post('/franchise/applications/{application}/resubmit-inspection', [FranchiseApplicationController::class, 'resubmitForInspection'])->name('franchise.applications.resubmit-inspection');
 
     Route::post('/franchise/applications/new-driver', [FranchiseApplicationController::class, 'storeNewDriver'])->name('franchise.applications.store-new-driver');
+    Route::post('/franchise/applications/new-franchise', [FranchiseApplicationController::class, 'storeNewFranchise'])->name('franchise.applications.store-new-franchise');
 });
 
 // --- PROFILE MANAGEMENT & USER ACTIONS ---

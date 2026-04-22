@@ -32,16 +32,73 @@ class ApplicationController extends Controller
         $operator = $user->operator; 
 
         if (!$operator) {
+            // Fetch evaluation requirements for users without an operator record
+            $evaluationRequirements = EvaluationRequirement::where('is_active', true)
+                ->get()
+                ->groupBy('group');
+
+            // Fetch user's existing applications
+            $applicationsData = Application::where('user_id', $user->id)
+                ->with(['evaluations.requirement', 'unitInspections.inspectionItem'])
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(function ($app) {
+                    $step = 1;
+                    $status = $app->status ?? 'Pending';
+                    if (in_array($status, ['Pending', 'Returned'])) $step = 1;
+                    elseif ($status === 'Under Review') $step = 2;
+                    elseif (in_array($status, ['Inspection', 'For Payment'])) $step = 3;
+                    elseif (in_array($status, ['Processing', 'Approved', 'Rejected'])) $step = 4;
+
+                    return [
+                        'id' => $app->id,
+                        'ref_no' => $app->reference_number,
+                        'type' => $app->application_type,
+                        'date' => $app->created_at ? $app->created_at->format('Y-m-d') : 'N/A',
+                        'status' => $status,
+                        'current_step' => $step,
+                        'remarks' => $app->remarks ?? 'No remarks provided.',
+                        'is_active' => !in_array($status, ['Approved', 'Rejected', 'Cancelled', 'Completed']),
+                        'franchise_id' => $app->franchise_id,
+                        'evaluator_status' => $app->evaluator_status ?? 'Pending',
+                        'inspector_status' => $app->inspector_status ?? 'Pending',
+                        'capo_status'      => $app->capo_status ?? 'Pending',
+                        'reviewer_status'  => $app->reviewer_status ?? 'Pending',
+                        'sp_status'        => $app->sp_status ?? 'Pending',
+                        'tab_status'       => $app->tab_status ?? 'Pending',
+                        'evaluations' => $app->evaluations->map(function($eval) {
+                            return [
+                                'id' => $eval->id,
+                                'requirement_id' => $eval->requirement_id,
+                                'name' => $eval->requirement->name ?? 'Document',
+                                'is_compliant' => $eval->is_compliant,
+                                'status' => $eval->is_compliant === 1 ? 'Approved' : ($eval->is_compliant === 0 ? 'Rejected' : 'Pending'),
+                                'remarks' => $eval->remarks,
+                            ];
+                        }),
+                        'unit_inspections' => $app->unitInspections ? $app->unitInspections->map(function($insp) {
+                            return [
+                                'id' => $insp->id,
+                                'name' => $insp->inspectionItem->name ?? 'Inspection Item',
+                                'rating' => $insp->rating,
+                                'remarks' => $insp->remarks,
+                            ];
+                        }) : []
+                    ];
+                });
+
             return Inertia::render('Franchise/MakeApplication', [
                 'hasFranchise' => false,
                 'franchises' => [],
                 'operator' => null,
-                'evaluationRequirements' => [],
-                'barangays' => [],
-                'unitMakes' => [],
+                'evaluationRequirements' => $evaluationRequirements,
+                'barangays' => Barangay::select('id', 'name')->orderBy('name', 'asc')->get(),
+                'unitMakes' => UnitMake::select('id', 'name')->orderBy('name', 'asc')->get(),
                 'operators' => [],
                 'units' => [],
-                'applications' => [] 
+                'applications' => $applicationsData,
+                'zones' => \App\Models\Zone::orderBy('description', 'asc')->get(),
+                'allowNewFranchise' => SystemSetting::first()->allow_new_applications ?? false,
             ]);
         }
 
@@ -220,7 +277,9 @@ class ApplicationController extends Controller
             'unitMakes' => $unitMakes,
             'operators' => $operators,
             'units' => $units,
-            'applications' => $applicationsData 
+            'applications' => $applicationsData,
+            'zones' => \App\Models\Zone::orderBy('description', 'asc')->get(),
+            'allowNewFranchise' => SystemSetting::first()->allow_new_applications ?? false,
         ]);
     }
 
@@ -239,6 +298,128 @@ class ApplicationController extends Controller
             } else {
                 return $currentYear . '-' . ($currentYear + 1);
             }
+        }
+    }
+
+    public function storeNewFranchise(Request $request)
+    {
+        $settings = SystemSetting::first();
+        if (!$settings || !$settings->allow_new_applications) {
+            return redirect()->back()->with('error', 'New franchise applications are currently closed by the administration.');
+        }
+
+        $request->validate([
+            'zone_id'          => 'required|exists:zones,id',
+            'make_name'        => 'required|string|max:255',
+            'model_year'       => 'required|numeric',
+            'plate_number'     => 'required|string',
+            'motor_number'     => 'required|string',
+            'chassis_number'   => 'required|string',
+            'cr_number'        => 'nullable|string',
+            'unit_front_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'unit_back_photo'  => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'unit_left_photo'  => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'unit_right_photo' => 'required|image|mimes:jpeg,png,jpg|max:5120',
+            'documents'        => 'required|array',
+            'documents.*'      => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        $user = Auth::user();
+
+        $existingApp = Application::where('user_id', $user->id)
+            ->where('application_type', 'New Franchise')
+            ->whereNotIn('status', ['Rejected', 'Cancelled', 'Completed'])
+            ->exists();
+
+        if ($existingApp) {
+            throw ValidationException::withMessages([
+                'zone_id' => 'You already have an active New Franchise application.',
+            ]);
+        }
+
+        DB::beginTransaction();
+
+        try {
+            $referenceNumber = 'APP-' . date('Y') . '-' . strtoupper(Str::random(6));
+
+            $application = Application::create([
+                'reference_number' => $referenceNumber,
+                'user_id'          => $user->id,
+                'application_type' => 'New Franchise',
+                'status'           => 'Pending',
+                'remarks'          => 'Application submitted. Waiting for initial review.',
+                'submitted_at'     => now(),
+                
+                'first_name'       => $user->first_name,
+                'middle_name'      => $user->middle_name,
+                'last_name'        => $user->last_name,
+                'contact_number'   => $user->contact_number,
+                'email'            => $user->email,
+                'tin_number'       => $user->operator->tin_number ?? $user->tin_number,
+                'street_address'   => $user->street_address ?? $user->address,
+                'barangay'         => $user->barangay,
+                'city'             => $user->city ?? 'Zamboanga City',
+                'province'         => 'Zamboanga del Sur',
+            ]);
+
+            $unitMake = \App\Models\UnitMake::firstOrCreate([
+                'name' => trim($request->make_name)
+            ]);
+
+            ProposedUnit::create([
+                'application_id'   => $application->id,
+                'zone_id'          => $request->zone_id,
+                'make_id'          => $unitMake->id,
+                'model_year'       => $request->model_year,
+                'plate_number'     => $request->plate_number,
+                'motor_number'     => $request->motor_number,
+                'chassis_number'   => $request->chassis_number,
+                'cr_number'        => $request->cr_number,
+                'unit_front_photo' => $request->file('unit_front_photo')->store('units/photos', 'public'),
+                'unit_back_photo'  => $request->file('unit_back_photo')->store('units/photos', 'public'),
+                'unit_left_photo'  => $request->file('unit_left_photo')->store('units/photos', 'public'),
+                'unit_right_photo' => $request->file('unit_right_photo')->store('units/photos', 'public'),
+            ]);
+
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $requirementId => $file) {
+                    $filePath = $file->store('applications/documents', 'public');
+
+                    ApplicationEvaluation::create([
+                        'application_id' => $application->id,
+                        'requirement_id' => $requirementId,
+                        'file_path'      => $filePath,
+                        'is_compliant'   => null,
+                        'remarks'        => 'Uploaded upon submission.'
+                    ]);
+                }
+            }
+
+            $particulars = Particular::where('group', 'new_franchise')->get();
+            if ($particulars->isNotEmpty()) {
+                $totalAmountDue = $particulars->sum('amount');
+                $assessment = Assessment::create([
+                    'application_id'    => $application->id,
+                    'assessment_date'   => now(),
+                    'total_amount_due'  => $totalAmountDue,
+                    'assessment_status' => 'Pending',
+                    'remarks'           => 'Auto-generated assessment for New Franchise Application: ' . $application->reference_number,
+                ]);
+                foreach ($particulars as $particular) {
+                    $assessment->particulars()->attach($particular->id, [
+                        'quantity' => 1,
+                        'subtotal' => $particular->amount
+                    ]);
+                }
+            }
+
+            DB::commit();
+            return redirect()->back()->with('success', "New Franchise application submitted successfully! Ref No: $referenceNumber");
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error("Failed to submit New Franchise application: " . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to submit application. Please try again.');
         }
     }
 

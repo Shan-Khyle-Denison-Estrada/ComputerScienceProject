@@ -19,7 +19,9 @@ const props = defineProps({
     unitMakes: { type: Array, default: () => [] },
     operators: { type: Array, default: () => [] },
     units: { type: Array, default: () => [] },
-    applications: { type: Array, default: () => [] }
+    applications: { type: Array, default: () => [] },
+    zones: { type: Array, default: () => [] },
+    allowNewFranchise: { type: Boolean, default: false }
 });
 
 const processSteps = [{ id: 1, label: 'Sub' }, { id: 2, label: 'Rev' }, { id: 3, label: 'Insp/Pay' }, { id: 4, label: 'Done' }];
@@ -386,6 +388,8 @@ const resubmitForInspection = () => {
             :operators="operators"
             :units="units"
             :applications="applications"
+            :zones="zones"
+            :allowNewFranchise="allowNewFranchise"
             @close="showNewAppModal = false; initialModalType = ''"
             @submit="fetchApplications"
         />

@@ -15,7 +15,9 @@ const props = defineProps({
     unitMakes: { type: Array, default: () => [] },
     operators: { type: Array, default: () => [] },
     units: { type: Array, default: () => [] },
-    applications: { type: Array, default: () => [] }
+    applications: { type: Array, default: () => [] },
+    zones: { type: Array, default: () => [] },
+    allowNewFranchise: { type: Boolean, default: false }
 });
 
 const emit = defineEmits(['close', 'submit']);
@@ -56,19 +58,26 @@ const showWarningModal = ref(false);
 const warningMessage = ref('');
 const conflictingApplication = ref(null);
 
-const applicationTypes = [
-    { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
-    { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
-    // Add the Renewal option here
-    { id: 'renewal', name: 'Renewal', description: 'Renew existing franchise.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
-    // ADD NEW DRIVER OPTION
-    { id: 'new_driver', name: 'New Driver', description: 'Propose a new driver.', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
-];
+const applicationTypes = computed(() => {
+    const types = [
+        { id: 'change_unit', name: 'Change of Unit', description: 'Replace tricycle unit.', icon: 'M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4' },
+        { id: 'change_owner', name: 'Change of Owner', description: 'Transfer ownership.', icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z' },
+        { id: 'renewal', name: 'Renewal', description: 'Renew existing franchise.', icon: 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15' },
+        { id: 'new_driver', name: 'New Driver', description: 'Propose a new driver.', icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z' }
+    ];
+
+    if (props.allowNewFranchise) {
+        types.push({ id: 'new_franchise', name: 'New Franchise', description: 'Apply for a new franchise.', icon: 'M12 4v16m8-8H4' });
+    }
+    return types;
+});
+
 // --- FORMS ---
 const form = useForm({
     type: props.initialType || 'change_unit',
     selected_franchise_id: '', 
     remarks: '',
+    zone_id: '',
     
     owner_mode: 'existing', 
     unit_mode: 'existing',
@@ -216,7 +225,7 @@ watch(() => form.errors.selected_franchise_id, (newError) => {
 });
 
 const currentEvaluationRequirements = computed(() => {
-    const typeObj = applicationTypes.find(t => t.id === selectedType.value);
+    const typeObj = applicationTypes.value.find(t => t.id === selectedType.value);
     if (!typeObj) return [];
     return props.evaluationRequirements[typeObj.name] || [];
 });
@@ -224,7 +233,8 @@ const currentEvaluationRequirements = computed(() => {
 const isUnitRequired = computed(() => ['change_unit'].includes(selectedType.value));
 const isOwnerRequired = computed(() => ['change_owner'].includes(selectedType.value));
 const isNewDriverRequired = computed(() => ['new_driver'].includes(selectedType.value));
-const isFranchiseSelectRequired = computed(() => true); 
+const isNewFranchiseRequired = computed(() => ['new_franchise'].includes(selectedType.value));
+const isFranchiseSelectRequired = computed(() => selectedType.value !== 'new_franchise');
 
 const areAllDocsUploaded = computed(() => {
     const reqs = currentEvaluationRequirements.value;
@@ -232,6 +242,16 @@ const areAllDocsUploaded = computed(() => {
 });
 
 const duplicateApplicationError = computed(() => {
+    if (selectedType.value === 'new_franchise') {
+        const hasActiveNewFranchise = props.applications.some(app => 
+            app.type === 'New Franchise' && !['Rejected', 'Cancelled', 'Completed'].includes(app.status)
+        );
+        if (hasActiveNewFranchise) {
+            return `You already have an active New Franchise application. Please wait for it to be processed.`;
+        }
+        return null;
+    }
+
     if (!form.selected_franchise_id) return null;
 
     const selectedFranchise = props.franchises.find(f => f.id == form.selected_franchise_id);
@@ -264,18 +284,23 @@ const validateFranchiseSelection = () => {
     if (error) {
         warningMessage.value = error;
         
-        const selectedFranchise = props.franchises.find(f => f.id == form.selected_franchise_id);
-        
-        // Directly pull the conflicting application from the selected franchise object
-        if (selectedType.value === 'renewal') {
-            conflictingApplication.value = selectedFranchise?.conflicting_renewal || null;
-        } else if (selectedType.value === 'change_unit') {
+        if (selectedType.value === 'new_franchise') {
+            conflictingApplication.value = props.applications.find(app => 
+                app.type === 'New Franchise' && !['Rejected', 'Cancelled', 'Completed'].includes(app.status)
+            ) || null;
+        } else {
+            const selectedFranchise = props.franchises.find(f => f.id == form.selected_franchise_id);
+            
+            if (selectedType.value === 'renewal') {
+                conflictingApplication.value = selectedFranchise?.conflicting_renewal || null;
+            } else if (selectedType.value === 'change_unit') {
             conflictingApplication.value = selectedFranchise?.conflicting_change_unit || null;
         } else if (selectedType.value === 'change_owner') {
             conflictingApplication.value = selectedFranchise?.conflicting_change_owner || null;
         } else {
             conflictingApplication.value = null;
         }
+    }
 
         showWarningModal.value = true;
         form.selected_franchise_id = '';
@@ -331,6 +356,32 @@ const goToNextStep = () => {
                 form.setError('unit_photos', 'Please upload all 4 photos (front, back, left, right) of the proposed unit.');
                 isValid = false;
             }
+        }
+    }
+
+if (isNewFranchiseRequired.value) {
+        if (!form.zone_id) { form.setError('zone_id', 'Please select a zone.'); isValid = false; }
+        if (!form.make_name) { form.setError('make_name', 'Required.'); isValid = false; }
+        if (!form.model_year) { form.setError('model_year', 'Required.'); isValid = false; }
+        if (!form.plate_number) { form.setError('plate_number', 'Required.'); isValid = false; }
+        if (!form.motor_number) { form.setError('motor_number', 'Required.'); isValid = false; }
+        if (!form.chassis_number) { form.setError('chassis_number', 'Required.'); isValid = false; }
+        if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) {
+            form.setError('unit_photos', 'Please upload all 4 photos (front, back, left, right) of the proposed unit.');
+            isValid = false;
+        }
+    }
+
+    if (isNewFranchiseRequired.value) {
+        if (!form.zone_id) { form.setError('zone_id', 'Please select a zone.'); isValid = false; }
+        if (!form.make_name) { form.setError('make_name', 'Required.'); isValid = false; }
+        if (!form.model_year) { form.setError('model_year', 'Required.'); isValid = false; }
+        if (!form.plate_number) { form.setError('plate_number', 'Required.'); isValid = false; }
+        if (!form.motor_number) { form.setError('motor_number', 'Required.'); isValid = false; }
+        if (!form.chassis_number) { form.setError('chassis_number', 'Required.'); isValid = false; }
+        if (!form.unit_front_photo || !form.unit_back_photo || !form.unit_left_photo || !form.unit_right_photo) {
+            form.setError('unit_photos', 'Please upload all 4 photos (front, back, left, right) of the proposed unit.');
+            isValid = false;
         }
     }
 
@@ -462,7 +513,15 @@ const submit = () => {
                 closeModal();
             },
         });
-    } 
+    } else if (selectedType.value === 'new_franchise') {
+        form.post('/franchise/applications/new-franchise', {
+            preserveScroll: true,
+            onSuccess: () => {
+                emit('submit'); 
+                closeModal();
+            },
+        });
+    }
 };
 
 const ownerSearchQuery = ref('');
@@ -542,6 +601,82 @@ const selectExistingOwner = (operator) => {
                             <p v-if="form.errors.selected_franchise_id" class="text-red-500 text-xs mt-1">{{ form.errors.selected_franchise_id }}</p>
                         </div>
 
+                        <div v-if="isNewFranchiseRequired" class="space-y-6">
+                            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <InputLabel>Select Operating Zone <span class="text-red-500">*</span></InputLabel>
+                                <select v-model="form.zone_id" :class="{'border-red-500 ring-red-500': form.errors.zone_id}" class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 focus:ring-blue-500 py-2 mt-1">
+                                    <option value="" disabled>-- Select Zone --</option>
+                                    <option v-for="zone in zones" :key="zone.id" :value="zone.id">{{ zone.description }}</option>
+                                </select>
+                                <p v-if="form.errors.zone_id" class="text-red-500 text-xs mt-1">{{ form.errors.zone_id }}</p>
+                            </div>
+
+                            <div class="p-4 bg-gray-50 rounded-lg border border-gray-200">
+                                <h4 class="text-sm font-bold text-gray-900 mb-3 border-b pb-2">Proposed Unit Details</h4>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <InputLabel>Make (Brand) <span class="text-red-500">*</span></InputLabel>
+                                        <TextInput v-model="form.make_name" list="make-options" :class="{'border-red-500': form.errors.make_name}" class="w-full text-sm py-1.5 mt-1" placeholder="e.g., Honda, Kawasaki" />
+                                        <datalist id="make-options">
+                                            <option v-for="make in unitMakes" :key="make.id" :value="make.name"></option>
+                                        </datalist>
+                                        <p v-if="form.errors.make_name" class="text-red-500 text-xs mt-1">{{ form.errors.make_name }}</p>
+                                    </div>
+                                    <div>
+                                        <InputLabel>Model Year <span class="text-red-500">*</span></InputLabel>
+                                        <TextInput type="number" v-model="form.model_year" :class="{'border-red-500': form.errors.model_year}" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.model_year" class="text-red-500 text-xs mt-1">{{ form.errors.model_year }}</p>
+                                    </div>
+                                    <div>
+                                        <InputLabel>Plate Number <span class="text-red-500">*</span></InputLabel>
+                                        <TextInput v-model="form.plate_number" :class="{'border-red-500': form.errors.plate_number}" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.plate_number" class="text-red-500 text-xs mt-1">{{ form.errors.plate_number }}</p>
+                                    </div>
+                                    <div>
+                                        <InputLabel>Motor Number <span class="text-red-500">*</span></InputLabel>
+                                        <TextInput v-model="form.motor_number" :class="{'border-red-500': form.errors.motor_number}" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.motor_number" class="text-red-500 text-xs mt-1">{{ form.errors.motor_number }}</p>
+                                    </div>
+                                    <div>
+                                        <InputLabel>Chassis Number <span class="text-red-500">*</span></InputLabel>
+                                        <TextInput v-model="form.chassis_number" :class="{'border-red-500': form.errors.chassis_number}" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.chassis_number" class="text-red-500 text-xs mt-1">{{ form.errors.chassis_number }}</p>
+                                    </div>
+                                    <div>
+                                        <InputLabel>CR Number <span class="text-gray-400 text-xs font-normal">(Optional)</span></InputLabel>
+                                        <TextInput v-model="form.cr_number" :class="{'border-red-500': form.errors.cr_number}" class="w-full text-sm py-1.5 mt-1" />
+                                        <p v-if="form.errors.cr_number" class="text-red-500 text-xs mt-1">{{ form.errors.cr_number }}</p>
+                                    </div>
+                                </div>
+
+                                <div class="mt-4">
+                                    <InputLabel>Unit Photos (Front, Back, Left, Right) <span class="text-red-500">*</span></InputLabel>
+                                    <p v-if="form.errors.unit_photos" class="text-red-500 text-xs mt-1 mb-2">{{ form.errors.unit_photos }}</p>
+                                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-2">
+                                        <div v-for="side in ['front', 'back', 'left', 'right']" :key="side" 
+                                             class="relative flex flex-col items-center justify-center p-3 border-2 border-dashed rounded-lg bg-white transition-colors"
+                                             :class="(form.errors[`unit_${side}_photo`] || form.errors.unit_photos) ? 'border-red-300 hover:border-red-400' : 'border-gray-300 hover:border-blue-400'">
+                                            
+                                            <div v-if="unitPhotoPreviews[side]" class="absolute inset-0 w-full h-full p-1">
+                                                <img :src="unitPhotoPreviews[side]" class="w-full h-full object-cover rounded shadow-sm" />
+                                                <button @click.stop="form[`unit_${side}_photo`] = null; unitPhotoPreviews[side] = null" type="button" class="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md hover:bg-red-600 z-10">
+                                                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                                                </button>
+                                            </div>
+                                            
+                                            <div v-else class="text-center pointer-events-none">
+                                                <svg class="mx-auto h-6 w-6 text-gray-400 mb-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                                </svg>
+                                                <span class="text-[10px] text-gray-500 font-bold uppercase tracking-wider block">{{ side }}</span>
+                                            </div>
+                                            <input type="file" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full" accept="image/*" @change="(e) => handleUnitPhoto(e, side)" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div v-if="isOwnerRequired">
                             <h3 class="text-sm font-bold text-gray-800 mb-2">New Owner Details</h3>
                             <div class="flex border-b border-gray-200 mb-4">
@@ -550,51 +685,51 @@ const selectExistingOwner = (operator) => {
                             </div>
 
                             <div v-if="ownerMode === 'existing'" class="p-4 bg-gray-50 rounded-lg border border-gray-200 relative">
-    <InputLabel>Search / Select Existing Owner <span class="text-red-500">*</span></InputLabel>
-    <p v-if="form.errors.existing_operator_id" class="text-red-500 text-xs mt-1 mb-2">{{ form.errors.existing_operator_id }}</p>
+                                <InputLabel>Search / Select Existing Owner <span class="text-red-500">*</span></InputLabel>
+                                <p v-if="form.errors.existing_operator_id" class="text-red-500 text-xs mt-1 mb-2">{{ form.errors.existing_operator_id }}</p>
 
-    <div v-if="isOwnerDropdownOpen" @click="isOwnerDropdownOpen = false" class="fixed inset-0 z-10"></div>
+                                <div v-if="isOwnerDropdownOpen" @click="isOwnerDropdownOpen = false" class="fixed inset-0 z-10"></div>
 
-    <div class="relative mt-1 z-20">
-        <input 
-            type="text" 
-            v-model="ownerSearchQuery"
-            @focus="isOwnerDropdownOpen = true"
-            @input="isOwnerDropdownOpen = true; form.existing_operator_id = ''"
-            placeholder="Search by name or email..."
-            class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 pr-10"
-        />
-        
-        <button 
-            v-if="ownerSearchQuery" 
-            @click="ownerSearchQuery = ''; form.existing_operator_id = ''; isOwnerDropdownOpen = true" 
-            class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
-            type="button"
-        >
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
+                                <div class="relative mt-1 z-20">
+                                    <input 
+                                        type="text" 
+                                        v-model="ownerSearchQuery"
+                                        @focus="isOwnerDropdownOpen = true"
+                                        @input="isOwnerDropdownOpen = true; form.existing_operator_id = ''"
+                                        placeholder="Search by name or email..."
+                                        class="w-full border-gray-300 rounded-lg shadow-sm text-sm focus:border-blue-500 py-2 pr-10"
+                                    />
+                                    
+                                    <button 
+                                        v-if="ownerSearchQuery" 
+                                        @click="ownerSearchQuery = ''; form.existing_operator_id = ''; isOwnerDropdownOpen = true" 
+                                        class="absolute right-3 top-2.5 text-gray-400 hover:text-gray-600"
+                                        type="button"
+                                    >
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                        </svg>
+                                    </button>
 
-        <div 
-            v-if="isOwnerDropdownOpen" 
-            class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto custom-scrollbar"
-        >
-            <div v-if="filteredAvailableOperators.length === 0" class="p-3 text-sm text-gray-500 text-center">
-                No matching owners found.
-            </div>
-            <div 
-                v-for="o in filteredAvailableOperators" 
-                :key="o.id" 
-                @click="selectExistingOwner(o)"
-                class="p-3 text-sm hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
-                :class="{'bg-blue-100 font-semibold text-blue-700': form.existing_operator_id === o.id}"
-            >
-                {{ o.name }} <span class="text-xs text-gray-500 ml-1">({{ o.email }})</span>
-            </div>
-        </div>
-    </div>
-</div>
+                                    <div 
+                                        v-if="isOwnerDropdownOpen" 
+                                        class="absolute w-full mt-1 bg-white border border-gray-200 rounded-md shadow-lg max-h-48 overflow-y-auto custom-scrollbar"
+                                    >
+                                        <div v-if="filteredAvailableOperators.length === 0" class="p-3 text-sm text-gray-500 text-center">
+                                            No matching owners found.
+                                        </div>
+                                        <div 
+                                            v-for="o in filteredAvailableOperators" 
+                                            :key="o.id" 
+                                            @click="selectExistingOwner(o)"
+                                            class="p-3 text-sm hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 transition-colors"
+                                            :class="{'bg-blue-100 font-semibold text-blue-700': form.existing_operator_id === o.id}"
+                                        >
+                                            {{ o.name }} <span class="text-xs text-gray-500 ml-1">({{ o.email }})</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
 
                             <div v-if="ownerMode === 'new'" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                 <div><InputLabel>First Name <span class="text-red-500">*</span></InputLabel><TextInput v-model="form.new_owner_first_name" :class="{'border-red-500': form.errors.new_owner_first_name}" class="w-full text-sm py-1.5 mt-1" /><p v-if="form.errors.new_owner_first_name" class="text-red-500 text-xs mt-1">{{ form.errors.new_owner_first_name }}</p></div>
