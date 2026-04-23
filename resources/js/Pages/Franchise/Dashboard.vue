@@ -261,9 +261,23 @@ const formatTime = (timeString) => {
             
             <aside class="w-full lg:w-80 rounded-2xl bg-white flex flex-col z-10 shrink-0 border border-gray-200 max-h-[35vh] lg:max-h-full lg:h-full shadow-sm">
                 <div class="p-4 md:p-5 border-b border-gray-100 shrink-0">
-                    <h2 class="font-bold text-gray-800 text-lg">My Franchises</h2>
-                    <p class="text-xs text-gray-500 mt-1">{{ franchises.length }} franchise/s registered</p>
-                </div>
+    <div class="flex items-center justify-between">
+        <div>
+            <h2 class="font-bold text-gray-800 text-lg">My Franchises</h2>
+            <p class="text-xs text-gray-500 mt-1">{{ franchises.length }} franchise/s registered</p>
+        </div>
+        <button 
+            @click="router.get('/franchise/applications', { auto_open: 'new_franchise' })"
+            class="shrink-0 ml-3 px-3 py-2   bg-gray-900 hover:bg-gray-700 text-white text-xs font-medium rounded-md shadow-sm transition-colors flex items-center gap-1"
+            title="Apply for a new franchise"
+        >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Franchise
+        </button>
+    </div>
+</div>
                 
                 <div class="flex-1 overflow-y-auto p-3 space-y-2 custom-scrollbar bg-white">
                     <div v-if="!hasFranchise || franchises.length === 0" class="text-center p-6 text-gray-400">

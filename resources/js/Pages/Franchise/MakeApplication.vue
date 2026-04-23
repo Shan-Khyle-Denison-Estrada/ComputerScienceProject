@@ -34,8 +34,11 @@ const initialModalType = ref(''); // Default to empty
 
 onMounted(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get('auto_open') === 'new_driver') {
-        initialModalType.value = 'new_driver';
+    const autoOpenType = params.get('auto_open');
+    const validTypes = ['new_driver', 'new_franchise'];
+    
+    if (autoOpenType && validTypes.includes(autoOpenType)) {
+        initialModalType.value = autoOpenType;
         showNewAppModal.value = true;
         
         // Remove the parameter from the URL so it doesn't reopen on refresh
