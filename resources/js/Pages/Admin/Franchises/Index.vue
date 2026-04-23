@@ -167,7 +167,7 @@ const clearFilters = () => {
                     </button>
                 </div>
                 
-                <Link :href="route('certificate-template.edit')" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 gap-2">
+                <Link v-if="can('manage_certificate_template')" :href="route('certificate-template.edit')" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 gap-2">
                     <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
                     Edit Certificate Format
                 </Link>
@@ -197,7 +197,7 @@ const clearFilters = () => {
                             </th>
                             <th class="px-6 py-4">Assigned Unit</th>
                             <th class="px-6 py-4">Assigned Drivers</th>
-                            <th class="px-6 py-4 text-right">Actions</th>
+                            <th v-if="can('view_franchise_details')" class="px-6 py-4 text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100">
@@ -247,7 +247,7 @@ const clearFilters = () => {
                                 <span v-else class="text-gray-400 italic text-xs">Unassigned</span>
                             </td>
 
-                            <td class="px-6 py-4 text-right">
+                            <td v-if="can('view_franchise_details')" class="px-6 py-4 text-right">
                                 <Link :href="route('admin.franchises.show', franchise.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm transition-colors">
                                     View Details &rarr;
                                 </Link>

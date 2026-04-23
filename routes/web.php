@@ -434,50 +434,64 @@ Route::middleware(['auth', 'prevent-back-history', 'role:tab_approver'])->prefix
 });
 
 // --- SHARED APPLICATION ROUTES (Admin & Encoder) ---
-Route::middleware(['auth', 'prevent-back-history', 'role:admin,encoder'])->group(function () {
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     
-    Route::get('/applications', [AdminApplicationController::class, 'index'])->name('admin.applications.index');
+    // Dashboard
+    Route::get('/applications', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'index'])
+        ->middleware('permission:view_applications_index')
+        ->name('admin.applications.index');
     
-    // New Franchise (Franchise Owner Account)
-    Route::get('/applications/new-franchise/{application}', [ApplicationShowController::class, 'show'])->name('admin.applications.show');
-    Route::post('/applications/new-franchise/{application}/evaluate', [ApplicationShowController::class, 'updateEvaluation'])->name('admin.applications.evaluate');
-    Route::post('/applications/new-franchise/{application}/finalize', [ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
+    // View Details (Grouped)
+    Route::middleware('permission:view_application_details')->group(function () {
+        Route::get('/applications/new-franchise/{application}', [\App\Http\Controllers\Admin\ApplicationShowController::class, 'show'])->name('admin.applications.show');
+        Route::get('/admin/applications/new-franchise/{application}', \App\Http\Controllers\Admin\ApplicationNewFranchiseShowController::class)->name('admin.applications.show-new-franchise');
+        Route::get('/applications/renewal/{application}', [\App\Http\Controllers\Admin\ApplicationRenewalShowController::class, 'show'])->name('admin.applications.renewal.show');
+        Route::get('/applications/change-of-owner/{application}', [\App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController::class, 'show'])->name('admin.applications.change-of-owner.show');
+        Route::get('/applications/change-of-unit/{application}', [\App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController::class, 'show'])->name('admin.applications.change-of-unit.show');
+        Route::get('/admin/applications/new-driver/{application}', [\App\Http\Controllers\Admin\ApplicationNewDriverShowController::class, 'show'])->name('admin.applications.new-driver.show');
+    });
 
-    // Renewal
-    Route::get('/applications/renewal/{application}', [ApplicationRenewalShowController::class, 'show'])->name('admin.applications.renewal.show');
-    Route::post('/applications/renewal/{application}/finalize', [ApplicationRenewalShowController::class, 'finalizeApplication'])->name('admin.applications.renewal.finalize');
+    // Finalize / Evaluate Applications
+    Route::middleware('permission:finalize_applications')->group(function () {
+        Route::post('/applications/new-franchise/{application}/finalize', [\App\Http\Controllers\Admin\ApplicationShowController::class, 'finalizeAccount'])->name('admin.applications.finalize');
+        Route::post('/applications/renewal/{application}/finalize', [\App\Http\Controllers\Admin\ApplicationRenewalShowController::class, 'finalizeApplication'])->name('admin.applications.renewal.finalize');
+        Route::post('/applications/change-of-owner/{application}/finalize', [\App\Http\Controllers\Admin\ApplicationChangeOfOwnerShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-owner.finalize');
+        Route::post('/applications/change-of-unit/{application}/finalize', [\App\Http\Controllers\Admin\ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-unit.finalize');
+    });
 
-    // Change of Owner
-    Route::get('/applications/change-of-owner/{application}', [ApplicationChangeOfOwnerShowController::class, 'show'])->name('admin.applications.change-of-owner.show');
-    Route::post('/applications/change-of-owner/{application}/finalize', [ApplicationChangeOfOwnerShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-owner.finalize');
+    Route::post('/applications/new-franchise/{application}/evaluate', [\App\Http\Controllers\Admin\ApplicationShowController::class, 'updateEvaluation'])
+        ->middleware('permission:evaluate_requirements')
+        ->name('admin.applications.evaluate');
 
-    // Change of Unit
-    Route::get('/applications/change-of-unit/{application}', [ApplicationChangeOfUnitShowController::class, 'show'])->name('admin.applications.change-of-unit.show');
-    Route::post('/applications/change-of-unit/{application}/finalize', [ApplicationChangeOfUnitShowController::class, 'finalizeApplication'])->name('admin.applications.change-of-unit.finalize');
+    Route::post('/applications/new-franchise/{application}/inspect', [\App\Http\Controllers\Admin\ApplicationNewFranchiseShowController::class, 'updateInspection'])
+        ->middleware('permission:inspect_unit')
+        ->name('admin.applications.new-franchise.inspect');
 
-    Route::get('admin/drivers', [DriverController::class, 'index'])->name('admin.drivers.index');
-    Route::get('admin/drivers/{driver}', [DriverController::class, 'show'])->name('admin.drivers.show');
+    // Manage Drivers (CRUD)
+    Route::middleware('permission:manage_drivers')->group(function () {
+        Route::get('admin/drivers', [\App\Http\Controllers\Admin\DriverController::class, 'index'])->name('admin.drivers.index');
+        Route::get('admin/drivers/create', [\App\Http\Controllers\Admin\DriverController::class, 'create'])->name('admin.drivers.create');
+        Route::post('admin/drivers', [\App\Http\Controllers\Admin\DriverController::class, 'store'])->name('admin.drivers.store');
+        Route::get('admin/drivers/{driver}', [\App\Http\Controllers\Admin\DriverController::class, 'show'])->name('admin.drivers.show');
+        Route::get('admin/drivers/{driver}/edit', [\App\Http\Controllers\Admin\DriverController::class, 'edit'])->name('admin.drivers.edit');
+        Route::put('admin/drivers/{driver}', [\App\Http\Controllers\Admin\DriverController::class, 'update'])->name('admin.drivers.update');
+        Route::delete('admin/drivers/{driver}', [\App\Http\Controllers\Admin\DriverController::class, 'destroy'])->name('admin.drivers.destroy');
+    });
 
-    Route::post('/applications/new-franchise/{application}/inspect', [ApplicationNewFranchiseShowController::class, 'updateInspection'])->name('admin.applications.new-franchise.inspect');
+    // Manage Franchise Drivers
+    Route::middleware('permission:manage_franchise_drivers')->group(function () {
+        Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [\App\Http\Controllers\Admin\FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
+        Route::post('/admin/franchises/{franchise}/drivers', [\App\Http\Controllers\Admin\FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
+        Route::post('/franchises/{franchise}/store-and-assign-driver', [\App\Http\Controllers\Admin\FranchiseController::class, 'storeAndAssignDriver'])->name('franchises.store_and_assign_driver');
+    });
 
-    Route::get('/admin/applications/new-franchise/{application}', ApplicationNewFranchiseShowController::class)
-    ->name('admin.applications.show-new-franchise');
-
-    Route::patch('/admin/red-flags/{redFlag}/resolve', [RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
-    Route::patch('/admin/complaints/{complaint}/resolve', [FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
-
-    Route::get('admin/drivers/create', [DriverController::class, 'create'])->name('admin.drivers.create');
-    Route::post('admin/drivers', [DriverController::class, 'store'])->name('admin.drivers.store');
-    Route::get('admin/drivers/{driver}/edit', [DriverController::class, 'edit'])->name('admin.drivers.edit');
-    Route::put('admin/drivers/{driver}', [DriverController::class, 'update'])->name('admin.drivers.update');
-    Route::delete('admin/drivers/{driver}', [DriverController::class, 'destroy'])->name('admin.drivers.destroy');
-    Route::post('/admin/franchises/{franchise}/red-flags', [RedFlagController::class, 'store'])->name('admin.franchises.red-flags.store');
-    Route::post('/admin/franchises/{franchise}/complaints', [FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
-    Route::delete('/admin/franchises/{franchise}/drivers/{assignment}', [FranchiseController::class, 'removeDriver'])->name('admin.franchises.remove-driver');
-    Route::post('/admin/franchises/{franchise}/drivers', [FranchiseController::class, 'assignDriver'])->name('admin.franchises.assign-driver');
-    Route::post('/franchises/{franchise}/store-and-assign-driver', [FranchiseController::class, 'storeAndAssignDriver'])
-    ->name('franchises.store_and_assign_driver');
-    Route::get('/admin/applications/new-driver/{application}', [ApplicationNewDriverShowController::class, 'show'])->name('admin.applications.new-driver.show');
+    // Manage Issues (Complaints and Red Flags)
+    Route::middleware('permission:manage_issues')->group(function () {
+        Route::patch('/admin/red-flags/{redFlag}/resolve', [\App\Http\Controllers\Admin\RedFlagController::class, 'resolve'])->name('admin.red-flags.resolve');
+        Route::patch('/admin/complaints/{complaint}/resolve', [\App\Http\Controllers\Admin\FranchiseController::class, 'resolveComplaint'])->name('admin.complaints.resolve');
+        Route::post('/admin/franchises/{franchise}/red-flags', [\App\Http\Controllers\Admin\RedFlagController::class, 'store'])->name('admin.franchises.red-flags.store');
+        Route::post('/admin/franchises/{franchise}/complaints', [\App\Http\Controllers\Admin\FranchiseController::class, 'storeComplaint'])->name('admin.franchises.complaints.store');
+    });
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
@@ -500,15 +514,22 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 // });
 
 // --- ASSESSMENTS ROUTES (Admin, Evaluator, Encoder) ---
-Route::middleware(['auth', 'prevent-back-history', 'role:admin,evaluator,encoder'])->group(function () {
-    Route::get('/assessments', [AssessmentController::class, 'index'])->name('admin.assessments.index');
-    Route::post('/assessments', [AssessmentController::class, 'store'])->name('admin.assessments.store');
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
+    Route::get('/assessments', [\App\Http\Controllers\Admin\AssessmentController::class, 'index'])
+        ->middleware('permission:view_assessments')
+        ->name('admin.assessments.index');
+        
+    Route::post('/assessments', [\App\Http\Controllers\Admin\AssessmentController::class, 'store'])
+        ->middleware('permission:store_assessments')
+        ->name('admin.assessments.store');
 
-    Route::get('/admin/assessments-report/pdf', [AssessmentController::class, 'reportPdf'])->name('admin.assessments.report.pdf');
-    Route::get('/admin/assessments-report/excel', [AssessmentController::class, 'reportExcel'])->name('admin.assessments.report.excel');
-
-    Route::get('/admin/payments-report/pdf', [PaymentController::class, 'reportPdf'])->name('admin.payments.report.pdf');
-    Route::get('/admin/payments-report/excel', [PaymentController::class, 'reportExcel'])->name('admin.payments.report.excel');
+    // Generate Reports
+    Route::middleware('permission:generate_reports')->group(function () {
+        Route::get('/admin/assessments-report/pdf', [\App\Http\Controllers\Admin\AssessmentController::class, 'reportPdf'])->name('admin.assessments.report.pdf');
+        Route::get('/admin/assessments-report/excel', [\App\Http\Controllers\Admin\AssessmentController::class, 'reportExcel'])->name('admin.assessments.report.excel');
+        Route::get('/admin/payments-report/pdf', [\App\Http\Controllers\Admin\PaymentController::class, 'reportPdf'])->name('admin.payments.report.pdf');
+        Route::get('/admin/payments-report/excel', [\App\Http\Controllers\Admin\PaymentController::class, 'reportExcel'])->name('admin.payments.report.excel');
+    });
 });
 
 // --- PARTICULARS ROUTES (Admin Only) ---
@@ -518,15 +539,24 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin'])->group(functio
     Route::delete('/particulars/{particular}', [ParticularController::class, 'destroy'])->name('admin.particulars.destroy');
 });
 
-// --- SHARED ROUTES: Admin & Releaser ---
-// Both can view the franchise show page
-Route::middleware(['auth', 'prevent-back-history', 'role:admin,releaser,encoder'])->group(function () {
-    Route::get('/admin/franchises/{franchise}', [FranchiseController::class, 'show'])->name('admin.franchises.show');
-    Route::get('/admin/franchises', [FranchiseController::class, 'index'])->name('admin.franchises.index');
+// --- SHARED ROUTES: Admin, Releaser, & Encoder ---
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
+    
+    // Index Route
+    Route::get('/admin/franchises', [\App\Http\Controllers\Admin\FranchiseController::class, 'index'])
+        ->middleware('permission:view_franchises_index')
+        ->name('admin.franchises.index');
 
-    // NEW: Just two routes for the single template editor
-    Route::get('/admin/certificate-template', [CertificateTemplateController::class, 'edit'])->name('certificate-template.edit');
-    Route::post('/admin/certificate-template', [CertificateTemplateController::class, 'update'])->name('certificate-template.update');
+    // Show Route
+    Route::get('/admin/franchises/{franchise}', [\App\Http\Controllers\Admin\FranchiseController::class, 'show'])
+        ->middleware('permission:view_franchise_details')
+        ->name('admin.franchises.show');
+
+    // Certificate Template Management (Only Admin gets this permission)
+    Route::middleware('permission:manage_certificate_template')->group(function () {
+        Route::get('/admin/certificate-template', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'edit'])->name('certificate-template.edit');
+        Route::post('/admin/certificate-template', [\App\Http\Controllers\Admin\CertificateTemplateController::class, 'update'])->name('certificate-template.update');
+    });
 });
 
 // --- ENCODER ONLY ROUTES ---

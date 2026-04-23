@@ -380,7 +380,7 @@ onUnmounted(() => {
                         </button>
                     </div>
                     <SecondaryButton v-if="userRole === 'admin'" @click="showParticularsModal = true">Particulars</SecondaryButton>
-                    <SecondaryButton v-if="userRole === 'admin'" @click="openReportModal">Generate Report</SecondaryButton>
+                    <SecondaryButton v-if="can('generate_reports')" @click="openReportModal">Generate Report</SecondaryButton>
                     <PrimaryButton v-if="['evaluator', 'encoder', 'admin'].includes(userRole)" @click="openAddModal">New Assessment</PrimaryButton>
                 </div>
             </div>

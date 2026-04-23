@@ -90,7 +90,7 @@ const isImageUrl = (url) => {
                 </div>
 
                 <div class="flex gap-2">
-                    <template v-if="application.status === 'Approved'">
+                    <template v-if="application.status === 'Approved' && can('finalize_applications')">
                         <button @click="isFinalizeDriverModalOpen = true" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-xs font-bold uppercase tracking-widest rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2">
                             Finalize Driver
                         </button>

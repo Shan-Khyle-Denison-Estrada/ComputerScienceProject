@@ -369,7 +369,7 @@ const saveInspectionStatus = () => {
                             Application Finalized
                         </span>
                     </template>
-                    <template v-else-if="application.status === 'Approved'">
+                    <template v-else-if="application.status === 'Approved' && can('finalize_applications')">
                         <PrimaryButton @click="showChangeUnitModal = true" class="flex items-center gap-2">
                             Finalize Unit Change
                         </PrimaryButton>

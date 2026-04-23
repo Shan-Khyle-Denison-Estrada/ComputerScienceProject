@@ -208,17 +208,17 @@ const canManageComplaints = computed(() => {
                 </div>
 
                 <div class="flex flex-wrap gap-3">
-                    <SecondaryButton v-if="canManageComplaints" @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
+                    <SecondaryButton v-if="can('manage_issues')" @click="showRedFlagModal = true" class="text-red-600 border-red-200 hover:bg-red-50">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 24 24">
                             <path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z" />
                         </svg>
                         Add Red Flag
                     </SecondaryButton>
-                    <SecondaryButton v-if="canManageComplaints" @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
+                    <SecondaryButton v-if="can('manage_issues')"" @click="showComplaintModal = true" class="text-rose-600 border-rose-200 hover:bg-rose-50 hover:border-rose-300">
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
                         Make Complaint
                     </SecondaryButton>
-                    <PrimaryButton @click="triggerPrint('certificate')" class="bg-indigo-600 hover:bg-indigo-700">
+                    <PrimaryButton v-if="can('print_franchise_certificate')" @click="triggerPrint('certificate')" class="bg-indigo-600 hover:bg-indigo-700">
                         <svg class="w-4 h-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                         Print Certificate
                     </PrimaryButton>
@@ -295,7 +295,7 @@ const canManageComplaints = computed(() => {
                                 <span class="text-xs text-gray-500">Scan for verification</span>
                             </div>
                         </div>
-                        <button @click="triggerPrint('qr')" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-sm font-bold py-3 rounded-lg transition shadow-sm">
+                        <button v-if="can('print_qr_badge')" @click="triggerPrint('qr')" class="w-full flex items-center justify-center gap-2 bg-gray-900 hover:bg-black text-white text-sm font-bold py-3 rounded-lg transition shadow-sm">
                             <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
                             Print QR Badge
                         </button>
@@ -461,7 +461,7 @@ const canManageComplaints = computed(() => {
                         <div v-if="activeTab === 'drivers'" class="p-6">
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="font-bold text-gray-700">Current Assignments</h3>
-                                <button @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
+                                <button v-if="can('manage_franchise_drivers')" @click="showAddDriverModal = true" class="text-sm font-bold text-blue-600 hover:underline uppercase tracking-wide">
                                     + Assign Driver
                                 </button>
                             </div>

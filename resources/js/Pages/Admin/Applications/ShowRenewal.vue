@@ -355,7 +355,7 @@ const saveInspectionStatus = () => {
                             Renewal Finalized
                         </span>
                     </template>
-                    <template v-else-if="application.status === 'Approved'">
+                    <template v-else-if="application.status === 'Approved' && can('finalize_applications')">
                         <PrimaryButton 
                             v-if="!hasTooManyComplaints" 
                             @click="showFinalizeModal = true" 

@@ -282,7 +282,7 @@ const saveInspectionStatus = () => {
                             Application Completed
                         </span>
                     </template>
-                    <template v-else-if="application.status === 'Approved'">
+                    <template v-else-if="application.status === 'Approved' && can('finalize_applications')">
                         <PrimaryButton @click="showCreateFranchiseModal = true" class="bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 text-white text-xs font-bold uppercase rounded-lg transition-colors">
                             Create Franchise
                         </PrimaryButton>
