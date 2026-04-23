@@ -6,9 +6,11 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Pagination from '@/Components/Pagination.vue'; 
-import { Head, useForm, router, Link } from '@inertiajs/vue3';
+import { Head, useForm, router, Link, usePage } from '@inertiajs/vue3';
 import { ref, watch, onMounted } from 'vue';
 import debounce from 'lodash/debounce';
+
+const page = usePage();
 
 // --- PROPS ---
 const props = defineProps({
@@ -106,7 +108,8 @@ const showTempRolesModal = ref(false);
 const selectedUserForRoles = ref(null);
 const tempRoleForm = useForm({
     role: '',
-    expires_at: ''
+    expires_at: '',
+    permissions: []
 });
 
 const openTempRolesModal = (user) => {
@@ -407,6 +410,16 @@ const showSmartTooltip = (event, user) => {
 const hideSmartTooltip = () => {
     activeTooltipUser.value = null;
 };
+
+// Watch for role changes to populate checkboxes
+watch(() => tempRoleForm.role, (newRole) => {
+    if (newRole && page.props.availablePermissions[newRole]) {
+        // By default, check all boxes when a role is selected
+        tempRoleForm.permissions = [...page.props.availablePermissions[newRole]];
+    } else {
+        tempRoleForm.permissions = [];
+    }
+});
 </script>
 
 <template>
@@ -879,40 +892,68 @@ const hideSmartTooltip = () => {
                 </div>
 
                 <div class="mb-6">
-                    <h3 class="text-sm font-medium text-gray-700 mb-2">Active Temporary Access</h3>
-                    <ul v-if="selectedUserForRoles?.temporary_roles?.length" class="space-y-2">
-                        <li v-for="temp in selectedUserForRoles.temporary_roles" :key="temp.id" class="flex justify-between items-center bg-purple-50 p-3 rounded-md border border-purple-100 shadow-sm">
-                            <div>
-                                <span class="font-bold text-sm uppercase text-purple-800">{{ temp.role }}</span>
-                                <div class="text-xs text-purple-600 mt-1">
-                                    <span v-if="temp.expires_at">Expires: {{ new Date(temp.expires_at).toLocaleString() }}</span>
-                                    <span v-else>Expires: Never</span>
-                                </div>
-                            </div>
-                            <button @click="revokeTempRole(temp.role)" class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition">Revoke</button>
-                        </li>
-                    </ul>
-                    <p v-else class="text-sm text-gray-500 italic bg-gray-50 p-3 rounded border">No active temporary roles.</p>
+    <h3 class="text-sm font-medium text-gray-700 mb-2">Active Temporary Access</h3>
+    <ul v-if="selectedUserForRoles?.temporary_roles?.length" class="space-y-2">
+        <li v-for="temp in selectedUserForRoles.temporary_roles" :key="temp.id" class="flex justify-between items-start bg-purple-50 p-3 rounded-md border border-purple-100 shadow-sm">
+            <div class="flex-1 pr-4">
+                <span class="font-bold text-sm uppercase text-purple-800">{{ temp.role.replace(/_/g, ' ') }}</span>
+                <div class="text-xs text-purple-600 mt-1 mb-2">
+                    <span v-if="temp.expires_at">Expires: {{ new Date(temp.expires_at).toLocaleString() }}</span>
+                    <span v-else>Expires: Never</span>
                 </div>
+                
+                <div v-if="temp.permissions && temp.permissions.length > 0" class="mt-2 border-t border-purple-200 pt-2">
+                    <span class="block text-[10px] font-semibold text-purple-700 uppercase tracking-wide mb-1.5">Granted Permissions:</span>
+                    <div class="flex flex-wrap gap-1.5">
+                        <span v-for="permission in temp.permissions" :key="permission" class="inline-block bg-purple-200 text-purple-800 text-[10px] px-2 py-0.5 rounded-full capitalize">
+                            {{ permission.replace(/_/g, ' ') }}
+                        </span>
+                    </div>
+                </div>
+                <div v-else class="mt-2 border-t border-purple-200 pt-2 text-[11px] text-purple-500 italic">
+                    Standard access (all role permissions).
+                </div>
+            </div>
+            
+            <button @click="revokeTempRole(temp.role)" class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition shrink-0">Revoke</button>
+        </li>
+    </ul>
+    <p v-else class="text-sm text-gray-500 italic bg-gray-50 p-3 rounded border">No active temporary roles.</p>
+</div>
 
                 <div class="border-t pt-4">
                     <h3 class="text-sm font-medium text-gray-700 mb-3">Assign Temporary Role</h3>
                     <form @submit.prevent="submitTempRole" class="space-y-4">
                         <div>
-                            <InputLabel>Role to Grant</InputLabel>
-                            <select v-model="tempRoleForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-                                <option value="" disabled>-- Select a Role --</option>
-                                <option value="evaluator">Evaluator</option>
-                                <option value="inspector">Inspector</option>
-                                <option value="collector">Collector</option>
-                                <option value="reviewer">Reviewer</option>
-                                <!-- <option value="sp_approver">SP Approver</option> -->
-                                <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
-                                <!-- <option value="tab_approver">TAB Approver</option> -->
-                                <option value="releaser">Releaser</option>
-                                <option value="encoder">Encoder</option>
-                            </select>
-                        </div>
+    <InputLabel>Role to Grant</InputLabel>
+    <select v-model="tempRoleForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
+        <option value="" disabled>-- Select a Role --</option>
+        <option value="evaluator">Evaluator</option>
+        <option value="inspector">Inspector</option>
+        <option value="collector">Collector</option>
+        <option value="reviewer">Reviewer</option>
+        <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
+        <option value="releaser">Releaser</option>
+        <option value="encoder">Encoder</option>
+    </select>
+</div>
+
+<div v-if="tempRoleForm.role && $page.props.availablePermissions && $page.props.availablePermissions[tempRoleForm.role]" class="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50">
+    <InputLabel>Specific Permissions</InputLabel>
+    <p class="text-xs text-gray-500 mb-3">Uncheck permissions you wish to restrict for this temporary assignment.</p>
+    
+    <div class="space-y-2">
+        <label v-for="permission in $page.props.availablePermissions[tempRoleForm.role]" :key="permission" class="flex items-center cursor-pointer">
+            <input 
+                type="checkbox" 
+                :value="permission" 
+                v-model="tempRoleForm.permissions" 
+                class="rounded border-gray-300 text-blue-600 shadow-sm focus:ring-blue-500"
+            >
+            <span class="ml-2 text-sm text-gray-700 capitalize">{{ permission.replace(/_/g, ' ') }}</span>
+        </label>
+    </div>
+</div>
                         <div>
                             <InputLabel>Expiration Date & Time (Optional)</InputLabel>
                             <TextInput type="datetime-local" class="mt-1 block w-full" v-model="tempRoleForm.expires_at" />
@@ -943,9 +984,21 @@ const hideSmartTooltip = () => {
                     <ul class="space-y-2">
                         <li v-for="temp in activeTooltipUser.temporary_roles" :key="temp.id" class="text-xs bg-purple-50 p-2 rounded border border-purple-100">
                             <span class="block font-bold text-purple-800 uppercase">{{ temp.role.replace(/_/g, ' ') }}</span>
-                            <span class="block text-gray-500 mt-1">
+                            <span class="block text-gray-500 mt-1 mb-2">
                                 Exp: {{ temp.expires_at ? new Date(temp.expires_at).toLocaleString([], { dateStyle: 'short', timeStyle: 'short' }) : 'Never' }}
                             </span>
+                            
+                            <div v-if="temp.permissions && temp.permissions.length > 0" class="mt-2 border-t border-purple-200 pt-2">
+                                <span class="block text-[10px] font-semibold text-purple-600 uppercase tracking-wide mb-1">Granted Permissions:</span>
+                                <ul class="list-disc pl-3 text-[11px] text-gray-600 space-y-0.5">
+                                    <li v-for="permission in temp.permissions" :key="permission" class="capitalize">
+                                        {{ permission.replace(/_/g, ' ') }}
+                                    </li>
+                                </ul>
+                            </div>
+                            <div v-else class="mt-2 border-t border-purple-200 pt-2 text-[10px] text-purple-400 italic">
+                                Standard role access (no explicit permissions stored).
+                            </div>
                         </li>
                     </ul>
 

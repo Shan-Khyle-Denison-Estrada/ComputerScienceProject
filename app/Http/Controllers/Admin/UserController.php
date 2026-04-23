@@ -197,12 +197,17 @@ class UserController extends Controller
     {
         $request->validate([
             'role' => ['required', 'string'],
-            'expires_at' => ['nullable', 'date', 'after:now']
+            'expires_at' => ['nullable', 'date', 'after:now'],
+            'permissions' => ['nullable', 'array'] // Validate the array
         ]);
 
         \App\Models\TemporaryRole::updateOrCreate(
             ['user_id' => $user->id, 'role' => $request->role],
-            ['granted_by' => auth()->id(), 'expires_at' => $request->expires_at]
+            [
+                'granted_by' => auth()->id(), 
+                'expires_at' => $request->expires_at,
+                'permissions' => $request->permissions ?? [] // Save it!
+            ]
         );
 
         return back()->with('success', 'Temporary role assigned successfully.');

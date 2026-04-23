@@ -83,4 +83,29 @@ class User extends Authenticatable
     {
         return $this->hasOne(Operator::class);
     }
+
+    // --- ADD THIS NEW METHOD ---
+    // Accessor that fetches all permissions based on the user's active roles
+    public function getPermissionsAttribute(): array
+    {
+        $permissions = [];
+        $permissionsMap = config('permissions', []);
+
+        // 1. Get Base Role permissions from config
+        $baseRole = $this->role instanceof \BackedEnum ? $this->role->value : $this->role;
+        if (isset($permissionsMap[$baseRole])) {
+            $permissions = array_merge($permissions, $permissionsMap[$baseRole]);
+        }
+
+        // 2. Get Temporary Role permissions from the Database JSON column
+        if ($this->relationLoaded('temporaryRoles') || $this->exists) {
+            foreach ($this->temporaryRoles as $tempRole) {
+                if (!empty($tempRole->permissions)) {
+                    $permissions = array_merge($permissions, $tempRole->permissions);
+                }
+            }
+        }
+        
+        return array_unique($permissions);
+    }
 }

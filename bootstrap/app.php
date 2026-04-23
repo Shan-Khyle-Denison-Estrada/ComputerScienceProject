@@ -25,6 +25,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // 2. Registering the middleware aliases
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
+            'permission' => \App\Http\Middleware\CheckPermission::class,
             'prevent-back-history' => \App\Http\Middleware\PreventBackHistory::class, // <-- Added this
         ]);
     })

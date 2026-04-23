@@ -157,7 +157,7 @@ const resetFilters = () => {
                                         <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
                                     </div>
                                 </th>
-                                <th class="p-4 font-semibold text-sm text-gray-700">Actions</th>
+                                <th class="p-4 font-semibold text-sm text-gray-700" v-if="can('view_application_details')">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -170,7 +170,7 @@ const resetFilters = () => {
                                         {{ app.status }}
                                     </span>
                                 </td>
-                                <td class="p-4 text-sm">
+                                <td class="p-4 text-sm" v-if="can('view_application_details')">
                                     <Link v-if="app.application_type === 'Change of Owner' || app.application_type === 'Change of Owner (Deceased)'" 
                                         :href="route('evaluator.applications.show-change-of-owner', app.id)" 
                                         class="text-red-600 hover:text-red-800 font-medium text-sm">Evaluate &rarr;</Link>
@@ -197,7 +197,7 @@ const resetFilters = () => {
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">
-                                <td colspan="5" class="p-6 text-center text-gray-500">No pending renewals to evaluate.</td>
+                                <td colspan="5" class="p-6 text-center text-gray-500">No pending applications to evaluate.</td>
                             </tr>
                         </tbody>
                     </table>

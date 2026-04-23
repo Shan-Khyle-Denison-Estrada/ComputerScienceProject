@@ -10,13 +10,14 @@ class TemporaryRole extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['user_id', 'role', 'granted_by', 'expires_at'];
+    protected $fillable = ['user_id', 'role', 'permissions', 'granted_by', 'expires_at'];
 
     protected function casts(): array
     {
         return [
             'expires_at' => 'datetime',
             'role' => UserRole::class,
+            'permissions' => 'array',
         ];
     }
 

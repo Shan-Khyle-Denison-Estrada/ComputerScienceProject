@@ -298,35 +298,48 @@ Route::middleware(['auth', 'prevent-back-history', 'role:city_anti_pollution_off
 });
 
 // --- EVALUATOR ROUTES ---
-Route::middleware(['auth', 'prevent-back-history', 'role:evaluator'])->group(function () {
-    Route::get('/evaluator/applications', [EvaluatorApplicationController::class, 'index'])->name('evaluator.applications.index');
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     
-    // Application Specific Show Routes
-    Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show'); // Kept original name for backward compatibility
-    Route::get('/evaluator/applications/change-of-owner/{application}', [EvaluatorApplicationController::class, 'showChangeOfOwner'])->name('evaluator.applications.show-change-of-owner');
-    Route::get('/evaluator/applications/change-of-unit/{application}', [EvaluatorApplicationController::class, 'showChangeOfUnit'])->name('evaluator.applications.show-change-of-unit');
-    Route::get('/evaluator/applications/franchise-owner-account/{application}', [EvaluatorApplicationController::class, 'showFranchiseOwnerAccount'])
-    ->name('evaluator.applications.show-franchise-owner-account');
-    Route::get('/evaluator/applications/new-franchise/{application}', [EvaluatorApplicationController::class, 'showNewFranchise'])
-    ->name('evaluator.applications.show-new-franchise');
+    // Dashboard / Index
+    Route::get('/evaluator/applications', [EvaluatorApplicationController::class, 'index'])
+        ->middleware('permission:view_evaluator_dashboard')
+        ->name('evaluator.applications.index');
+    
+    // Application Specific Show Routes (View Details Group)
+    Route::middleware('permission:view_application_details')->group(function () {
+        Route::get('/evaluator/applications/renewal/{application}', [EvaluatorApplicationController::class, 'showRenewal'])->name('evaluator.applications.show');
+        Route::get('/evaluator/applications/change-of-owner/{application}', [EvaluatorApplicationController::class, 'showChangeOfOwner'])->name('evaluator.applications.show-change-of-owner');
+        Route::get('/evaluator/applications/change-of-unit/{application}', [EvaluatorApplicationController::class, 'showChangeOfUnit'])->name('evaluator.applications.show-change-of-unit');
+        Route::get('/evaluator/applications/franchise-owner-account/{application}', [EvaluatorApplicationController::class, 'showFranchiseOwnerAccount'])->name('evaluator.applications.show-franchise-owner-account');
+        Route::get('/evaluator/applications/new-franchise/{application}', [EvaluatorApplicationController::class, 'showNewFranchise'])->name('evaluator.applications.show-new-franchise');
+        Route::get('/evaluator/applications/new-driver/{application}', [\App\Http\Controllers\Evaluator\EvaluatorApplicationController::class, 'showNewDriver'])->name('evaluator.applications.show-new-driver');
+    });
 
     // Generic Action Routes
     Route::post('/evaluator/applications/{application}/approve', [EvaluatorApplicationController::class, 'approve'])
+        ->middleware('permission:approve_applications')
         ->name('evaluator.applications.approve');
+
     Route::post('/evaluator/applications/{application}/reject', [EvaluatorApplicationController::class, 'reject'])
+        ->middleware('permission:reject_applications')
         ->name('evaluator.applications.reject');
+
     Route::post('/evaluator/applications/{application}/return', [EvaluatorApplicationController::class, 'returnApp'])
+        ->middleware('permission:return_applications')
         ->name('evaluator.applications.return');
+
     Route::post('/evaluator/applications/{application}/evaluate', [EvaluatorApplicationController::class, 'evaluateDocument'])
+        ->middleware('permission:evaluate_requirements')
         ->name('evaluator.applications.evaluate');
 
     // Resolve Complaints and Red Flags
     Route::post('/evaluator/applications/{application}/complaints/{complaint}/resolve', [EvaluatorApplicationController::class, 'resolveComplaint'])
+        ->middleware('permission:resolve_issues')
         ->name('evaluator.applications.resolve-complaint');
+
     Route::post('/evaluator/applications/{application}/red-flags/{red_flag}/resolve', [EvaluatorApplicationController::class, 'resolveRedFlag'])
+        ->middleware('permission:resolve_issues')
         ->name('evaluator.applications.resolve-red-flag');
-    Route::get('/evaluator/applications/new-driver/{application}', [\App\Http\Controllers\Evaluator\EvaluatorApplicationController::class, 'showNewDriver'])
-    ->name('evaluator.applications.show-new-driver');
 });
 
 // --- INSPECTOR ROUTES ---
