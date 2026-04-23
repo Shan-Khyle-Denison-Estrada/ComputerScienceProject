@@ -269,8 +269,8 @@ const isImageUrl = (url) => {
 
                 <div class="p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div v-if="application.status === 'Pending'" class="space-y-2">
-                        <PrimaryButton @click="showApproveModal = true" class="w-full justify-center bg-green-600 hover:bg-green-700 py-3 text-base">Approve Application</PrimaryButton>
-                        <SecondaryButton @click="showRejectModal = true" class="w-full justify-center border-red-500 text-red-700 hover:bg-red-50 py-3 text-base">Reject / Return to Inspector</SecondaryButton>
+                        <PrimaryButton v-if="can('approve_applications')" @click="showApproveModal = true" class="w-full justify-center bg-green-600 hover:bg-green-700 py-3 text-base">Approve Application</PrimaryButton>
+                        <SecondaryButton v-if="can('reject_applications')" @click="showRejectModal = true" class="w-full justify-center border-red-500 text-red-700 hover:bg-red-50 py-3 text-base">Reject / Return to Inspector</SecondaryButton>
                     </div>
                     <div v-else class="text-center p-3 bg-gray-100 rounded-lg text-sm text-gray-600 font-medium">
                         Application is already {{ application.status }}

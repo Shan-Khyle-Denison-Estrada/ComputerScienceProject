@@ -456,10 +456,10 @@ const isImageUrl = (url) => {
                 </div>
 
                 <div class="pt-4 border-t border-gray-200 space-y-3 flex-shrink-0 mt-auto">
-                    <PrimaryButton @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
+                    <PrimaryButton v-if="can('approve_applications')" @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
                         Approve Application
                     </PrimaryButton>
-                    <SecondaryButton @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
+                    <SecondaryButton v-if="can('reject_applications')" @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
                         Return to Inspector
                     </SecondaryButton>
                 </div>

@@ -50,7 +50,7 @@ watch(search, handleSearch);
                                 <th class="p-4 font-semibold text-sm text-gray-700">Applicant</th>
                                 <th class="p-4 font-semibold text-sm text-gray-700">Type</th>
                                 <th class="p-4 font-semibold text-sm text-gray-700">Status</th>
-                                <th class="p-4 font-semibold text-sm text-gray-700">Actions</th>
+                                <th v-if="can('view_application_details')" class="p-4 font-semibold text-sm text-gray-700">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -63,7 +63,7 @@ watch(search, handleSearch);
                                         {{ app.status }}
                                     </span>
                                 </td>
-                                <td class="p-4 text-sm">
+                                <td v-if="can('view_application_details')" class="p-4 text-sm">
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('capo.applications.show', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review & Approve &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('capo.applications.show-change-of-unit', app.id)" class="text-blue-600 hover:text-blue-800 font-medium text-sm">Review & Approve &rarr;</Link>
                                     
@@ -71,7 +71,7 @@ watch(search, handleSearch);
                                 </td>
                             </tr>
                             <tr v-if="applications.data.length === 0">
-                                <td colspan="5" class="p-6 text-center text-gray-500">No pending renewals requiring CAPO approval.</td>
+                                <td colspan="5" class="p-6 text-center text-gray-500">No pending applications requiring CAPO approval.</td>
                             </tr>
                         </tbody>
                     </table>

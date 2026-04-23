@@ -17,4 +17,10 @@ return [
         'reject_applications',   // Used in Show pages
         'approve_applications',  // Used in Show pages
     ],
+    'city_anti_pollution_officer' => [
+        'view_capo_applications',
+        'view_application_details',
+        'approve_applications',
+        'reject_applications', // Also covers returning applications since they use the same route
+    ],
 ];

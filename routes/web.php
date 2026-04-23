@@ -281,19 +281,27 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 });
 
 // --- CITY ANTI-POLLUTION OFFICER (CAPO) ROUTES ---
-Route::middleware(['auth', 'prevent-back-history', 'role:city_anti_pollution_officer'])->group(function () {
-    Route::get('/capo/applications', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'index'])->name('capo.applications.index');
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
+    
+    // Dashboard / Index
+    Route::get('/capo/applications', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'index'])
+        ->middleware('permission:view_capo_applications')
+        ->name('capo.applications.index');
     
     // View Routes
-    Route::get('/capo/applications/renewal/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showRenewal'])->name('capo.applications.show');
-    Route::get('/capo/applications/change-of-unit/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showChangeOfUnit'])->name('capo.applications.show-change-of-unit');
-    Route::get('/capo/applications/new-franchise/{application}', [CapoApplicationController::class, 'showNewFranchise'])
-    ->name('capo.applications.show-new-franchise');
+    Route::middleware('permission:view_application_details')->group(function () {
+        Route::get('/capo/applications/renewal/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showRenewal'])->name('capo.applications.show');
+        Route::get('/capo/applications/change-of-unit/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showChangeOfUnit'])->name('capo.applications.show-change-of-unit');
+        Route::get('/capo/applications/new-franchise/{application}', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'showNewFranchise'])->name('capo.applications.show-new-franchise');
+    });
 
     // Shared Action Routes (Used by both Renewal and Change of Unit)
     Route::post('/capo/applications/{application}/approve', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'approve'])
+        ->middleware('permission:approve_applications')
         ->name('capo.applications.approve');
+
     Route::post('/capo/applications/{application}/reject', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'reject'])
+        ->middleware('permission:reject_applications')
         ->name('capo.applications.reject');
 });
 
