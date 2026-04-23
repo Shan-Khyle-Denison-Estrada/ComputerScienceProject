@@ -302,7 +302,7 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     
     // Dashboard / Index
     Route::get('/evaluator/applications', [EvaluatorApplicationController::class, 'index'])
-        ->middleware('permission:view_evaluator_dashboard')
+        ->middleware('permission:view_evaluator_applications')
         ->name('evaluator.applications.index');
     
     // Application Specific Show Routes (View Details Group)
