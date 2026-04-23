@@ -155,7 +155,7 @@ const resetFilters = () => {
                                         <svg v-else class="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l4-4 4 4m0 6l-4 4-4-4"></path></svg>
                                     </div>
                                 </th>
-                                <th class="p-4 font-semibold text-sm text-gray-700">Actions</th>
+                                <th v-if="can('view_application_details')" class="p-4 font-semibold text-sm text-gray-700">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -168,7 +168,7 @@ const resetFilters = () => {
                                         {{ app.status }}
                                     </span>
                                 </td>
-                                <td class="p-4 text-sm">
+                                <td v-if="can('view_application_details')" class="p-4 text-sm">
                                     <Link v-if="app.application_type === 'Renewal'" :href="route('reviewer.applications.showRenewal', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Unit'" :href="route('reviewer.applications.showChangeOfUnit', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>
                                     <Link v-else-if="app.application_type === 'Change of Owner' || app.application_type === 'Change of Owner (Deceased)'" :href="route('reviewer.applications.showChangeOfOwner', app.id)" class="text-red-600 hover:text-red-800 font-medium text-sm">Review File &rarr;</Link>

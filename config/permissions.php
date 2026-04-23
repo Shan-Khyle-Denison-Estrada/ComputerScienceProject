@@ -23,4 +23,10 @@ return [
         'approve_applications',
         'reject_applications', // Also covers returning applications since they use the same route
     ],
+    'reviewer' => [
+        'view_reviewer_applications',
+        'view_application_details',
+        'approve_applications',
+        'reject_applications', // Also handles returning apps if they share the reject modal
+    ],
 ];

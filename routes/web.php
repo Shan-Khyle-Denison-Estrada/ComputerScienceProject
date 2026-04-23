@@ -380,18 +380,29 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 });
 
 // --- REVIEWER ROUTES ---
-Route::middleware(['auth', 'prevent-back-history', 'role:reviewer'])->prefix('reviewer')->name('reviewer.')->group(function () {
-    Route::get('/applications', [ReviewerApplicationController::class, 'index'])->name('applications.index');
+Route::middleware(['auth', 'prevent-back-history'])->prefix('reviewer')->name('reviewer.')->group(function () {
     
-    // Split the show routes based on application type
-    Route::get('/applications/renewal/{application}', [ReviewerApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
-    Route::get('/applications/change-of-unit/{application}', [ReviewerApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
-    Route::get('/applications/change-of-owner/{application}', [ReviewerApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
-    Route::get('/applications/new-franchise/{application}', [ReviewerApplicationController::class, 'showNewFranchise'])
-    ->name('reviewer.applications.showNewFranchise');
+    // Dashboard / Index
+    Route::get('/applications', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'index'])
+        ->middleware('permission:view_reviewer_applications')
+        ->name('applications.index');
     
-    Route::post('/applications/{application}/approve', [ReviewerApplicationController::class, 'approve'])->name('applications.approve');
-    Route::post('/applications/{application}/reject', [ReviewerApplicationController::class, 'reject'])->name('applications.reject');
+    // Show Routes (Grouped under view_application_details)
+    Route::middleware('permission:view_application_details')->group(function () {
+        Route::get('/applications/renewal/{application}', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'showRenewal'])->name('applications.showRenewal');
+        Route::get('/applications/change-of-unit/{application}', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'showChangeOfUnit'])->name('applications.showChangeOfUnit');
+        Route::get('/applications/change-of-owner/{application}', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'showChangeOfOwner'])->name('applications.showChangeOfOwner');
+        Route::get('/applications/new-franchise/{application}', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'showNewFranchise'])->name('applications.showNewFranchise');
+    });
+    
+    // Shared Action Routes
+    Route::post('/applications/{application}/approve', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'approve'])
+        ->middleware('permission:approve_applications')
+        ->name('applications.approve');
+        
+    Route::post('/applications/{application}/reject', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'reject'])
+        ->middleware('permission:reject_applications')
+        ->name('applications.reject');
 });
 
 // --- SP APPROVER ROUTES ---
