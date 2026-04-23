@@ -437,7 +437,7 @@ Route::middleware(['auth', 'prevent-back-history', 'role:tab_approver'])->prefix
 Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     
     // Dashboard
-    Route::get('/applications', [\App\Http\Controllers\Admin\AdminApplicationController::class, 'index'])
+    Route::get('/applications', [\App\Http\Controllers\Admin\ApplicationController::class, 'index'])
         ->middleware('permission:view_applications_index')
         ->name('admin.applications.index');
     
