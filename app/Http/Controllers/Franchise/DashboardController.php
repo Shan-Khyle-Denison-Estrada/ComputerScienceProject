@@ -241,97 +241,170 @@ class DashboardController extends Controller
     }
 
 /**
-     * Update the schedule for a specific driver assignment.
-     */
-    public function updateDriverSchedule(Request $request, $franchiseId, $assignmentId)
-    {
-        $request->validate([
-            'schedule' => 'required|array',
-            'schedule.*.day' => 'required|string',
-            'schedule.*.is_off' => 'required|boolean',
-            'schedule.*.start' => 'nullable|string',
-            'schedule.*.end' => 'nullable|string',
-        ]);
+ * Update the schedule for a specific driver assignment.
+ */
+public function updateDriverSchedule(Request $request, $franchiseId, $assignmentId)
+{
+    $request->validate([
+        'schedule' => 'required|array',
+        'schedule.*.day' => 'required|string',
+        'schedule.*.is_off' => 'required|boolean',
+        'schedule.*.start' => 'nullable|string',
+        'schedule.*.end' => 'nullable|string',
+    ]);
 
-        $newSchedule = $request->schedule;
+    $newSchedule = $request->schedule;
 
-        // 1. Fetch the current assignment first to get the driver_id
-        $assignment = DriverAssignment::where('franchise_id', $franchiseId)
-            ->where('id', $assignmentId)
-            ->firstOrFail();
+    // 1. Fetch the current assignment first to get the driver_id
+    $assignment = DriverAssignment::where('franchise_id', $franchiseId)
+        ->where('id', $assignmentId)
+        ->firstOrFail();
 
-        // 2. Fetch assignments to check against: 
-        // Either in the same franchise (other drivers) OR for the same driver (other franchises)
-        $assignmentsToCheck = DriverAssignment::where('id', '!=', $assignmentId)
-            ->whereNotNull('schedule')
-            ->where(function($query) use ($franchiseId, $assignment) {
-                $query->where('franchise_id', $franchiseId)
-                      ->orWhere('driver_id', $assignment->driver_id);
-            })
-            ->with(['driver', 'franchise']) // Eager-load the franchise relationship too
-            ->get();
+    // 2. Fetch assignments to check against: 
+    // Either in the same franchise (other drivers) OR for the same driver (other franchises)
+    $assignmentsToCheck = DriverAssignment::where('id', '!=', $assignmentId)
+        ->whereNotNull('schedule')
+        ->where(function($query) use ($franchiseId, $assignment) {
+            $query->where('franchise_id', $franchiseId)
+                  ->orWhere('driver_id', $assignment->driver_id);
+        })
+        ->with(['driver', 'franchise']) // Eager-load the franchise relationship too
+        ->get();
 
-        foreach ($newSchedule as $newDay) {
-            // Skip days off
-            if ($newDay['is_off'] || empty($newDay['start']) || empty($newDay['end'])) {
-                continue;
-            }
+    foreach ($newSchedule as $newDay) {
+        // Skip days off
+        if ($newDay['is_off'] || empty($newDay['start']) || empty($newDay['end'])) {
+            continue;
+        }
 
-            $newStart = strtotime($newDay['start']);
-            $newEnd = strtotime($newDay['end']);
+        $newStart = strtotime($newDay['start']);
+        $newEnd = strtotime($newDay['end']);
 
-            // Prevent overnight/invalid scheduling for a single day
-            if ($newEnd <= $newStart) {
-                return back()->withErrors([
-                    'schedule' => "Invalid schedule on {$newDay['day']}. The end time must be later than the start time."
-                ]);
-            }
+        // Prevent overnight/invalid scheduling for a single day
+        if ($newEnd <= $newStart) {
+            return back()->withErrors([
+                'schedule' => "Invalid schedule on {$newDay['day']}. The end time must be later than the start time."
+            ]);
+        }
 
-            foreach ($assignmentsToCheck as $other) {
-                $otherSchedule = $other->schedule;
-                if (!$otherSchedule) continue;
+        foreach ($assignmentsToCheck as $other) {
+            $otherSchedule = $other->schedule;
+            if (!$otherSchedule) continue;
 
-                foreach ($otherSchedule as $otherDay) {
-                    if ($otherDay['day'] === $newDay['day'] && !$otherDay['is_off'] && !empty($otherDay['start']) && !empty($otherDay['end'])) {
-                        $otherStart = strtotime($otherDay['start']);
-                        $otherEnd = strtotime($otherDay['end']);
+            foreach ($otherSchedule as $otherDay) {
+                if ($otherDay['day'] === $newDay['day'] && !$otherDay['is_off'] && !empty($otherDay['start']) && !empty($otherDay['end'])) {
+                    $otherStart = strtotime($otherDay['start']);
+                    $otherEnd = strtotime($otherDay['end']);
 
-                        // Overlap condition: Start A < End B AND End A > Start B
-                        if ($newStart < $otherEnd && $newEnd > $otherStart) {
+                    // Overlap condition: Start A < End B AND End A > Start B
+                    if ($newStart < $otherEnd && $newEnd > $otherStart) {
+                        
+                        // Format the NEW requested times
+                        $formattedNewStart = date('g:i A', $newStart);
+                        $formattedNewEnd   = date('g:i A', $newEnd);
+
+                        // Format the EXISTING scheduled times from the database
+                        $formattedOtherStart = date('g:i A', $otherStart);
+                        $formattedOtherEnd   = date('g:i A', $otherEnd);
+                        
+                        // Check WHICH rule was violated to give a specific error message
+                        if ($other->franchise_id == $franchiseId) {
+                            $driverName = $other->driver ? $other->driver->first_name . ' ' . $other->driver->last_name : 'another driver';
+                            return back()->withErrors([
+                                'schedule' => "Schedule overlap detected on {$newDay['day']}. Your requested time ({$formattedNewStart} - {$formattedNewEnd}) conflicts with {$driverName}'s schedule ({$formattedOtherStart} - {$formattedOtherEnd}) in this franchise."
+                            ]);
+                        } else {
+                            // Extract the franchise number with a fallback
+                            $franchiseNumber = $other->franchise ? $other->franchise->franchise_number : 'an unknown franchise';
                             
-                            // Format the NEW requested times
-                            $formattedNewStart = date('g:i A', $newStart);
-                            $formattedNewEnd   = date('g:i A', $newEnd);
-
-                            // Format the EXISTING scheduled times from the database
-                            $formattedOtherStart = date('g:i A', $otherStart);
-                            $formattedOtherEnd   = date('g:i A', $otherEnd);
-                            
-                            // Check WHICH rule was violated to give a specific error message
-                            if ($other->franchise_id == $franchiseId) {
-                                $driverName = $other->driver ? $other->driver->first_name . ' ' . $other->driver->last_name : 'another driver';
-                                return back()->withErrors([
-                                    'schedule' => "Schedule overlap detected on {$newDay['day']}. Your requested time ({$formattedNewStart} - {$formattedNewEnd}) conflicts with {$driverName}'s schedule ({$formattedOtherStart} - {$formattedOtherEnd}) in this franchise."
-                                ]);
-                            } else {
-                                // Extract the franchise number with a fallback
-                                $franchiseNumber = $other->franchise ? $other->franchise->franchise_number : 'an unknown franchise';
-                                
-                                return back()->withErrors([
-                                    'schedule' => "Schedule overlap detected on {$newDay['day']}. This driver is already scheduled from {$formattedOtherStart} - {$formattedOtherEnd} in Franchise #{$franchiseNumber}."
-                                ]);
-                            }
+                            return back()->withErrors([
+                                'schedule' => "Schedule overlap detected on {$newDay['day']}. This driver is already scheduled from {$formattedOtherStart} - {$formattedOtherEnd} in Franchise #{$franchiseNumber}."
+                            ]);
                         }
                     }
                 }
             }
         }
-
-        // 3. Update if all checks pass
-        $assignment->update([
-            'schedule' => $newSchedule
-        ]);
-
-        return redirect()->back()->with('success', 'Driver schedule updated successfully.');
     }
-}
+
+    // 3. Update the schedule if all checks pass
+    $assignment->update([
+        'schedule' => $newSchedule
+    ]);
+
+        // ------------------------------------------------------------------
+    // NEW: Immediately activate or deactivate the driver based on the
+    //       newly saved schedule, unless a manual override is active.
+    // ------------------------------------------------------------------
+    $now = \Carbon\Carbon::now('Asia/Manila');
+    $currentDay = $now->format('l');      // e.g., 'Monday'
+    $currentTime = $now->format('H:i');   // e.g., '14:30'
+
+    // Check if there is an active manual override on this franchise
+    $activeOverride = DriverAssignment::where('franchise_id', $franchiseId)
+        ->where('is_active', true)
+        ->where('manual_override', true)
+        ->exists();
+
+    // Only proceed if no manual override is active
+    if (!$activeOverride) {
+        $shouldBeActive = false;
+
+        foreach ($newSchedule as $daySched) {
+            if ($daySched['day'] === $currentDay && !$daySched['is_off']) {
+                if (!empty($daySched['start']) && !empty($daySched['end'])) {
+                    if ($currentTime >= $daySched['start'] && $currentTime < $daySched['end']) {
+                        $shouldBeActive = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // --- CASE 1: Driver SHOULD be active but IS NOT currently active ---
+        if ($shouldBeActive && !$assignment->is_active) {
+            DB::transaction(function () use ($franchiseId, $assignment, $now) {
+                // Deactivate any currently active driver in this franchise
+                $currentActive = DriverAssignment::where('franchise_id', $franchiseId)
+                    ->where('is_active', true)
+                    ->first();
+
+                if ($currentActive) {
+                    $currentActive->update(['is_active' => false]);
+
+                    DriverLog::where('franchise_id', $franchiseId)
+                        ->where('driver_id', $currentActive->driver_id)
+                        ->whereNull('ended_at')
+                        ->update(['ended_at' => $now]);
+                }
+
+                // Activate this driver
+                $assignment->update(['is_active' => true]);
+
+                // Create a new log entry
+                DriverLog::create([
+                    'franchise_id' => $franchiseId,
+                    'driver_id'    => $assignment->driver_id,
+                    'started_at'   => $now,
+                ]);
+            });
+
+            return redirect()->back()->with('success', 'Driver schedule updated and activated immediately.');
+        }
+
+        // --- CASE 2: Driver SHOULD NOT be active but IS currently active ---
+        if (!$shouldBeActive && $assignment->is_active) {
+            DB::transaction(function () use ($franchiseId, $assignment, $now) {
+                // Deactivate this driver
+                $assignment->update(['is_active' => false]);
+
+                // Close the open driver log
+                DriverLog::where('franchise_id', $franchiseId)
+                    ->where('driver_id', $assignment->driver_id)
+                    ->whereNull('ended_at')
+                    ->update(['ended_at' => $now]);
+            });
+
+            return redirect()->back()->with('success', 'Driver schedule updated and deactivated immediately (no longer within shift).');
+        }
+    }}}
