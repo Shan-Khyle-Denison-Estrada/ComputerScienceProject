@@ -105,9 +105,9 @@ class GraduationSeeder extends Seeder
             $zoneCounters[$zone->id] = 1;
         }
 
-        $this->command->info('Seeding 50 Franchises guaranteeing timeline accuracy...');
+        $this->command->info('Seeding 10 Franchises guaranteeing timeline accuracy...');
 
-        for ($i = 1; $i <= 50; $i++) {
+        for ($i = 1; $i <= 10; $i++) {
             $zone = $zones->random();
             $make = $unitMakes->random();
 
