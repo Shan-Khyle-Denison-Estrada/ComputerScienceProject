@@ -343,20 +343,31 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 });
 
 // --- INSPECTOR ROUTES ---
-Route::middleware(['auth', 'prevent-back-history', 'role:inspector'])->group(function () {
-    Route::get('/inspector/applications', [InspectorApplicationController::class, 'index'])->name('inspector.applications.index');
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
     
-    // View Routes
-    Route::get('/inspector/applications/renewal/{application}', [InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
-    Route::get('/inspector/applications/change-of-unit/{application}', [InspectorApplicationController::class, 'showChangeOfUnit'])->name('inspector.applications.show-change-of-unit');
-    Route::get('/inspector/applications/new-franchise/{application}', [InspectorApplicationController::class, 'showNewFranchise'])
-    ->name('inspector.applications.show-new-franchise');
-    // Shared Action Routes (Used by both Renewal and Change of Unit)
-    Route::post('/inspector/applications/{application}/approve', [InspectorApplicationController::class, 'approve'])
+    // Dashboard / Index
+    Route::get('/inspector/applications', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'index'])
+        ->middleware('permission:view_inspector_applications')
+        ->name('inspector.applications.index');
+    
+    // View Routes (Grouped under view_application_details)
+    Route::middleware('permission:view_application_details')->group(function () {
+        Route::get('/inspector/applications/renewal/{application}', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'showRenewal'])->name('inspector.applications.show');
+        Route::get('/inspector/applications/change-of-unit/{application}', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'showChangeOfUnit'])->name('inspector.applications.show-change-of-unit');
+        Route::get('/inspector/applications/new-franchise/{application}', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'showNewFranchise'])->name('inspector.applications.show-new-franchise');
+    });
+
+    // Shared Action Routes
+    Route::post('/inspector/applications/{application}/approve', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'approve'])
+        ->middleware('permission:approve_applications')
         ->name('inspector.applications.approve');
-    Route::post('/inspector/applications/{application}/reject', [InspectorApplicationController::class, 'reject'])
+
+    Route::post('/inspector/applications/{application}/reject', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'reject'])
+        ->middleware('permission:reject_applications')
         ->name('inspector.applications.reject');
-    Route::post('/inspector/applications/{application}/inspect', [InspectorApplicationController::class, 'inspectUnit'])
+
+    Route::post('/inspector/applications/{application}/inspect', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'inspectUnit'])
+        ->middleware('permission:inspect_unit')
         ->name('inspector.applications.inspect');
 });
 

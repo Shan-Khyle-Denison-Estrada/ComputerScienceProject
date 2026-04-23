@@ -10,4 +10,11 @@ return [
         'reject_applications',      // Using the Reject Modal
         'approve_applications',     // Using the Approve/Forward Modal
     ],
+    'inspector' => [
+        'view_inspector_applications',
+        'view_application_details',
+        'inspect_unit',          // Specific to checking off inspection items
+        'reject_applications',   // Used in Show pages
+        'approve_applications',  // Used in Show pages
+    ],
 ];

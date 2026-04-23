@@ -424,7 +424,7 @@ const isImageUrl = (url) => {
                 
                 <p class="text-xs text-gray-500 mb-4 flex-shrink-0">Check the unit against the required inspection items below.</p>
 
-                <div class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mb-6">
+                <div v-if="can('inspect_unit')" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mb-6">
                     <div v-for="(item, index) in inspectionsList" :key="item.id" 
                          @click="openInspectionModal(index)"
                          class="p-4 rounded-xl border-2 border-gray-200 hover:border-indigo-400 transition-all cursor-pointer bg-white shadow-sm">
@@ -440,10 +440,10 @@ const isImageUrl = (url) => {
                 </div>
 
                 <div class="pt-4 border-t border-gray-200 space-y-3 flex-shrink-0">
-                    <PrimaryButton @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
+                    <PrimaryButton v-if="can('approve_applications')" @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
                         Approve Inspection
                     </PrimaryButton>
-                    <SecondaryButton @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
+                    <SecondaryButton v-if="can('reject_applications')" @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
                         Reject / Return Application
                     </SecondaryButton>
                 </div>
