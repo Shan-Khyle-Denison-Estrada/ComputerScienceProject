@@ -313,7 +313,7 @@ const isImageUrl = (url) => {
                     <p class="text-xs text-gray-500">Review submitted documents below.</p>
                 </div>
                 
-                <div class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
+                <div v-if="can('evaluate_requirements')" class="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
                     <div v-for="(req, index) in application.evaluation_requirements" :key="req.id" 
                          class="bg-white border rounded-lg p-3 shadow-sm hover:border-blue-300 transition-colors cursor-pointer relative"
                          @click="openRequirementModal(index)">
@@ -346,8 +346,8 @@ const isImageUrl = (url) => {
 
                 <div class="p-4 bg-white border-t border-gray-200 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                     <div v-if="application.status === 'Pending'" class="space-y-2">
-                        <PrimaryButton @click="showApproveModal = true" class="w-full justify-center bg-green-600 hover:bg-green-700">Approve Application</PrimaryButton>
-                        <SecondaryButton @click="showRejectModal = true" class="w-full justify-center border-red-500 text-red-700 hover:bg-red-50">Reject Application</SecondaryButton>
+                        <PrimaryButton v-if="can('approve_applications')"  @click="showApproveModal = true" class="w-full justify-center bg-green-600 hover:bg-green-700">Approve Application</PrimaryButton>
+                        <SecondaryButton v-if="can('reject_applications')" @click="showRejectModal = true" class="w-full justify-center border-red-500 text-red-700 hover:bg-red-50">Reject Application</SecondaryButton>
                     </div>
                     <div v-else class="text-center p-3 bg-gray-100 rounded-lg text-sm text-gray-600 font-medium">
                         Application is already {{ application.status }}

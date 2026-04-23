@@ -260,7 +260,7 @@ const isImageUrl = (url) => {
                 
                 <p class="text-xs text-gray-500 mb-4 flex-shrink-0">Review the required documents below. Click to accept or reject them.</p>
 
-                <div class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mb-6">
+                <div v-if="can('evaluate_requirements')" class="flex-1 overflow-y-auto space-y-3 custom-scrollbar pr-2 mb-6">
                     <div v-for="(req, index) in application.evaluation_requirements" :key="req.id" 
                          @click="openRequirementModal(index)"
                          class="p-4 rounded-xl border-2 transition-all cursor-pointer bg-white shadow-sm"
@@ -281,10 +281,10 @@ const isImageUrl = (url) => {
                 </div>
 
                 <div class="pt-4 border-t border-gray-200 space-y-3 flex-shrink-0">
-                    <PrimaryButton @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
+                    <PrimaryButton v-if="can('approve_applications')"  @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
                         Approve Evaluation
                     </PrimaryButton>
-                    <SecondaryButton @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
+                    <SecondaryButton v-if="can('reject_applications')" @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
                         Reject Application
                     </SecondaryButton>
                 </div>
