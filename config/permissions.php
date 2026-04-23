@@ -29,4 +29,17 @@ return [
         'approve_applications',
         'reject_applications', // Also handles returning apps if they share the reject modal
     ],
+    'admin' => [
+        // We will expand this massively later, but for now, keep their payment access!
+        'view_payments_index',
+        'store_payments',
+        'view_payment_details',
+        'print_payments',
+    ],
+    'collector' => [
+        'view_payments_index',
+        'store_payments',        // Creating new payments
+        'view_payment_details',  // Opening the view modal
+        'print_payments',        // Generating/Printing the receipt
+    ],
 ];

@@ -481,9 +481,18 @@ Route::middleware(['auth', 'prevent-back-history', 'role:admin,encoder'])->group
 });
 
 // --- PAYMENTS ROUTES (Admin & Collector) ---
-Route::middleware(['auth', 'prevent-back-history', 'role:admin,collector'])->group(function () {
-    Route::get('/payments', [PaymentController::class, 'index'])->name('admin.payments.index');
-    Route::post('/payments', [PaymentController::class, 'store'])->name('admin.payments.store');
+Route::middleware(['auth', 'prevent-back-history'])->group(function () {
+    
+    Route::get('/payments', [\App\Http\Controllers\Admin\PaymentController::class, 'index'])
+        ->middleware('permission:view_payments_index')
+        ->name('admin.payments.index');
+        
+    Route::post('/payments', [\App\Http\Controllers\Admin\PaymentController::class, 'store'])
+        ->middleware('permission:store_payments')
+        ->name('admin.payments.store');
+        
+    // (Note: If you have a dedicated route for printing/PDF generation in this group, 
+    // you would append ->middleware('permission:print_payments') to it here!)
 });
 
 // Route::middleware(['auth', 'prevent-back-history', 'role:collector'])->group(function () {

@@ -419,7 +419,7 @@ const printReceipt = async (payment) => {
                     <SecondaryButton @click="openReportModal" class="flex items-center gap-2">
                         Generate Report
                     </SecondaryButton>
-                    <PrimaryButton @click="openAddModal" class="flex items-center gap-2">
+                    <PrimaryButton  v-if="can('store_payments')" @click="openAddModal" class="flex items-center gap-2">
                         <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                         </svg>
@@ -517,8 +517,8 @@ const printReceipt = async (payment) => {
                                 </td>
                                 <td class="px-6 py-4 text-center">
                                     <div class="flex items-center justify-center gap-3">
-                                        <button @click="printReceipt(payment)" class="text-gray-400 hover:text-green-600 font-medium transition-colors">Print</button>
-                                        <button @click="openViewPaymentModal(payment)" class="text-gray-400 hover:text-blue-600 font-medium transition-colors">View</button>
+                                        <button v-if="can('print_payments')" @click="printReceipt(payment)" class="text-gray-400 hover:text-green-600 font-medium transition-colors">Print</button>
+                                        <button v-if="can('view_payment_details')" @click="openViewPaymentModal(payment)" class="text-gray-400 hover:text-blue-600 font-medium transition-colors">View</button>
                                     </div>
                                 </td>
                             </tr>
