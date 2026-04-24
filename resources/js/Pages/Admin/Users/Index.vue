@@ -560,7 +560,7 @@ watch(() => tempRoleForm.role, (newRole) => {
                                 >
                                     Edit
                                 </button>
-                                <button @click="openTempRolesModal(user)" class="font-medium text-purple-600 hover:text-purple-900 ml-3">
+                                <button v-if="user.role !== 'sp_approver'" @click="openTempRolesModal(user)" class="font-medium text-purple-600 hover:text-purple-900 ml-3">
                                     Roles
                                 </button>
                             </td>
@@ -927,15 +927,15 @@ watch(() => tempRoleForm.role, (newRole) => {
                         <div>
     <InputLabel>Role to Grant</InputLabel>
     <select v-model="tempRoleForm.role" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500" required>
-        <option value="" disabled>-- Select a Role --</option>
-        <option value="evaluator">Evaluator</option>
-        <option value="inspector">Inspector</option>
-        <option value="collector">Collector</option>
-        <option value="reviewer">Reviewer</option>
-        <option value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
-        <option value="releaser">Releaser</option>
-        <option value="encoder">Encoder</option>
-    </select>
+    <option value="" disabled>-- Select a Role --</option>
+    <option v-if="selectedUserForRoles?.role !== 'evaluator'" value="evaluator">Evaluator</option>
+    <option v-if="selectedUserForRoles?.role !== 'inspector'" value="inspector">Inspector</option>
+    <option v-if="selectedUserForRoles?.role !== 'collector'" value="collector">Collector</option>
+    <option v-if="selectedUserForRoles?.role !== 'reviewer'" value="reviewer">Reviewer</option>
+    <option v-if="selectedUserForRoles?.role !== 'city_anti_pollution_officer'" value="city_anti_pollution_officer">City Anti-Pollution Officer</option>
+    <option v-if="selectedUserForRoles?.role !== 'releaser'" value="releaser">Releaser</option>
+    <option v-if="selectedUserForRoles?.role !== 'encoder'" value="encoder">Encoder</option>
+</select>
 </div>
 
 <div v-if="tempRoleForm.role && $page.props.availablePermissions && $page.props.availablePermissions[tempRoleForm.role]" class="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50">

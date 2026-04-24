@@ -195,12 +195,27 @@ class UserController extends Controller
 
     public function assignTemporaryRole(Request $request, User $user)
     {
+        // 1. Validate the request
         $request->validate([
             'role' => ['required', 'string'],
             'expires_at' => ['nullable', 'date', 'after:now'],
             'permissions' => ['nullable', 'array'] // Validate the array
         ]);
 
+        // --- NEW SECURITY CHECKS ---
+        // 2. Prevent SP Approvers from receiving temporary roles
+        $baseRole = $user->role instanceof \BackedEnum ? $user->role->value : $user->role;
+        if ($baseRole === 'sp_approver') {
+            return back()->with('error', 'SP Approvers cannot be assigned temporary roles.');
+        }
+
+        // 3. Prevent assigning a temporary role that the user already permanently holds
+        if ($baseRole === $request->role) {
+            return back()->with('error', 'The user already holds this role permanently.');
+        }
+        // ---------------------------
+
+        // 4. Save to database
         \App\Models\TemporaryRole::updateOrCreate(
             ['user_id' => $user->id, 'role' => $request->role],
             [
