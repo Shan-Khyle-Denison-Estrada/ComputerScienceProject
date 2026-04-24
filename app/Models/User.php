@@ -106,6 +106,6 @@ class User extends Authenticatable
             }
         }
         
-        return array_unique($permissions);
+        return array_values(array_unique($permissions));
     }
 }

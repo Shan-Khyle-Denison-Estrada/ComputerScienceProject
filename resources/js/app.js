@@ -20,9 +20,15 @@ createInertiaApp({
             .use(plugin)
             .use(ZiggyVue)
             .mixin({
-                methods: {
+            methods: {
                     can(permissionName) {
-                        const permissions = this.$page.props.auth.permissions || [];
+                        let permissions = this.$page.props.auth.permissions || [];
+                        
+                        // Bulletproof check: If PHP sent an Object instead of an Array, extract its values
+                        if (!Array.isArray(permissions) && typeof permissions === 'object') {
+                            permissions = Object.values(permissions);
+                        }
+                        
                         return permissions.includes(permissionName);
                     }
                 }
