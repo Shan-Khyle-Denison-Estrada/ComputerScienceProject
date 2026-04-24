@@ -112,6 +112,18 @@ const tempRoleForm = useForm({
     permissions: []
 });
 
+// Core permissions that should always be granted and hidden from the checkbox list
+const hiddenPermissions = [
+    'view_evaluator_applications',
+    'view_assessments',
+    'view_inspector_applications',
+    'view_capo_applications',
+    'view_reviewer_applications',
+    'view_payments_index',
+    'view_franchises_index',
+    'view_applications_index'
+];
+
 const openTempRolesModal = (user) => {
     selectedUserForRoles.value = user;
     showTempRolesModal.value = true;
@@ -943,7 +955,7 @@ watch(() => tempRoleForm.role, (newRole) => {
     <p class="text-xs text-gray-500 mb-3">Uncheck permissions you wish to restrict for this temporary assignment.</p>
     
     <div class="space-y-2">
-        <label v-for="permission in $page.props.availablePermissions[tempRoleForm.role]" :key="permission" class="flex items-center cursor-pointer">
+        <label v-for="permission in $page.props.availablePermissions[tempRoleForm.role].filter(p => !hiddenPermissions.includes(p))" :key="permission" class="flex items-center cursor-pointer">
             <input 
                 type="checkbox" 
                 :value="permission" 
