@@ -297,11 +297,11 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 
     // Shared Action Routes (Used by both Renewal and Change of Unit)
     Route::post('/capo/applications/{application}/approve', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'approve'])
-        ->middleware('permission:approve_applications')
+        ->middleware('permission:capo_approve_applications')
         ->name('capo.applications.approve');
 
     Route::post('/capo/applications/{application}/reject', [\App\Http\Controllers\Capo\CapoApplicationController::class, 'reject'])
-        ->middleware('permission:reject_applications')
+        ->middleware('permission:capo_reject_applications')
         ->name('capo.applications.reject');
 });
 
@@ -325,15 +325,15 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 
     // Generic Action Routes
     Route::post('/evaluator/applications/{application}/approve', [EvaluatorApplicationController::class, 'approve'])
-        ->middleware('permission:approve_applications')
+        ->middleware('permission:evaluator_approve_applications')
         ->name('evaluator.applications.approve');
 
     Route::post('/evaluator/applications/{application}/reject', [EvaluatorApplicationController::class, 'reject'])
-        ->middleware('permission:reject_applications')
+        ->middleware('permission:evaluator_reject_applications')
         ->name('evaluator.applications.reject');
 
     Route::post('/evaluator/applications/{application}/return', [EvaluatorApplicationController::class, 'returnApp'])
-        ->middleware('permission:return_applications')
+        ->middleware('permission:evaluator_return_applications')
         ->name('evaluator.applications.return');
 
     Route::post('/evaluator/applications/{application}/evaluate', [EvaluatorApplicationController::class, 'evaluateDocument'])
@@ -367,11 +367,11 @@ Route::middleware(['auth', 'prevent-back-history'])->group(function () {
 
     // Shared Action Routes
     Route::post('/inspector/applications/{application}/approve', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'approve'])
-        ->middleware('permission:approve_applications')
+        ->middleware('permission:inspector_approve_applications')
         ->name('inspector.applications.approve');
 
     Route::post('/inspector/applications/{application}/reject', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'reject'])
-        ->middleware('permission:reject_applications')
+        ->middleware('permission:inspector_reject_applications')
         ->name('inspector.applications.reject');
 
     Route::post('/inspector/applications/{application}/inspect', [\App\Http\Controllers\Inspector\InspectorApplicationController::class, 'inspectUnit'])
@@ -397,11 +397,11 @@ Route::middleware(['auth', 'prevent-back-history'])->prefix('reviewer')->name('r
     
     // Shared Action Routes
     Route::post('/applications/{application}/approve', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'approve'])
-        ->middleware('permission:approve_applications')
+        ->middleware('permission:reviewer_approve_applications')
         ->name('applications.approve');
         
     Route::post('/applications/{application}/reject', [\App\Http\Controllers\Reviewer\ReviewerApplicationController::class, 'reject'])
-        ->middleware('permission:reject_applications')
+        ->middleware('permission:reviewer_reject_applications')
         ->name('applications.reject');
 });
 

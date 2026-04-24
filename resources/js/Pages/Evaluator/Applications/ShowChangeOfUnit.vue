@@ -496,13 +496,13 @@ const isImageUrl = (url) => {
                 </div>
 
                 <div class="pt-4 border-t border-gray-200 space-y-3 flex-shrink-0">
-                    <PrimaryButton v-if="can('approve_applications')" @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
+                    <PrimaryButton v-if="can('evaluator_approve_applications')" @click="showApproveModal = true" class="w-full justify-center py-3 bg-green-600 hover:bg-green-700 shadow text-sm">
                         Approve Evaluation
                     </PrimaryButton>
-                    <SecondaryButton v-if="can('return_applications')" @click="showReturnModal = true" class="w-full justify-center py-3 !text-yellow-600 border-yellow-200 hover:bg-yellow-50 text-sm">
+                    <SecondaryButton v-if="can('evaluator_return_applications')" @click="showReturnModal = true" class="w-full justify-center py-3 !text-yellow-600 border-yellow-200 hover:bg-yellow-50 text-sm">
                         Return Application
                     </SecondaryButton>
-                    <SecondaryButton v-if="can('reject_applications')" @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
+                    <SecondaryButton v-if="can('evaluator_reject_applications')" @click="showRejectModal = true" class="w-full justify-center py-3 !text-red-600 border-red-200 hover:bg-red-50 text-sm">
                         Reject Application
                     </SecondaryButton>
                 </div>
