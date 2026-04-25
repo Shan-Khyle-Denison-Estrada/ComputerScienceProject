@@ -85,6 +85,17 @@ class ComplaintController extends Controller
     // Store Complaint (Public or Admin)
     public function store(Request $request)
     {
+        // 1. Session-based Rate Limiter (Better for local dev & AWS Load Balancers)
+        $rateLimitKey = 'complaint_submission_' . $request->session()->getId();
+
+        // 2. Check if limit exceeded (e.g., 2 complaints)
+        if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 2)) {
+            $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($rateLimitKey);
+            return redirect()->back()->withErrors([
+                'nature_of_complaint' => 'Spam protection: You have submitted too many complaints. Please try again in ' . ceil($seconds / 60) . ' minutes.'
+            ]);
+        }
+
         $validated = $request->validate([
             'franchise_id' => 'required|exists:franchises,id',
             'nature_of_complaint' => 'required|string',
@@ -99,6 +110,9 @@ class ComplaintController extends Controller
 
         Complaint::create($validated);
 
-        return back()->with('success', 'Complaint submitted successfully.');
+        // 3. Register a "hit" that lasts for 3600 seconds (1 hour)
+        \Illuminate\Support\Facades\RateLimiter::hit($rateLimitKey, 3600);
+
+        return back()->with('success', 'Complaint submitted successfully...');
     }
 }
