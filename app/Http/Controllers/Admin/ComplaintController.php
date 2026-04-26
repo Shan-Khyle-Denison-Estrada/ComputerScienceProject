@@ -82,20 +82,28 @@ class ComplaintController extends Controller
         return back()->with('success', 'Complaint nature removed successfully.');
     }
 
-    // Store Complaint (Public or Admin)
+   // Store Complaint (Public or Admin)
     public function store(Request $request)
     {
-        // 1. Session-based Rate Limiter (Better for local dev & AWS Load Balancers)
-        $rateLimitKey = 'complaint_submission_' . $request->session()->getId();
+        // 1. Get the REAL User IP, bypassing AWS Load Balancers automatically
+        // X-Forwarded-For contains the true IP. We extract the first one in case of a proxy chain.
+        $ipString = (string) $request->header('X-Forwarded-For', $request->ip());
+        $realIp = trim(explode(',', $ipString)[0]);
+        
+        $rateLimitKey = 'complaint_spam_' . $realIp;
 
-        // 2. Check if limit exceeded (e.g., 2 complaints)
+        // 2. Check Rate Limit
         if (\Illuminate\Support\Facades\RateLimiter::tooManyAttempts($rateLimitKey, 2)) {
             $seconds = \Illuminate\Support\Facades\RateLimiter::availableIn($rateLimitKey);
-            return redirect()->back()->withErrors([
-                'nature_of_complaint' => 'Spam protection: You have submitted too many complaints. Please try again in ' . ceil($seconds / 60) . ' minutes.'
+            
+            // 3. Throw a native ValidationException instead of a manual redirect
+            // Inertia natively catches this and binds it to form.errors instantly, bypassing AWS session drops.
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'nature_of_complaint' => 'Spam protection: You are submitting too fast. Please wait ' . ceil($seconds / 60) . ' minutes.'
             ]);
         }
 
+        // 4. Proceed with normal validation
         $validated = $request->validate([
             'franchise_id' => 'required|exists:franchises,id',
             'nature_of_complaint' => 'required|string',
@@ -110,9 +118,9 @@ class ComplaintController extends Controller
 
         Complaint::create($validated);
 
-        // 3. Register a "hit" that lasts for 3600 seconds (1 hour)
+        // 5. Register the attempt (Locks them out for 1 hour after their 2nd success)
         \Illuminate\Support\Facades\RateLimiter::hit($rateLimitKey, 3600);
 
-        return back()->with('success', 'Complaint submitted successfully...');
+        return back()->with('success', 'Complaint submitted successfully.');
     }
 }
