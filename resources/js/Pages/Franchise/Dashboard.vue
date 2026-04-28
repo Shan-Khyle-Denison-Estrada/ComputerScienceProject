@@ -3,6 +3,7 @@ import AuthenticatedLayout from '@/Components/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue'; // Ensure you have this component
 import PrimaryButton from '@/Components/PrimaryButton.vue'; // Ensure you have this component
 import SecondaryButton from '@/Components/SecondaryButton.vue'; // Ensure you have this component
+import MakeApplicationModal from '@/Components/Modals/MakeApplicationModal.vue';
 import { Head, useForm, router } from '@inertiajs/vue3';
 import { ref, computed, onMounted, watch } from 'vue';
 
@@ -12,7 +13,15 @@ const props = defineProps({
         type: Array,
         default: () => []
     },
-    operator: Object
+    operator: Object,
+    evaluationRequirements: { type: Object, default: () => ({}) },
+    barangays: { type: Array, default: () => [] },
+    unitMakes: { type: Array, default: () => [] },
+    operators: { type: Array, default: () => [] },
+    units: { type: Array, default: () => [] },
+    applications: { type: Array, default: () => [] },
+    zones: { type: Array, default: () => [] },
+    allowNewFranchise: { type: Boolean, default: false }
 });
 
 // --- STATE ---
@@ -195,8 +204,27 @@ const saveSchedule = () => {
     });
 };
 
+const showMakeApplicationModal = ref(false);
+const showSuccessModal = ref(false); // <-- New state for the success modal
+const initialApplicationType = ref('');
+
+const openMakeApplicationModal = (type) => {
+    initialApplicationType.value = type;
+    showMakeApplicationModal.value = true;
+};
+
 const goToNewDriver = () => {
-    router.get('/franchise/applications', { auto_open: 'new_driver' });
+    openMakeApplicationModal('new_driver');
+};
+
+const handleApplicationSubmit = () => {
+    showMakeApplicationModal.value = false;
+    showSuccessModal.value = true; // <-- Show the success modal
+    router.reload({ only: ['franchises', 'applications'] });
+};
+
+const closeSuccessModal = () => {
+    showSuccessModal.value = false;
 };
 
 const deactivateDriver = () => {
@@ -267,7 +295,7 @@ const formatTime = (timeString) => {
             <p class="text-xs text-gray-500 mt-1">{{ franchises.length }} franchise/s registered</p>
         </div>
         <button 
-            @click="router.get('/franchise/applications', { auto_open: 'new_franchise' })"
+            @click="openMakeApplicationModal('new_franchise')"
             class="shrink-0 ml-3 px-3 py-2   bg-gray-900 hover:bg-gray-700 text-white text-xs font-medium rounded-md shadow-sm transition-colors flex items-center gap-1"
             title="Apply for a new franchise"
         >
@@ -1103,6 +1131,44 @@ const formatTime = (timeString) => {
                 
                 <div class="mt-6 flex justify-end">
                     <SecondaryButton @click="showQrModal = false">Close</SecondaryButton>
+                </div>
+            </div>
+        </Modal>
+
+    <MakeApplicationModal
+            :show="showMakeApplicationModal"
+            :initial-type="initialApplicationType"
+            :evaluation-requirements="evaluationRequirements"
+            :franchises="franchises"
+            :barangays="barangays"
+            :unit-makes="unitMakes"
+            :operators="operators"
+            :units="units"
+            :applications="applications"
+            :zones="zones"
+            :allow-new-franchise="allowNewFranchise"
+            @close="showMakeApplicationModal = false"
+            @submit="handleApplicationSubmit"
+        />
+
+        <Modal :show="showSuccessModal" @close="closeSuccessModal" maxWidth="sm">
+            <div class="p-6">
+                <div class="flex items-center justify-center mb-4">
+                    <div class="mx-auto flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                        <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                        </svg>
+                    </div>
+                </div>
+                
+                <h3 class="text-lg font-bold text-gray-900 text-center mb-2">Application Submitted!</h3>
+                <p class="text-sm text-gray-600 text-center mb-6">
+                    Your new application was created successfully. It can be viewed and tracked in the <strong>Make Application</strong> page.
+                </p>
+                
+                <div class="flex justify-center gap-3 mt-4">
+                    <SecondaryButton @click="closeSuccessModal">Close</SecondaryButton>
+                    <PrimaryButton @click="router.get('/franchise/applications')">Go to Applications</PrimaryButton> 
                 </div>
             </div>
         </Modal>

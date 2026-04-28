@@ -171,6 +171,8 @@ const addForm = useForm({
 
 // --- SEARCH, SORT & FILTER STATE ---
 const filterCity = ref(props.filters.city || '');
+const filterDateFrom = ref(props.filters.date_from || '');
+const filterDateTo = ref(props.filters.date_to || '');
 const sortField = ref(props.filters.sortField || '');
 const sortDirection = ref(props.filters.sortDirection || '');
 
@@ -239,13 +241,15 @@ const fetchResults = debounce(() => {
     router.get(route('admin.payments.index'), {
         search: search.value,
         city: filterCity.value,
+        date_from: filterDateFrom.value,
+        date_to: filterDateTo.value,
         sortField: sortField.value,
         sortDirection: sortDirection.value
     }, { preserveState: true, replace: true, preserveScroll: true });
 }, 300);
 
 // Automatically trigger on typing or filter changes
-watch([search, filterCity], () => {
+watch([search, filterCity, filterDateFrom, filterDateTo], () => {
     fetchResults();
 });
 
@@ -285,6 +289,8 @@ const applyFilters = () => {
 
 const resetFilters = () => {
     filterCity.value = '';
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
     closeFilterModal();
     fetchResults();
 };
@@ -295,6 +301,8 @@ const openReportModal = () => {
     const params = new URLSearchParams({
         search: search.value || '',
         city: filterCity.value || '',
+        date_from: filterDateFrom.value || '',
+        date_to: filterDateTo.value || '',
         sortField: sortField.value || '',
         sortDirection: sortDirection.value || ''
     }).toString();
@@ -314,6 +322,8 @@ const downloadExcelReport = () => {
     const params = new URLSearchParams({
         search: search.value || '',
         city: filterCity.value || '',
+        date_from: filterDateFrom.value || '',
+        date_to: filterDateTo.value || '',
         sortField: sortField.value || '',
         sortDirection: sortDirection.value || ''
     }).toString();
@@ -324,6 +334,8 @@ const downloadPdfReport = () => {
     const params = new URLSearchParams({
         search: search.value || '',
         city: filterCity.value || '',
+        date_from: filterDateFrom.value || '',
+        date_to: filterDateTo.value || '',
         sortField: sortField.value || '',
         sortDirection: sortDirection.value || '',
         download: 1
@@ -404,17 +416,17 @@ const printReceipt = async (payment) => {
                                 <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" /></svg>
                             </button>
                         </div>
-                        <!-- <button 
+                        <button 
                             @click="openFilterModal"
                             class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition relative" 
-                            :class="{'ring-2 ring-blue-500 bg-blue-50': filterCity}"
+                            :class="{'ring-2 ring-blue-500 bg-blue-50': filterCity || filterDateFrom || filterDateTo}"
                             title="Filter Options"
                         >
-                            <svg class="h-5 w-5" :class="filterCity ? 'text-blue-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg class="h-5 w-5" :class="(filterCity || filterDateFrom || filterDateTo) ? 'text-blue-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
                             </svg>
-                            <span v-if="filterCity" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-blue-500 border-2 border-white rounded-full"></span>
-                        </button> -->
+                            <span v-if="filterCity || filterDateFrom || filterDateTo" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-blue-500 border-2 border-white rounded-full"></span>
+                        </button>
                     </div>
                     <SecondaryButton @click="openReportModal" class="flex items-center gap-2">
                         Generate Report
@@ -868,6 +880,16 @@ const printReceipt = async (payment) => {
                             <div>
                                 <InputLabel>Filter by City</InputLabel>
                                 <TextInput type="text" class="mt-1 block w-full text-sm py-2.5" v-model="filterCity" placeholder="e.g. Zamboanga City" />
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <InputLabel>Date From</InputLabel>
+                                    <TextInput type="date" v-model="filterDateFrom" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm py-2.5" />
+                                </div>
+                                <div>
+                                    <InputLabel>Date To</InputLabel>
+                                    <TextInput type="date" v-model="filterDateTo" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm py-2.5" />
+                                </div>
                             </div>
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">

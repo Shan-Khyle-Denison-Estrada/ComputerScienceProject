@@ -18,12 +18,66 @@ class DashboardController extends Controller
         $user = Auth::user();
         $operator = $user->operator; 
 
+        // Prepare additional data for MakeApplicationModal
+        $evaluationRequirements = \App\Models\EvaluationRequirement::where('is_active', true)
+            ->get()
+            ->groupBy('group');
+
+        $barangays = \App\Models\Barangay::select('id', 'name')->orderBy('name', 'asc')->get();
+        $unitMakes = \App\Models\UnitMake::select('id', 'name')->orderBy('name', 'asc')->get();
+        
+        $operators = \App\Models\Operator::with('user')->get()->map(function($op) {
+            return [
+                'id' => $op->id,
+                'name' => $op->user ? trim($op->user->first_name . ' ' . $op->user->last_name) : 'Unknown',
+                'email' => $op->user ? $op->user->email : 'N/A',
+            ];
+        });
+
+        $activeUnitIds = \App\Models\Franchise::with('currentActiveUnit')->get()->map(function($f) {
+            if ($f->currentActiveUnit) {
+                return $f->currentActiveUnit->new_unit_id ?? $f->currentActiveUnit->unit_id;
+            }
+            return null;
+        })->filter()->toArray();
+
+        $units = \App\Models\Unit::with('make')->whereNotIn('id', $activeUnitIds)->get()->map(function($unit) {
+            return [
+                'id' => $unit->id,
+                'make' => $unit->make ? $unit->make->name : 'Unknown',
+                'motor' => $unit->motor_number,
+                'plate' => $unit->plate_number,
+            ];
+        });
+
+        $applicationsData = \App\Models\Application::where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($app) {
+                return [
+                    'id' => $app->id,
+                    'type' => $app->application_type,
+                    'status' => $app->status ?? 'Pending',
+                ];
+            });
+
+        $zones = \App\Models\Zone::orderBy('description', 'asc')->get();
+        $allowNewFranchise = \App\Models\SystemSetting::first()->allow_new_applications ?? false;
+
         // 1. Handle Non-Operator Users
         if (!$operator) {
             return Inertia::render('Franchise/Dashboard', [
                 'hasFranchise' => false,
                 'franchises' => [],
-                'operator' => null
+                'operator' => null,
+                'evaluationRequirements' => $evaluationRequirements,
+                'barangays' => $barangays,
+                'unitMakes' => $unitMakes,
+                'operators' => $operators,
+                'units' => $units,
+                'applications' => $applicationsData,
+                'zones' => $zones,
+                'allowNewFranchise' => $allowNewFranchise,
             ]);
         }
 
@@ -146,6 +200,14 @@ class DashboardController extends Controller
             'hasFranchise' => true,
             'franchises' => $franchises,
             'operator' => $operator->load('user'),
+            'evaluationRequirements' => $evaluationRequirements,
+            'barangays' => $barangays,
+            'unitMakes' => $unitMakes,
+            'operators' => $operators,
+            'units' => $units,
+            'applications' => $applicationsData,
+            'zones' => $zones,
+            'allowNewFranchise' => $allowNewFranchise,
         ]);
     }
 

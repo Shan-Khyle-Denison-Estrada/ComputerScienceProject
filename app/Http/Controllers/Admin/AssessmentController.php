@@ -24,6 +24,8 @@ class AssessmentController extends Controller
         $search = $request->input('search');
         $status = $request->input('status');
         $franchiseId = $request->input('franchise_id');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $sortField = $request->input('sortField', '');
         $sortDirection = $request->input('sortDirection', '');
 
@@ -60,6 +62,12 @@ class AssessmentController extends Controller
             ->when($franchiseId, function($query, $franchiseId) {
                 $query->where('franchise_id', $franchiseId);
             })
+            ->when($dateFrom, function($query, $dateFrom) {
+                $query->whereDate('assessment_date', '>=', $dateFrom);
+            })
+            ->when($dateTo, function($query, $dateTo) {
+                $query->whereDate('assessment_date', '<=', $dateTo);
+            })
             ->when($sortField, function ($query) use ($sortField, $sortDirection) {
                 if ($sortField === 'franchise') {
                     $query->leftJoin('franchises', 'assessments.franchise_id', '=', 'franchises.id')
@@ -92,7 +100,7 @@ class AssessmentController extends Controller
 
         return Inertia::render('Admin/Assessments/Index', [
             'assessments' => $assessments,
-            'filters' => $request->only(['search', 'status', 'franchise_id', 'sortField', 'sortDirection']),
+            'filters' => $request->only(['search', 'status', 'franchise_id', 'date_from', 'date_to', 'sortField', 'sortDirection']),
             'particulars' => $particulars,
             'franchises' => $franchises,
             'userRole' => auth()->user()->role->value ?? auth()->user()->role,
@@ -275,6 +283,8 @@ public function store(Request $request)
         $search = $request->input('search');
         $status = $request->input('status');
         $franchiseId = $request->input('franchise_id');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
 
         return Assessment::query()
             ->with(['application', 'franchise.currentOwnership.newOwner.user']) 
@@ -301,6 +311,12 @@ public function store(Request $request)
             })
             ->when($franchiseId, function($query, $franchiseId) {
                 $query->where('franchise_id', $franchiseId);
+            })
+            ->when($dateFrom, function($query, $dateFrom) {
+                $query->whereDate('assessment_date', '>=', $dateFrom);
+            })
+            ->when($dateTo, function($query, $dateTo) {
+                $query->whereDate('assessment_date', '<=', $dateTo);
             })
             ->orderBy('id', 'desc');
     }

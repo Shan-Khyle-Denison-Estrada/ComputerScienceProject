@@ -16,6 +16,8 @@ class PaymentController extends Controller
     {
         $search = $request->input('search');
         $city = $request->input('city');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $sortField = $request->input('sortField', '');
         $sortDirection = $request->input('sortDirection', '');
 
@@ -38,6 +40,12 @@ class PaymentController extends Controller
             // 2. Handle City Filter
             ->when($city, function ($query, $city) {
                 $query->where('payee_city', 'like', "%{$city}%");
+            })
+            ->when($dateFrom, function($query, $dateFrom) {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function($query, $dateTo) {
+                $query->whereDate('created_at', '<=', $dateTo);
             })
             // 3. Handle Sorting
             ->when($sortField, function ($query) use ($sortField, $sortDirection) {
@@ -116,7 +124,7 @@ class PaymentController extends Controller
 
         return Inertia::render('Admin/Payments/Index', [
             'payments' => $payments,
-            'filters' => $request->only(['search', 'city', 'sortField', 'sortDirection']), // <-- NEW FILTERS ADDED HERE
+            'filters' => $request->only(['search', 'city', 'date_from', 'date_to', 'sortField', 'sortDirection']), // <-- NEW FILTERS ADDED HERE
             'barangays' => $barangays,
             'assessments' => $assessments,
             'userRole' => auth()->user()->role->value ?? auth()->user()->role,
@@ -262,6 +270,8 @@ public function store(Request $request)
     {
         $search = $request->input('search');
         $city = $request->input('city');
+        $dateFrom = $request->input('date_from');
+        $dateTo = $request->input('date_to');
         $sortField = $request->input('sortField', '');
         $sortDirection = $request->input('sortDirection', '');
 
@@ -281,6 +291,12 @@ public function store(Request $request)
             })
             ->when($city, function ($query, $city) {
                 $query->where('payee_city', 'like', "%{$city}%");
+            })
+            ->when($dateFrom, function($query, $dateFrom) {
+                $query->whereDate('created_at', '>=', $dateFrom);
+            })
+            ->when($dateTo, function($query, $dateTo) {
+                $query->whereDate('created_at', '<=', $dateTo);
             })
             ->when($sortField, function ($query) use ($sortField, $sortDirection) {
                 if ($sortField === 'payee_name') {

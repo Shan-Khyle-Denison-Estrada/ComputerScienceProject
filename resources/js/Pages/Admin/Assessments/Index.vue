@@ -34,6 +34,8 @@ const pdfLoaded = ref(false);
 const search = ref(props.filters.search || '');
 const filterStatus = ref(props.filters.status || '');
 const filterFranchiseId = ref(props.filters.franchise_id || '');
+const filterDateFrom = ref(props.filters.date_from || '');
+const filterDateTo = ref(props.filters.date_to || '');
 const sortField = ref(props.filters.sortField || '');
 const sortDirection = ref(props.filters.sortDirection || '');
 
@@ -94,13 +96,15 @@ const fetchResults = debounce(() => {
         search: search.value,
         status: filterStatus.value,
         franchise_id: filterFranchiseId.value,
+        date_from: filterDateFrom.value,
+        date_to: filterDateTo.value,
         sortField: sortField.value,
         sortDirection: sortDirection.value
     }, { preserveState: true, replace: true, preserveScroll: true });
 }, 300);
 
 // Automatically trigger on typing or filter changes
-watch([search, filterStatus, filterFranchiseId], () => {
+watch([search, filterStatus, filterFranchiseId, filterDateFrom, filterDateTo], () => {
     fetchResults();
 });
 
@@ -134,6 +138,8 @@ const applyFilters = () => {
 const resetFilters = () => {
     filterStatus.value = '';
     filterFranchiseId.value = '';
+    filterDateFrom.value = '';
+    filterDateTo.value = '';
     closeFilterModal();
     fetchResults();
 };
@@ -146,7 +152,9 @@ const openReportModal = () => {
     const params = new URLSearchParams({
         search: search.value || '',
         status: filterStatus.value || '',
-        franchise_id: filterFranchiseId.value || ''
+        franchise_id: filterFranchiseId.value || '',
+        date_from: filterDateFrom.value || '',
+        date_to: filterDateTo.value || ''
     }).toString();
     
     reportViewerUrl.value = route('admin.assessments.report.pdf') + '?' + params;
@@ -164,7 +172,9 @@ const downloadExcelReport = () => {
     const params = new URLSearchParams({
         search: search.value || '',
         status: filterStatus.value || '',
-        franchise_id: filterFranchiseId.value || ''
+        franchise_id: filterFranchiseId.value || '',
+        date_from: filterDateFrom.value || '',
+        date_to: filterDateTo.value || ''
     }).toString();
     window.location.href = route('admin.assessments.report.excel') + '?' + params;
 };
@@ -174,6 +184,8 @@ const downloadPdfReport = () => {
         search: search.value || '',
         status: filterStatus.value || '',
         franchise_id: filterFranchiseId.value || '',
+        date_from: filterDateFrom.value || '',
+        date_to: filterDateTo.value || '',
         download: 1
     }).toString();
     window.location.href = route('admin.assessments.report.pdf') + '?' + params;
@@ -372,11 +384,11 @@ onUnmounted(() => {
                         <button 
                             @click="openFilterModal" 
                             class="p-2 bg-white border border-gray-300 rounded-lg shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 transition relative"
-                            :class="{'ring-2 ring-red-500 bg-red-50': filterStatus || filterFranchiseId}"
+                            :class="{'ring-2 ring-red-500 bg-red-50': filterStatus || filterFranchiseId || filterDateFrom || filterDateTo}"
                             title="Filter Assessments"
                         >
-                            <svg class="h-5 w-5" :class="(filterStatus || filterFranchiseId) ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
-                            <span v-if="filterStatus || filterFranchiseId" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
+                            <svg class="h-5 w-5" :class="(filterStatus || filterFranchiseId || filterDateFrom || filterDateTo) ? 'text-red-600' : 'text-gray-500'" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" /></svg>
+                            <span v-if="filterStatus || filterFranchiseId || filterDateFrom || filterDateTo" class="absolute top-0 right-0 -mt-1 -mr-1 h-3 w-3 bg-red-500 border-2 border-white rounded-full"></span>
                         </button>
                     </div>
                     <SecondaryButton v-if="userRole === 'admin'" @click="showParticularsModal = true">Particulars</SecondaryButton>
@@ -797,6 +809,16 @@ onUnmounted(() => {
                                     <option value="paid">Paid</option>
                                     <option value="overdue">Overdue</option>
                                 </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <InputLabel>Date From</InputLabel>
+                                    <TextInput type="date" v-model="filterDateFrom" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm py-2.5" />
+                                </div>
+                                <div>
+                                    <InputLabel>Date To</InputLabel>
+                                    <TextInput type="date" v-model="filterDateTo" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm py-2.5" />
+                                </div>
                             </div>
                         </div>
                         <div class="px-6 py-4 bg-gray-50 border-t border-gray-100 flex justify-end gap-3">
